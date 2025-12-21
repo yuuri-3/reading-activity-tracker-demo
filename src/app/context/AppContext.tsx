@@ -51,6 +51,12 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
@@ -149,8 +155,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!db || !uid) return;
     const now = new Date().toISOString();
     await addDoc(collection(db, "users", uid, "books"), {
-      ...book,
-      memos: book.memos ?? [],
+      ...stripUndefined({
+        ...book,
+        memos: book.memos ?? [],
+      }),
       createdAt: now,
     });
   };
@@ -158,7 +166,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateBook = async (id: string, updates: Partial<Book>) => {
     if (!db || !uid) return;
     const { id: _id, ...rest } = updates;
-    await updateDoc(doc(db, "users", uid, "books", id), rest);
+    await updateDoc(doc(db, "users", uid, "books", id), stripUndefined(rest));
   };
 
   const deleteBook = async (id: string) => {
@@ -187,7 +195,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!db || !uid) return;
     const now = new Date().toISOString();
     await addDoc(collection(db, "users", uid, "histories"), {
-      ...history,
+      ...stripUndefined(history as unknown as Record<string, unknown>),
       createdAt: now,
     });
   };
@@ -195,7 +203,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateHistory = async (id: string, updates: Partial<History>) => {
     if (!db || !uid) return;
     const { id: _id, ...rest } = updates;
-    await updateDoc(doc(db, "users", uid, "histories", id), rest);
+    await updateDoc(
+      doc(db, "users", uid, "histories", id),
+      stripUndefined(rest)
+    );
   };
 
   const deleteHistory = async (id: string) => {
