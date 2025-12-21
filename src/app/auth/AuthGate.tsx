@@ -5,8 +5,10 @@ const REDIRECT_FLAG_KEY = "reading_activity_tracker_redirect_in_progress";
 
 function isRedirectInProgress(): boolean {
   try {
-    return typeof window !== "undefined" &&
-      window.localStorage.getItem(REDIRECT_FLAG_KEY) === "1";
+    return (
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(REDIRECT_FLAG_KEY) === "1"
+    );
   } catch {
     return false;
   }

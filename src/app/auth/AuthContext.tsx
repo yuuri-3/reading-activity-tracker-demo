@@ -89,9 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
           setRedirectFlag(false);
           setError(
-            err instanceof Error
-              ? err.message
-              : "Googleログインに失敗しました"
+            err instanceof Error ? err.message : "Googleログインに失敗しました"
           );
         }
       })();
