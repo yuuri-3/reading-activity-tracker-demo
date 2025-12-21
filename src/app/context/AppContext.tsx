@@ -1,30 +1,49 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Book, History, TimerState, BookMemo } from '../types';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+} from "firebase/firestore";
+import { Book, History, TimerState, BookMemo } from "../types";
+import { useAuth } from "../auth/AuthContext";
+import { getFirestoreDb } from "../firebase/firebase";
 
 // App context for managing global state
 interface AppContextType {
   // Books
   books: Book[];
-  addBook: (book: Omit<Book, 'id' | 'createdAt'>) => void;
-  updateBook: (id: string, book: Partial<Book>) => void;
-  deleteBook: (id: string) => void;
+  addBook: (book: Omit<Book, "id" | "createdAt">) => Promise<void>;
+  updateBook: (id: string, book: Partial<Book>) => Promise<void>;
+  deleteBook: (id: string) => Promise<void>;
   getBook: (id: string) => Book | undefined;
   addBookMemo: (bookId: string, memoText: string) => void;
-  
+
   // Histories
   histories: History[];
-  addHistory: (history: Omit<History, 'id' | 'createdAt'>) => void;
-  updateHistory: (id: string, history: Partial<History>) => void;
-  deleteHistory: (id: string) => void;
+  addHistory: (history: Omit<History, "id" | "createdAt">) => Promise<void>;
+  updateHistory: (id: string, history: Partial<History>) => Promise<void>;
+  deleteHistory: (id: string) => Promise<void>;
   getHistoriesByBook: (bookId: string) => History[];
   getTotalDurationByBook: (bookId: string) => number;
-  
+
   // Timer
   timerState: TimerState;
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
-  
+
   // Search
   searchText: string;
   setSearchText: (text: string) => void;
@@ -33,9 +52,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [histories, setHistories] = useState<History[]>([]);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [timerState, setTimerState] = useState<TimerState>({
     isRunning: false,
     startTime: null,
@@ -43,69 +63,111 @@ export function AppProvider({ children }: { children: ReactNode }) {
     pausedTime: 0,
   });
 
-  // Load data from localStorage
-  useEffect(() => {
-    const storedBooks = localStorage.getItem('books');
-    const storedHistories = localStorage.getItem('histories');
-    
-    if (storedBooks) {
-      setBooks(JSON.parse(storedBooks));
-    }
-    if (storedHistories) {
-      setHistories(JSON.parse(storedHistories));
-    }
-  }, []);
+  const uid = user?.uid;
 
-  // Save books to localStorage
-  useEffect(() => {
-    localStorage.setItem('books', JSON.stringify(books));
-  }, [books]);
+  const db = useMemo(() => {
+    if (!uid) return null;
+    return getFirestoreDb();
+  }, [uid]);
 
-  // Save histories to localStorage
+  // Subscribe to Firestore (single source of truth)
   useEffect(() => {
-    localStorage.setItem('histories', JSON.stringify(histories));
-  }, [histories]);
+    if (!db || !uid) {
+      setBooks([]);
+      setHistories([]);
+      return;
+    }
+
+    const booksQuery = query(
+      collection(db, "users", uid, "books"),
+      orderBy("createdAt", "desc")
+    );
+
+    const historiesQuery = query(
+      collection(db, "users", uid, "histories"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubBooks = onSnapshot(booksQuery, (snapshot) => {
+      setBooks(
+        snapshot.docs.map((d) => {
+          const data = d.data() as Omit<Book, "id">;
+          return {
+            id: d.id,
+            title: data.title,
+            author: data.author,
+            memos: data.memos ?? [],
+            createdAt: data.createdAt,
+          };
+        })
+      );
+    });
+
+    const unsubHistories = onSnapshot(historiesQuery, (snapshot) => {
+      setHistories(
+        snapshot.docs.map((d) => {
+          const data = d.data() as Omit<History, "id">;
+          return {
+            id: d.id,
+            bookId: data.bookId,
+            duration: data.duration,
+            memo: data.memo,
+            startTime: data.startTime,
+            endTime: data.endTime,
+            createdAt: data.createdAt,
+          };
+        })
+      );
+    });
+
+    return () => {
+      unsubBooks();
+      unsubHistories();
+    };
+  }, [db, uid]);
 
   // Timer interval
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
+    let interval: ReturnType<typeof setInterval> | undefined;
+
     if (timerState.isRunning && timerState.startTime) {
-      interval = setInterval(() => {
-        setTimerState(prev => ({
+      interval = window.setInterval(() => {
+        setTimerState((prev) => ({
           ...prev,
           elapsedTime: prev.pausedTime + (Date.now() - prev.startTime!) / 1000,
         }));
       }, 100);
     }
-    
+
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) window.clearInterval(interval);
     };
   }, [timerState.isRunning, timerState.startTime]);
 
   // Book operations
-  const addBook = (book: Omit<Book, 'id' | 'createdAt'>) => {
-    const newBook: Book = {
+  const addBook = async (book: Omit<Book, "id" | "createdAt">) => {
+    if (!db || !uid) return;
+    const now = new Date().toISOString();
+    await addDoc(collection(db, "users", uid, "books"), {
       ...book,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    };
-    setBooks(prev => [newBook, ...prev]);
+      memos: book.memos ?? [],
+      createdAt: now,
+    });
   };
 
-  const updateBook = (id: string, updates: Partial<Book>) => {
-    setBooks(prev => prev.map(book => 
-      book.id === id ? { ...book, ...updates } : book
-    ));
+  const updateBook = async (id: string, updates: Partial<Book>) => {
+    if (!db || !uid) return;
+    const { id: _id, ...rest } = updates;
+    await updateDoc(doc(db, "users", uid, "books", id), rest);
   };
 
-  const deleteBook = (id: string) => {
-    setBooks(prev => prev.filter(book => book.id !== id));
+  const deleteBook = async (id: string) => {
+    if (!db || !uid) return;
+    await deleteDoc(doc(db, "users", uid, "books", id));
   };
 
   const getBook = (id: string) => {
-    return books.find(book => book.id === id);
+    return books.find((book) => book.id === id);
   };
 
   const addBookMemo = (bookId: string, memoText: string) => {
@@ -116,43 +178,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
         text: memoText,
         createdAt: new Date().toISOString(),
       };
-      updateBook(bookId, { memos: [...(book.memos || []), newMemo] });
+      void updateBook(bookId, { memos: [...(book.memos || []), newMemo] });
     }
   };
 
   // History operations
-  const addHistory = (history: Omit<History, 'id' | 'createdAt'>) => {
-    const newHistory: History = {
+  const addHistory = async (history: Omit<History, "id" | "createdAt">) => {
+    if (!db || !uid) return;
+    const now = new Date().toISOString();
+    await addDoc(collection(db, "users", uid, "histories"), {
       ...history,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    };
-    setHistories(prev => [newHistory, ...prev]);
+      createdAt: now,
+    });
   };
 
-  const updateHistory = (id: string, updates: Partial<History>) => {
-    setHistories(prev => prev.map(history => 
-      history.id === id ? { ...history, ...updates } : history
-    ));
+  const updateHistory = async (id: string, updates: Partial<History>) => {
+    if (!db || !uid) return;
+    const { id: _id, ...rest } = updates;
+    await updateDoc(doc(db, "users", uid, "histories", id), rest);
   };
 
-  const deleteHistory = (id: string) => {
-    setHistories(prev => prev.filter(history => history.id !== id));
+  const deleteHistory = async (id: string) => {
+    if (!db || !uid) return;
+    await deleteDoc(doc(db, "users", uid, "histories", id));
   };
 
   const getHistoriesByBook = (bookId: string) => {
-    return histories.filter(history => history.bookId === bookId);
+    return histories.filter((history) => history.bookId === bookId);
   };
 
   const getTotalDurationByBook = (bookId: string) => {
     return histories
-      .filter(history => history.bookId === bookId)
+      .filter((history) => history.bookId === bookId)
       .reduce((total, history) => total + history.duration, 0);
   };
 
   // Timer operations
   const startTimer = () => {
-    setTimerState(prev => ({
+    setTimerState((prev) => ({
       ...prev,
       isRunning: true,
       startTime: Date.now(),
@@ -160,7 +223,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const pauseTimer = () => {
-    setTimerState(prev => ({
+    setTimerState((prev) => ({
       ...prev,
       isRunning: false,
       pausedTime: prev.elapsedTime,
@@ -207,7 +270,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 export function useApp() {
   const context = useContext(AppContext);
   if (!context) {
-    throw new Error('useApp must be used within AppProvider');
+    throw new Error("useApp must be used within AppProvider");
   }
   return context;
 }
