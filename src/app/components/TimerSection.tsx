@@ -30,9 +30,9 @@ export function TimerSection() {
 
   return (
     <>
-      <div className="flex flex-col gap-8 p-6 rounded-xl bg-card border-0 [box-shadow:var(--shadow-neumorphism)]">
+      <div className="flex flex-col gap-8 p-6 rounded-lg">
         <div className="flex items-center justify-center min-h-[80px]">
-          <p className="text-6xl tabular-nums">
+          <p className="text-5xl tabular-nums text-[96px] font-[Aclonica]">
             {formatDuration(timerState.elapsedTime)}
           </p>
         </div>
@@ -41,11 +41,11 @@ export function TimerSection() {
           {!timerState.isRunning ? (
             <Button
               onClick={startTimer}
-              className="h-24 w-24 rounded-full p-0 flex flex-col items-center justify-center gap-1.5"
+              className="w-[7.5rem] h-[7.5rem] rounded-full p-0 flex flex-col items-center justify-center gap-1.5 px-[24px] py-[0px]"
               size="lg"
             >
               <Play className="size-9" />
-              <span className="text-sm">
+              <span className="text-base text-[13px]">
                 {timerState.elapsedTime > 0 ? "再開" : "計測開始"}
               </span>
             </Button>
@@ -82,7 +82,7 @@ export function TimerSection() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="book">書籍（任意）</Label>
           <Select value={selectedBookId} onValueChange={setSelectedBookId}>
-            <SelectTrigger id="book">
+            <SelectTrigger id="book" className="rounded-[8px]">
               <SelectValue placeholder="選択なし" />
             </SelectTrigger>
             <SelectContent>
@@ -103,6 +103,7 @@ export function TimerSection() {
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
             rows={3}
+            className="rounded-[8px]"
           />
         </div>
 
@@ -114,6 +115,7 @@ export function TimerSection() {
             value={bookMemo}
             onChange={(e) => setBookMemo(e.target.value)}
             rows={3}
+            className="rounded-[8px]"
           />
         </div>
       </div>
