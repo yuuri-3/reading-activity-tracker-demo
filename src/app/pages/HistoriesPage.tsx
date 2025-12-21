@@ -1,26 +1,26 @@
-import { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { AddHistoryDialog } from '../components/AddHistoryDialog';
-import { formatDuration, formatDateTime } from '../utils/format';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { Search, Clock } from 'lucide-react';
-import { History } from '../types';
+import { useState } from "react";
+import { useApp } from "../context/AppContext";
+import { AddHistoryDialog } from "../components/AddHistoryDialog";
+import { formatDuration, formatDateTime } from "../utils/format";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Search, Clock } from "lucide-react";
+import { History } from "../types";
+import { ListCard } from "../components/ListCard";
 
 export function HistoriesPage() {
-  const { histories, books, getBook, updateHistory, deleteHistory } = useApp();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { histories, getBook, updateHistory, deleteHistory } = useApp();
+  const [searchQuery, setSearchQuery] = useState("");
   const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
-  const [editingMemo, setEditingMemo] = useState('');
+  const [editingMemo, setEditingMemo] = useState("");
 
-  const filteredHistories = histories.filter(history => {
+  const filteredHistories = histories.filter((history) => {
     const book = history.bookId ? getBook(history.bookId) : null;
     const query = searchQuery.toLowerCase();
-    
+
     return (
-      history.memo.toLowerCase().includes(query) ||
-      (book && book.title.toLowerCase().includes(query)) ||
-      (book && book.memo.toLowerCase().includes(query))
+      (history.memo ?? "").toLowerCase().includes(query) ||
+      (book && book.title.toLowerCase().includes(query))
     );
   });
 
@@ -30,19 +30,19 @@ export function HistoriesPage() {
   };
 
   const handleSaveEdit = (historyId: string) => {
-    updateHistory(historyId, { memo: editingMemo });
+    void updateHistory(historyId, { memo: editingMemo });
     setEditingHistoryId(null);
-    setEditingMemo('');
+    setEditingMemo("");
   };
 
   const handleCancelEdit = () => {
     setEditingHistoryId(null);
-    setEditingMemo('');
+    setEditingMemo("");
   };
 
   const handleDelete = (historyId: string) => {
-    if (confirm('この履歴を削除しますか？')) {
-      deleteHistory(historyId);
+    if (confirm("この履歴を削除しますか？")) {
+      void deleteHistory(historyId);
     }
   };
 
@@ -51,13 +51,11 @@ export function HistoriesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="mb-2">履歴一覧</h1>
-          <p className="text-sm text-muted-foreground">
-            計測した履歴の一覧
-          </p>
+          <p className="text-sm text-muted-foreground">計測した履歴の一覧</p>
         </div>
         <AddHistoryDialog />
       </div>
-      
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <Input
@@ -72,7 +70,7 @@ export function HistoriesPage() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Clock className="size-12 mb-4 text-muted-foreground" />
           <p className="text-muted-foreground">
-            {searchQuery ? '該当する履歴が見つかりません' : '履歴がありません'}
+            {searchQuery ? "該当する履歴が見つかりません" : "履歴がありません"}
           </p>
         </div>
       ) : (
@@ -80,9 +78,9 @@ export function HistoriesPage() {
           {filteredHistories.map((history) => {
             const book = history.bookId ? getBook(history.bookId) : null;
             const isEditing = editingHistoryId === history.id;
-            
+
             return (
-              <div key={history.id} className="p-4 border rounded-lg">
+              <ListCard key={history.id}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <p className="tabular-nums">
@@ -98,7 +96,7 @@ export function HistoriesPage() {
                     {formatDateTime(history.endTime)}
                   </p>
                 </div>
-                
+
                 {isEditing ? (
                   <div className="flex flex-col gap-2 mt-2">
                     <Textarea
@@ -145,7 +143,7 @@ export function HistoriesPage() {
                     </div>
                   </>
                 )}
-              </div>
+              </ListCard>
             );
           })}
         </div>
