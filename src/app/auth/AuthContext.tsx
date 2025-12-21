@@ -10,6 +10,7 @@ import {
   getRedirectResult,
   onAuthStateChanged,
   setPersistence,
+  type Auth,
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
@@ -44,6 +45,23 @@ function setRedirectFlag(value: boolean) {
   } catch {
     // ignore (storage may be unavailable)
   }
+}
+
+function getRedirectFlag(): boolean {
+  try {
+    return (
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(REDIRECT_FLAG_KEY) === "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function startRedirect(auth: Auth) {
+  const provider = getGoogleProvider();
+  setRedirectFlag(true);
+  await signInWithRedirect(auth, provider);
 }
 
 type AuthContextValue = {
@@ -94,6 +112,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })();
 
+      // redirectを開始したのにuserが確定しない場合、ループになりがちなので止める
+      if (getRedirectFlag()) {
+        window.setTimeout(() => {
+          // まだログインできていない & フラグが残っているならエラーにする
+          if (!auth.currentUser && getRedirectFlag()) {
+            setRedirectFlag(false);
+            setError(
+              "ログインが完了しませんでした（iOSのSafari設定やアプリ内ブラウザが原因のことがあります）。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。"
+            );
+          }
+        }, 4000);
+      }
+
       unsubscribe = onAuthStateChanged(
         auth,
         (nextUser) => {
@@ -128,29 +159,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const auth = getFirebaseAuth();
           const provider = getGoogleProvider();
 
-          // モバイル（特にiOS）ではpopupが不安定なためredirectを優先
-          if (isLikelyMobile()) {
-            setRedirectFlag(true);
-            await signInWithRedirect(auth, provider);
-            return;
-          }
-
+          // まずはpopupを試す（iOSでもpopupが通る環境があるため）
           await signInWithPopup(auth, provider);
         } catch (err) {
           const code = getErrorCode(err);
+
+          // iOS/アプリ内ブラウザでありがちなredirect状態欠落
+          if (isMissingInitialStateError(err)) {
+            setError(
+              "ログイン状態の受け渡しに失敗しました。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。"
+            );
+            return;
+          }
 
           // popup環境依存エラーはredirectでフォールバック
           if (
             code === "auth/popup-blocked" ||
             code === "auth/popup-closed-by-user" ||
             code === "auth/web-storage-unsupported" ||
-            isMissingInitialStateError(err)
+            (isLikelyMobile() &&
+              code === "auth/operation-not-supported-in-this-environment")
           ) {
             try {
-              const auth = getFirebaseAuth();
-              const provider = getGoogleProvider();
-              setRedirectFlag(true);
-              await signInWithRedirect(auth, provider);
+              await startRedirect(getFirebaseAuth());
               return;
             } catch (redirectErr) {
               setRedirectFlag(false);
