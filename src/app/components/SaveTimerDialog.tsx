@@ -24,20 +24,43 @@ interface SaveTimerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   duration: number;
+
+  // optional controlled fields (for TimerSection etc)
+  selectedBookId?: string;
+  setSelectedBookId?: (value: string) => void;
+  memo?: string;
+  setMemo?: (value: string) => void;
+  bookMemo?: string;
+  setBookMemo?: (value: string) => void;
 }
 
 export function SaveTimerDialog({
   open,
   onOpenChange,
   duration,
+  selectedBookId: controlledSelectedBookId,
+  setSelectedBookId: setControlledSelectedBookId,
+  memo: controlledMemo,
+  setMemo: setControlledMemo,
+  bookMemo: controlledBookMemo,
+  setBookMemo: setControlledBookMemo,
 }: SaveTimerDialogProps) {
   const { books, addHistory, addBookMemo, resetTimer } = useApp();
-  const [selectedBookId, setSelectedBookId] = useState<string>("");
-  const [memo, setMemo] = useState("");
-  const [bookMemo, setBookMemo] = useState("");
+  const [uncontrolledSelectedBookId, setUncontrolledSelectedBookId] =
+    useState<string>("");
+  const [uncontrolledMemo, setUncontrolledMemo] = useState("");
+  const [uncontrolledBookMemo, setUncontrolledBookMemo] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const allowCloseRef = useRef(false);
+
+  const selectedBookId = controlledSelectedBookId ?? uncontrolledSelectedBookId;
+  const setSelectedBookId =
+    setControlledSelectedBookId ?? setUncontrolledSelectedBookId;
+  const memo = controlledMemo ?? uncontrolledMemo;
+  const setMemo = setControlledMemo ?? setUncontrolledMemo;
+  const bookMemo = controlledBookMemo ?? uncontrolledBookMemo;
+  const setBookMemo = setControlledBookMemo ?? setUncontrolledBookMemo;
 
   const resetForm = () => {
     setSelectedBookId("");
