@@ -1,25 +1,33 @@
-import { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { AddBookDialog } from '../components/AddBookDialog';
-import { Book } from '../types';
-import { formatDuration } from '../utils/format';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { Button } from '../components/ui/button';
-import { Search, BookOpen } from 'lucide-react';
+import { useState } from "react";
+import { useApp } from "../context/AppContext";
+import { AddBookDialog } from "../components/AddBookDialog";
+import { Book } from "../types";
+import { formatDuration } from "../utils/format";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Button } from "../components/ui/button";
+import { Search, BookOpen } from "lucide-react";
+import { ListCard } from "../components/ListCard";
 
 export function BooksPage() {
   const { books, getTotalDurationByBook } = useApp();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
-  const filteredBooks = books.filter(book => 
-    book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (book.author && book.author.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredBooks = books.filter(
+    (book) =>
+      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (book.author &&
+        book.author.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   if (selectedBook) {
-    return <BookDetailView book={selectedBook} onBack={() => setSelectedBook(null)} />;
+    return (
+      <BookDetailView
+        book={selectedBook}
+        onBack={() => setSelectedBook(null)}
+      />
+    );
   }
 
   return (
@@ -33,7 +41,7 @@ export function BooksPage() {
         </div>
         <AddBookDialog />
       </div>
-      
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <Input
@@ -48,19 +56,22 @@ export function BooksPage() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <BookOpen className="size-12 mb-4 text-muted-foreground" />
           <p className="text-muted-foreground">
-            {searchQuery ? '該当する書籍が見つかりません' : '書籍が登録されていません'}
+            {searchQuery
+              ? "該当する書籍が見つかりません"
+              : "書籍が登録されていません"}
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           {filteredBooks.map((book) => {
             const totalDuration = getTotalDurationByBook(book.id);
-            
+
             return (
-              <button
+              <ListCard
+                as="button"
                 key={book.id}
                 onClick={() => setSelectedBook(book)}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors text-left"
+                className="flex items-center justify-between"
               >
                 <div className="flex-1 min-w-0">
                   <p className="truncate">{book.title}</p>
@@ -74,11 +85,9 @@ export function BooksPage() {
                   <p className="tabular-nums">
                     {formatDuration(totalDuration)}
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    累計
-                  </p>
+                  <p className="text-sm text-muted-foreground">累計</p>
                 </div>
-              </button>
+              </ListCard>
             );
           })}
         </div>
@@ -88,24 +97,30 @@ export function BooksPage() {
 }
 
 function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
-  const { updateBook, deleteBook, getHistoriesByBook, getTotalDurationByBook, addBookMemo } = useApp();
+  const {
+    updateBook,
+    deleteBook,
+    getHistoriesByBook,
+    getTotalDurationByBook,
+    addBookMemo,
+  } = useApp();
   const [isAddingMemo, setIsAddingMemo] = useState(false);
-  const [newMemo, setNewMemo] = useState('');
-  
+  const [newMemo, setNewMemo] = useState("");
+
   const histories = getHistoriesByBook(book.id);
   const totalDuration = getTotalDurationByBook(book.id);
 
   const handleSaveMemo = () => {
     if (newMemo.trim()) {
       addBookMemo(book.id, newMemo.trim());
-      setNewMemo('');
+      setNewMemo("");
       setIsAddingMemo(false);
     }
   };
 
   const handleDelete = () => {
-    if (confirm('この書籍を削除しますか？')) {
-      deleteBook(book.id);
+    if (confirm("この書籍を削除しますか？")) {
+      void deleteBook(book.id);
       onBack();
     }
   };
@@ -119,11 +134,9 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
         >
           ← 一覧に戻る
         </button>
-        
+
         <h1 className="mb-2">{book.title}</h1>
-        {book.author && (
-          <p className="text-muted-foreground">{book.author}</p>
-        )}
+        {book.author && <p className="text-muted-foreground">{book.author}</p>}
       </div>
 
       <div className="p-4 border rounded-lg">
@@ -143,7 +156,7 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
             </button>
           )}
         </div>
-        
+
         {isAddingMemo ? (
           <div className="flex flex-col gap-2">
             <Textarea
@@ -155,7 +168,7 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
             <div className="flex gap-2">
               <Button
                 onClick={() => {
-                  setNewMemo('');
+                  setNewMemo("");
                   setIsAddingMemo(false);
                 }}
                 variant="outline"
@@ -163,35 +176,32 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
               >
                 キャンセル
               </Button>
-              <Button
-                onClick={handleSaveMemo}
-                className="flex-1"
-              >
+              <Button onClick={handleSaveMemo} className="flex-1">
                 保存
               </Button>
             </div>
           </div>
         ) : null}
-        
+
         <div className="flex flex-col gap-2">
-          {book.memos && book.memos.length > 0 ? (
-            book.memos.map((memo) => (
-              <div key={memo.id} className="p-4 border rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">
-                  {new Date(memo.createdAt).toLocaleDateString('ja-JP', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-                <p className="whitespace-pre-wrap">{memo.text}</p>
-              </div>
-            ))
-          ) : (
-            !isAddingMemo && <p className="text-muted-foreground">メモなし</p>
-          )}
+          {book.memos && book.memos.length > 0
+            ? book.memos.map((memo) => (
+                <ListCard key={memo.id}>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    {new Date(memo.createdAt).toLocaleDateString("ja-JP", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <p className="whitespace-pre-wrap">{memo.text}</p>
+                </ListCard>
+              ))
+            : !isAddingMemo && (
+                <p className="text-muted-foreground">メモなし</p>
+              )}
         </div>
       </div>
 
@@ -204,24 +214,24 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
         ) : (
           <div className="flex flex-col gap-2">
             {histories.map((history) => (
-              <div key={history.id} className="p-4 border rounded-lg">
+              <ListCard key={history.id}>
                 <div className="flex items-center justify-between mb-2">
                   <p className="tabular-nums">
                     {formatDuration(history.duration)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(history.endTime).toLocaleDateString('ja-JP', {
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
+                    {new Date(history.endTime).toLocaleDateString("ja-JP", {
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </p>
                 </div>
                 {history.memo && (
                   <p className="text-sm whitespace-pre-wrap">{history.memo}</p>
                 )}
-              </div>
+              </ListCard>
             ))}
           </div>
         )}
