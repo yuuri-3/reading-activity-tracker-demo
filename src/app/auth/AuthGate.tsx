@@ -1,8 +1,20 @@
 import { Button } from "../components/ui/button";
 import { useAuth } from "./AuthContext";
 
+const REDIRECT_FLAG_KEY = "reading_activity_tracker_redirect_in_progress";
+
+function isRedirectInProgress(): boolean {
+  try {
+    return typeof window !== "undefined" &&
+      window.localStorage.getItem(REDIRECT_FLAG_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, error, signInWithGoogle } = useAuth();
+  const redirecting = !user && isRedirectInProgress();
 
   if (loading) {
     return (
@@ -29,10 +41,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
+          {redirecting && (
+            <div className="text-sm text-muted-foreground">
+              ログイン処理中です。画面が戻るまでお待ちください…
+            </div>
+          )}
+
           <Button
             onClick={() => {
               void signInWithGoogle();
             }}
+            disabled={redirecting}
           >
             Googleでログイン
           </Button>

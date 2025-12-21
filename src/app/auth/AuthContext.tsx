@@ -6,8 +6,10 @@ import React, {
   useState,
 } from "react";
 import {
+  browserLocalPersistence,
   getRedirectResult,
   onAuthStateChanged,
+  setPersistence,
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
@@ -27,6 +29,21 @@ function getErrorCode(err: unknown): string | undefined {
 
 function isMissingInitialStateError(err: unknown): boolean {
   return err instanceof Error && /missing initial state/i.test(err.message);
+}
+
+const REDIRECT_FLAG_KEY = "reading_activity_tracker_redirect_in_progress";
+
+function setRedirectFlag(value: boolean) {
+  try {
+    if (typeof window === "undefined") return;
+    if (value) {
+      window.localStorage.setItem(REDIRECT_FLAG_KEY, "1");
+    } else {
+      window.localStorage.removeItem(REDIRECT_FLAG_KEY);
+    }
+  } catch {
+    // ignore (storage may be unavailable)
+  }
 }
 
 type AuthContextValue = {
@@ -50,13 +67,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const auth = getFirebaseAuth();
 
+      // 永続化（特にモバイルSafariでログイン状態が戻らない対策）
+      void (async () => {
+        try {
+          await setPersistence(auth, browserLocalPersistence);
+        } catch {
+          // ignore
+        }
+      })();
+
       // signInWithRedirect の結果を拾ってエラー表示できるようにする
       void (async () => {
         try {
-          await getRedirectResult(auth);
+          const result = await getRedirectResult(auth);
+          // ここまで来たらredirect処理は一旦完了
+          setRedirectFlag(false);
+
+          // resultがnullでもOK（redirectしていないケース）
+          // ただし、redirect中フラグが残ったままなら解除しておく
+          void result;
         } catch (err) {
+          setRedirectFlag(false);
           setError(
-            err instanceof Error ? err.message : "Googleログインに失敗しました"
+            err instanceof Error
+              ? err.message
+              : "Googleログインに失敗しました"
           );
         }
       })();
@@ -97,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // モバイル（特にiOS）ではpopupが不安定なためredirectを優先
           if (isLikelyMobile()) {
+            setRedirectFlag(true);
             await signInWithRedirect(auth, provider);
             return;
           }
@@ -115,9 +151,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
               const auth = getFirebaseAuth();
               const provider = getGoogleProvider();
+              setRedirectFlag(true);
               await signInWithRedirect(auth, provider);
               return;
             } catch (redirectErr) {
+              setRedirectFlag(false);
               setError(
                 redirectErr instanceof Error
                   ? redirectErr.message
