@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
@@ -19,53 +19,75 @@ export function SaveTimerDialog({ open, onOpenChange, duration }: SaveTimerDialo
   const [selectedBookId, setSelectedBookId] = useState<string>('');
   const [memo, setMemo] = useState('');
   const [bookMemo, setBookMemo] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const allowCloseRef = useRef(false);
 
-  const handleSave = () => {
-    const now = new Date();
-    const startTime = new Date(now.getTime() - duration * 1000).toISOString();
-    
-    addHistory({
-      bookId: selectedBookId || undefined,
-      duration: Math.floor(duration),
-      memo,
-      startTime,
-      endTime: now.toISOString(),
-    });
-    
-    // 書籍メモがあり、書籍が選択されている場合は書籍メモを追加
-    if (bookMemo.trim() && selectedBookId) {
-      addBookMemo(selectedBookId, bookMemo.trim());
-    }
-    
-    resetTimer();
+  const resetForm = () => {
     setSelectedBookId('');
     setMemo('');
     setBookMemo('');
-    onOpenChange(false);
+    setSaveError(null);
+    setIsSaving(false);
+  };
+
+  const handleSave = async () => {
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      const now = new Date();
+      const startTime = new Date(now.getTime() - duration * 1000).toISOString();
+
+      await addHistory({
+        bookId: selectedBookId || undefined,
+        duration: Math.floor(duration),
+        memo,
+        startTime,
+        endTime: now.toISOString(),
+      });
+
+      // 書籍メモがあり、書籍が選択されている場合は書籍メモを追加
+      if (bookMemo.trim() && selectedBookId) {
+        addBookMemo(selectedBookId, bookMemo.trim());
+      }
+
+      resetTimer();
+      resetForm();
+      allowCloseRef.current = true;
+      onOpenChange(false);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error
+          ? err.message
+          : '履歴の保存に失敗しました'
+      );
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     resetTimer();
-    setSelectedBookId('');
-    setMemo('');
-    setBookMemo('');
+    resetForm();
+    allowCloseRef.current = true;
     onOpenChange(false);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && !allowCloseRef.current) {
+      return;
+    }
     if (!newOpen) {
-      // モーダルが閉じられる際にタイマーをリセット
-      resetTimer();
-      setSelectedBookId('');
-      setMemo('');
-      setBookMemo('');
+      allowCloseRef.current = false;
     }
     onOpenChange(newOpen);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>計測結果を保存</DialogTitle>
           <DialogDescription>
@@ -115,12 +137,18 @@ export function SaveTimerDialog({ open, onOpenChange, duration }: SaveTimerDialo
               rows={3}
             />
           </div>
+
+          {saveError && (
+            <div className="text-sm text-destructive whitespace-pre-wrap">
+              {saveError}
+            </div>
+          )}
           
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleCancel} className="flex-1">
+            <Button variant="outline" onClick={handleCancel} className="flex-1" disabled={isSaving}>
               破棄
             </Button>
-            <Button onClick={handleSave} className="flex-1">
+            <Button onClick={() => { void handleSave(); }} className="flex-1" disabled={isSaving}>
               保存
             </Button>
           </div>
