@@ -10,7 +10,7 @@ Run `npm run dev` to start the development server.
 
 ## Firebase
 
-このアプリは Firebase（Googleログイン + Firestore）を使います。
+このアプリは Firebase（Google ログイン + Firestore）を使います。
 
 - 必要な設定値（`VITE_FIREBASE_*`）は `.env.example` を参照してください。
 - GitHub Pages で動かす場合は、GitHub の Actions Variables に同じ `VITE_FIREBASE_*` を登録します。

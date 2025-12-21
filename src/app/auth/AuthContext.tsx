@@ -63,14 +63,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       signInWithGoogle: async () => {
         setError(null);
-        const auth = getFirebaseAuth();
-        const provider = getGoogleProvider();
-        await signInWithPopup(auth, provider);
+        try {
+          const auth = getFirebaseAuth();
+          const provider = getGoogleProvider();
+          await signInWithPopup(auth, provider);
+        } catch (err) {
+          setError(
+            err instanceof Error ? err.message : "Googleログインに失敗しました"
+          );
+        }
       },
       signOut: async () => {
         setError(null);
-        const auth = getFirebaseAuth();
-        await firebaseSignOut(auth);
+        try {
+          const auth = getFirebaseAuth();
+          await firebaseSignOut(auth);
+        } catch (err) {
+          setError(
+            err instanceof Error ? err.message : "ログアウトに失敗しました"
+          );
+        }
       },
     };
   }, [user, loading, error]);
