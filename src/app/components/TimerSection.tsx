@@ -166,7 +166,7 @@ export function TimerSection() {
             instance={
               <NeumorphicTextarea
                 id="bookMemo"
-                placeholder="例）P.10まで読んだ"
+                placeholder="例）第2章が面白かった"
                 value={bookMemo}
                 onChange={(e) => setBookMemo(e.target.value)}
                 rows={3}
