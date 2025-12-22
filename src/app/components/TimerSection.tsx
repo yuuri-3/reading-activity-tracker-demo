@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
 import { PrimaryButton } from "./PrimaryButton";
 import { FieldItem } from "./FieldItem";
@@ -16,12 +16,33 @@ export function TimerSection() {
   const [selectedBookId, setSelectedBookId] = useState<string>("");
   const [memo, setMemo] = useState("");
   const [bookMemo, setBookMemo] = useState("");
+  const [isStarting, setIsStarting] = useState(false);
+  const startTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (startTimeoutRef.current !== null) {
+        window.clearTimeout(startTimeoutRef.current);
+        startTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleStop = () => {
     if (timerState.elapsedTime > 0) {
       pauseTimer();
       setShowSaveDialog(true);
     }
+  };
+
+  const handleStart = () => {
+    if (isStarting) return;
+    setIsStarting(true);
+    startTimeoutRef.current = window.setTimeout(() => {
+      startTimer();
+      setIsStarting(false);
+      startTimeoutRef.current = null;
+    }, 120);
   };
 
   const getStartTimeText = () => {
@@ -57,17 +78,27 @@ export function TimerSection() {
                     key="start-button"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ transition: { duration: 0.5 } }}
+                    exit={{ opacity: 0, transition: { duration: 0.12 } }}
                     className="w-full"
                   >
                     <PrimaryButton
-                      onClick={startTimer}
+                      onClick={handleStart}
+                      disabled={isStarting}
                       className="w-full overflow-hidden"
-                      icon={<Play />}
+                      icon={
+                        <motion.span
+                          className="flex items-center"
+                          animate={{ opacity: isStarting ? 0 : 1 }}
+                          transition={{ duration: 0.1 }}
+                        >
+                          <Play />
+                        </motion.span>
+                      }
                     >
                       <motion.span
                         className="flex items-center"
-                        exit={{ opacity: 0, transition: { duration: 0.15 } }}
+                        animate={{ opacity: isStarting ? 0 : 1 }}
+                        transition={{ duration: 0.1 }}
                       >
                         {timerState.elapsedTime > 0 ? "再開" : "Start"}
                       </motion.span>
@@ -78,7 +109,7 @@ export function TimerSection() {
                     key="control-buttons"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
+                    transition={{ duration: 0.2, delay: 0.05 }}
                     className="flex w-full gap-4"
                   >
                     <motion.div
@@ -88,7 +119,7 @@ export function TimerSection() {
                         type: "spring",
                         stiffness: 200,
                         damping: 20,
-                        delay: 0.2,
+                        delay: 0.05,
                       }}
                       className="flex-1"
                     >
@@ -107,7 +138,7 @@ export function TimerSection() {
                         type: "spring",
                         stiffness: 200,
                         damping: 20,
-                        delay: 0.2,
+                        delay: 0.05,
                       }}
                       className="flex-1"
                     >

@@ -52,7 +52,7 @@ const PrimaryButton = React.forwardRef<HTMLButtonElement, PrimaryButtonProps>(
         data-slot="primary-button"
         className={cn(
           primaryButtonVariants({ variant, iconPosition }),
-          "[&>svg]:shrink-0 [&>svg]:size-4",
+          "[&_svg]:shrink-0 [&_svg]:size-4",
           className
         )}
         {...props}
