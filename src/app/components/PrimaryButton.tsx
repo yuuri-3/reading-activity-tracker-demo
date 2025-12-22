@@ -1,84 +1,69 @@
 import * as React from "react";
-import { Play } from "lucide-react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { Button } from "./ui/button";
 import { cn } from "./ui/utils";
 
-export type PrimaryButtonProps = React.ComponentPropsWithoutRef<
-  typeof Button
-> & {
-  text?: string;
-  icon?: React.ReactNode;
-  iconPosition?: "left" | "right";
-};
-
-type IconElement = React.ReactElement<
-  React.SVGProps<SVGSVGElement> & { className?: string }
->;
-
-const isIconElement = (node: React.ReactNode): node is IconElement =>
-  React.isValidElement(node);
-
-const defaultIcon = (
-  <Play
-    strokeWidth={1.5}
-    aria-hidden="true"
-    className="size-4 text-[#5F6678]"
-  />
+const primaryButtonVariants = cva(
+  // Matches Figma node 9:15 (PrimaryButton)
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[12px] px-6 py-4 text-[14px] font-normal leading-[1.3] tracking-[0.25px] text-foreground transition-[filter,box-shadow] disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-[var(--background-solid)] [box-shadow:var(--shadow-neumorphism-sm)] active:[box-shadow:var(--shadow-neumorphism-inset)]",
+      },
+      iconPosition: {
+        start: "",
+        end: "flex-row-reverse",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      iconPosition: "start",
+    },
+  }
 );
+
+export type PrimaryButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof primaryButtonVariants> & {
+    asChild?: boolean;
+    icon?: React.ReactNode;
+  };
 
 const PrimaryButton = React.forwardRef<HTMLButtonElement, PrimaryButtonProps>(
   (
     {
-      text = "計測を開始する",
-      icon = defaultIcon,
-      iconPosition = "left",
-      children,
       className,
-      variant = "default",
-      size = "lg",
+      variant,
+      iconPosition,
+      icon,
+      asChild = false,
+      children,
       ...props
     },
     ref
   ) => {
-    const showIcon = icon !== null && icon !== false;
-    const content = children ?? text;
-
-    let iconNode: React.ReactNode = null;
-
-    if (showIcon) {
-      iconNode = isIconElement(icon)
-        ? React.cloneElement(icon, {
-            className: cn("size-4 text-[#5F6678]", icon.props.className),
-            strokeWidth: icon.props.strokeWidth ?? 1.5,
-            "aria-hidden": icon.props["aria-hidden"] ?? true,
-          })
-        : icon;
-    }
+    const Comp = asChild ? Slot : "button";
 
     return (
-      <Button
+      <Comp
         ref={ref}
-        variant={variant}
-        size={size}
+        data-slot="primary-button"
         className={cn(
-          "rounded-full bg-[#E7EDF5] text-[#5B6373] font-medium tracking-[0.01em]",
-          "shadow-[8px_8px_16px_rgba(163,177,198,0.45),-8px_-8px_16px_rgba(255,255,255,0.9)]",
-          "hover:brightness-[0.97]",
-          "active:[box-shadow:inset_4px_4px_8px_rgba(163,177,198,0.4),inset_-4px_-4px_8px_rgba(255,255,255,0.75)]",
-          showIcon && iconPosition === "right" && "flex-row-reverse",
-          showIcon ? "gap-2" : "gap-0",
+          primaryButtonVariants({ variant, iconPosition }),
+          "[&>svg]:shrink-0 [&>svg]:size-4",
           className
         )}
         {...props}
       >
-        {iconNode && <span className="text-inherit">{iconNode}</span>}
-        {content && <span className="text-inherit">{content}</span>}
-      </Button>
+        {icon}
+        {children}
+      </Comp>
     );
   }
 );
 
 PrimaryButton.displayName = "PrimaryButton";
 
-export { PrimaryButton };
+export { PrimaryButton, primaryButtonVariants };

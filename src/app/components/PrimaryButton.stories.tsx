@@ -1,40 +1,57 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { Play } from "lucide-react";
+
 import { PrimaryButton } from "./PrimaryButton";
 
-const meta: Meta<typeof PrimaryButton> = {
+const meta = {
   title: "Components/PrimaryButton",
   component: PrimaryButton,
-  args: {
-    text: "計測を開始する",
-    iconPosition: "left",
-    disabled: false,
-  },
   parameters: {
     layout: "centered",
   },
-};
+  tags: ["autodocs"],
+  argTypes: {
+    iconPosition: {
+      control: "inline-radio",
+      options: ["start", "end"],
+    },
+    icon: {
+      control: false,
+    },
+    asChild: {
+      control: false,
+    },
+  },
+  args: {
+    children: "Start",
+    disabled: false,
+    iconPosition: "start",
+  },
+} satisfies Meta<typeof PrimaryButton>;
 
 export default meta;
 
-type Story = StoryObj<typeof PrimaryButton>;
+type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  render: (args) => <PrimaryButton {...args} icon={<Play />} />,
+};
 
-export const RightIcon: Story = {
+export const IconEnd: Story = {
   args: {
-    iconPosition: "right",
+    iconPosition: "end",
   },
+  render: (args) => <PrimaryButton {...args} icon={<Play />} />,
 };
 
 export const NoIcon: Story = {
-  args: {
-    icon: null,
-  },
+  render: (args) => <PrimaryButton {...args} />,
 };
 
 export const Disabled: Story = {
   args: {
     disabled: true,
   },
+  render: (args) => <PrimaryButton {...args} icon={<Play />} />,
 };
