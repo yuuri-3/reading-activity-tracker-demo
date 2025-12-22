@@ -8,6 +8,12 @@ Run `npm i` to install the dependencies.
 
 Run `npm run dev` to start the development server.
 
+## Storybook
+
+Run `npm run storybook` to start Storybook.
+
+Run `npm run build-storybook` to build a static Storybook.
+
 ## Firebase
 
 このアプリは Firebase（Google ログイン + Firestore）を使います。
