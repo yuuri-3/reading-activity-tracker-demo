@@ -63,7 +63,7 @@ export function TimerSection() {
                     <PrimaryButton
                       onClick={startTimer}
                       className="w-full overflow-hidden"
-                      icon={<Play className="mr-2" />}
+                      icon={<Play />}
                     >
                       <motion.span
                         className="flex items-center"
@@ -95,7 +95,7 @@ export function TimerSection() {
                       <PrimaryButton
                         onClick={pauseTimer}
                         className="w-full"
-                        icon={<Pause className="mr-2" />}
+                        icon={<Pause />}
                       >
                         一時停止
                       </PrimaryButton>
@@ -114,7 +114,7 @@ export function TimerSection() {
                       <PrimaryButton
                         onClick={handleStop}
                         className="w-full"
-                        icon={<Square className="mr-2" />}
+                        icon={<Square />}
                       >
                         停止
                       </PrimaryButton>
