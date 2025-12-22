@@ -1,18 +1,14 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { Button } from "./ui/button";
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { PrimaryButton } from "./PrimaryButton";
+import { FieldItem } from "./FieldItem";
+import { NeumorphicTextarea } from "./NeumorphicTextarea";
+import { NeumorphicSelectTrigger } from "./NeumorphicSelectTrigger";
+import { Select, SelectContent, SelectItem, SelectValue } from "./ui/select";
 import { Play, Pause, Square } from "lucide-react";
 import { formatDuration } from "../utils/format";
 import { SaveTimerDialog } from "./SaveTimerDialog";
+import { AnimatePresence, motion } from "motion/react";
 
 export function TimerSection() {
   const { timerState, startTimer, pauseTimer, books } = useApp();
@@ -28,94 +24,154 @@ export function TimerSection() {
     }
   };
 
+  const getStartTimeText = () => {
+    if (timerState.elapsedTime === 0) return "";
+    const startTime = new Date(Date.now() - timerState.elapsedTime * 1000);
+    const month = startTime.getMonth() + 1;
+    const day = startTime.getDate();
+    const hours = startTime.getHours().toString().padStart(2, "0");
+    const minutes = startTime.getMinutes().toString().padStart(2, "0");
+    return `${month}/${day} ${hours}:${minutes}から計測開始`;
+  };
+
   return (
     <>
-      <div className="flex flex-col gap-8 p-6 rounded-lg">
-        <div className="flex items-center justify-center min-h-[80px]">
-          <p className="text-5xl tabular-nums text-[96px] font-[Aclonica]">
-            {formatDuration(timerState.elapsedTime)}
-          </p>
+      <div className="flex flex-col gap-8">
+        <div className="w-full">
+          <div className="flex flex-col items-center gap-10 p-6">
+            <div className="flex flex-col items-center gap-2">
+              <p className="tabular-nums text-[96px] leading-[96px] text-foreground font-['Allerta_Stencil']">
+                {formatDuration(timerState.elapsedTime)}
+              </p>
+              {timerState.elapsedTime > 0 && (
+                <p className="text-center text-sm text-muted-foreground">
+                  {getStartTimeText()}
+                </p>
+              )}
+            </div>
+
+            <div className="relative flex w-full justify-center">
+              <AnimatePresence mode="wait">
+                {!timerState.isRunning ? (
+                  <motion.div
+                    key="start-button"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ transition: { duration: 0.5 } }}
+                    className="w-full"
+                  >
+                    <PrimaryButton
+                      onClick={startTimer}
+                      className="w-full overflow-hidden"
+                      icon={<Play className="mr-2" />}
+                    >
+                      <motion.span
+                        className="flex items-center"
+                        exit={{ opacity: 0, transition: { duration: 0.15 } }}
+                      >
+                        {timerState.elapsedTime > 0 ? "再開" : "Start"}
+                      </motion.span>
+                    </PrimaryButton>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="control-buttons"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                    className="flex w-full gap-4"
+                  >
+                    <motion.div
+                      initial={{ x: "100%", opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 200,
+                        damping: 20,
+                        delay: 0.2,
+                      }}
+                      className="flex-1"
+                    >
+                      <PrimaryButton
+                        onClick={pauseTimer}
+                        className="w-full"
+                        icon={<Pause className="mr-2" />}
+                      >
+                        一時停止
+                      </PrimaryButton>
+                    </motion.div>
+                    <motion.div
+                      initial={{ x: "-100%", opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 200,
+                        damping: 20,
+                        delay: 0.2,
+                      }}
+                      className="flex-1"
+                    >
+                      <PrimaryButton
+                        onClick={handleStop}
+                        className="w-full"
+                        icon={<Square className="mr-2" />}
+                      >
+                        停止
+                      </PrimaryButton>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
 
-        <div className="flex gap-4 justify-center">
-          {!timerState.isRunning ? (
-            <Button
-              onClick={startTimer}
-              className="w-[7.5rem] h-[7.5rem] rounded-full p-0 flex flex-col items-center justify-center gap-1.5 px-[24px] py-[0px]"
-              size="lg"
-            >
-              <Play className="size-9" />
-              <span className="text-base text-[13px]">
-                {timerState.elapsedTime > 0 ? "再開" : "計測開始"}
-              </span>
-            </Button>
-          ) : (
-            <>
-              <Button
-                onClick={pauseTimer}
-                variant="outline"
-                className="flex-1"
-                size="lg"
-              >
-                <Pause className="size-4 mr-2" />
-                一時停止
-              </Button>
-              <Button
-                onClick={handleStop}
-                variant="outline"
-                className="flex-1"
-                size="lg"
-              >
-                <Square className="size-4 mr-2" />
-                停止
-              </Button>
-            </>
-          )}
-        </div>
-
-        {timerState.isRunning && (
-          <p className="text-center text-sm text-muted-foreground">計測中</p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="book">書籍（任意）</Label>
-          <Select value={selectedBookId} onValueChange={setSelectedBookId}>
-            <SelectTrigger id="book" className="rounded-[8px]">
-              <SelectValue placeholder="選択なし" />
-            </SelectTrigger>
-            <SelectContent>
-              {books.map((book) => (
-                <SelectItem key={book.id} value={book.id}>
-                  {book.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="memo">履歴メモ（任意）</Label>
-          <Textarea
-            id="memo"
-            placeholder="例）P.10まで読んだ"
-            value={memo}
-            onChange={(e) => setMemo(e.target.value)}
-            rows={3}
-            className="rounded-[8px]"
+        <div className="flex w-full flex-col gap-6">
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "メモ" }}
+            instance={
+              <NeumorphicTextarea
+                id="memo"
+                placeholder="例）P.10まで読んだ"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                rows={3}
+              />
+            }
           />
-        </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="bookMemo">書籍メモ（任意）</Label>
-          <Textarea
-            id="bookMemo"
-            placeholder="例）この章は難しい"
-            value={bookMemo}
-            onChange={(e) => setBookMemo(e.target.value)}
-            rows={3}
-            className="rounded-[8px]"
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "書籍" }}
+            instance={
+              <Select value={selectedBookId} onValueChange={setSelectedBookId}>
+                <NeumorphicSelectTrigger id="book">
+                  <SelectValue placeholder="選択なし" />
+                </NeumorphicSelectTrigger>
+                <SelectContent>
+                  {books.map((book) => (
+                    <SelectItem key={book.id} value={book.id}>
+                      {book.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            }
+          />
+
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "書籍に関するメモ" }}
+            instance={
+              <NeumorphicTextarea
+                id="bookMemo"
+                placeholder="例）P.10まで読んだ"
+                value={bookMemo}
+                onChange={(e) => setBookMemo(e.target.value)}
+                rows={3}
+              />
+            }
           />
         </div>
       </div>
