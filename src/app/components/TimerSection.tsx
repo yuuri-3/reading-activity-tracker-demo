@@ -136,7 +136,7 @@ export function TimerSection() {
                 placeholder="例）P.10まで読んだ"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                rows={3}
+                rows={1}
               />
             }
           />
@@ -169,7 +169,7 @@ export function TimerSection() {
                 placeholder="例）第2章が面白かった"
                 value={bookMemo}
                 onChange={(e) => setBookMemo(e.target.value)}
-                rows={3}
+                rows={1}
               />
             }
           />
