@@ -59,7 +59,11 @@ export function TimerSection() {
     <>
       <div className="flex flex-col gap-8">
         <div className="w-full">
-          <div className="flex flex-col items-center gap-10 p-6">
+          <div
+            className={`flex flex-col items-center py-6 ${
+              timerState.isRunning ? "px-0" : "px-6"
+            } ${timerState.elapsedTime > 0 ? "gap-3" : "gap-10"}`}
+          >
             <div className="flex flex-col items-center gap-2">
               <p className="tabular-nums text-[96px] leading-[96px] text-foreground font-['Allerta_Stencil']">
                 {formatDuration(timerState.elapsedTime)}
