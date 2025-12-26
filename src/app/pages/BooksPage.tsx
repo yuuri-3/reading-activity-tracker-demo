@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { AddBookDialog } from "../components/AddBookDialog";
 import { Book } from "../types";
 import { formatDuration } from "../utils/format";
-import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
-import { Search, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { ListCard } from "../components/ListCard";
+import { BookListHeader } from "../components/book-list/BookListHeader";
+import { BookListCard } from "../components/book-list/BookListCard";
 
 export function BooksPage() {
-  const { books, getTotalDurationByBook } = useApp();
+  const { books, getTotalDurationByBook, getHistoriesByBook } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
@@ -31,67 +31,79 @@ export function BooksPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="mb-2">書籍一覧</h1>
-          <p className="text-sm text-muted-foreground">
-            登録された書籍と累計時間
-          </p>
-        </div>
-        <AddBookDialog />
-      </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          placeholder="書籍を検索..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
+    <div className="flex flex-col -mx-6 -mt-6">
+      <div className="sticky top-0 z-10 bg-[#E8EDF2]">
+        <BookListHeader
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
         />
       </div>
 
-      {filteredBooks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <BookOpen className="size-12 mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">
-            {searchQuery
-              ? "該当する書籍が見つかりません"
-              : "書籍が登録されていません"}
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {filteredBooks.map((book) => {
-            const totalDuration = getTotalDurationByBook(book.id);
+      <div className="px-6 pb-6">
+        {filteredBooks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <BookOpen className="size-12 mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">
+              {searchQuery
+                ? "該当する書籍が見つかりません"
+                : "書籍が登録されていません"}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-6">
+            {filteredBooks.map((book) => {
+              const totalDuration = getTotalDurationByBook(book.id);
+              const histories = getHistoriesByBook(book.id);
 
-            return (
-              <ListCard
-                as="button"
-                key={book.id}
-                onClick={() => setSelectedBook(book)}
-                className="flex items-center justify-between"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="truncate">{book.title}</p>
-                  {book.author && (
-                    <p className="text-sm text-muted-foreground truncate">
-                      {book.author}
-                    </p>
-                  )}
-                </div>
-                <div className="ml-4 text-right">
-                  <p className="tabular-nums">
-                    {formatDuration(totalDuration)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">累計</p>
-                </div>
-              </ListCard>
-            );
-          })}
-        </div>
-      )}
+              const lastHistoryEnd = histories.reduce<string | null>(
+                (latest, history) => {
+                  const t = history.endTime;
+                  if (!latest) return t;
+                  return new Date(t).getTime() > new Date(latest).getTime()
+                    ? t
+                    : latest;
+                },
+                null
+              );
+
+              const lastMemoAt = (book.memos ?? []).reduce<string | null>(
+                (latest, memo) => {
+                  const t = memo.createdAt;
+                  if (!latest) return t;
+                  return new Date(t).getTime() > new Date(latest).getTime()
+                    ? t
+                    : latest;
+                },
+                null
+              );
+
+              const lastActivityAt = (() => {
+                const candidates = [
+                  book.createdAt,
+                  lastMemoAt,
+                  lastHistoryEnd,
+                ].filter(Boolean) as string[];
+                return candidates.reduce((latest, t) =>
+                  new Date(t).getTime() > new Date(latest).getTime()
+                    ? t
+                    : latest
+                );
+              })();
+
+              return (
+                <BookListCard
+                  key={book.id}
+                  title={book.title}
+                  lastActivityAt={lastActivityAt}
+                  notesCount={book.memos?.length ?? 0}
+                  totalDurationSeconds={totalDuration}
+                  onClick={() => setSelectedBook(book)}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

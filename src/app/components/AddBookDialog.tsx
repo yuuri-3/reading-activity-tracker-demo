@@ -1,16 +1,27 @@
-import { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Plus } from 'lucide-react';
+import { useState } from "react";
+import { useApp } from "../context/AppContext";
+import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Plus } from "lucide-react";
 
-export function AddBookDialog() {
+export type AddBookDialogProps = {
+  trigger?: React.ReactElement;
+};
+
+export function AddBookDialog({ trigger }: AddBookDialogProps) {
   const { addBook } = useApp();
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
+  const [title, setTitle] = useState("");
+  const [author, setAuthor] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,8 +31,8 @@ export function AddBookDialog() {
         author: author.trim() || undefined,
         memos: [],
       });
-      setTitle('');
-      setAuthor('');
+      setTitle("");
+      setAuthor("");
       setOpen(false);
     }
   };
@@ -29,10 +40,12 @@ export function AddBookDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4 mr-2" />
-          書籍登録
-        </Button>
+        {trigger ?? (
+          <Button>
+            <Plus className="size-4 mr-2" />
+            書籍登録
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -52,7 +65,7 @@ export function AddBookDialog() {
               required
             />
           </div>
-          
+
           <div className="flex flex-col gap-2">
             <Label htmlFor="author">著者（任意）</Label>
             <Input
@@ -62,9 +75,14 @@ export function AddBookDialog() {
               placeholder="著者名を入力"
             />
           </div>
-          
+
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              className="flex-1"
+            >
               キャンセル
             </Button>
             <Button type="submit" className="flex-1">
