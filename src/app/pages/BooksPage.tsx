@@ -39,7 +39,7 @@ export function BooksPage() {
         />
       </div>
 
-      <div className="px-6 pb-6">
+      <div className="px-6 pt-4 pb-6">
         {filteredBooks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <BookOpen className="size-12 mb-4 text-muted-foreground" />
