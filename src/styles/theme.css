@@ -51,6 +51,8 @@
     inset -4px -4px 8px rgba(255, 255, 255, 0.7);
   --shadow-neumorphism-sm: 4px 4px 8px rgba(163, 177, 198, 0.4),
     -4px -4px 8px rgba(255, 255, 255, 0.6);
+  --shadow-neumorphism-inset-xs: inset -4px -4px 4px rgba(255, 255, 255, 0.28),
+    inset 4px 4px 4px rgba(0, 0, 0, 0.09);
 
   /* Dialog tokens */
   --shadow-dialog: 0px 12px 24px rgba(0, 0, 0, 0.16);
