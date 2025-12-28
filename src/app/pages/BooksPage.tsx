@@ -6,7 +6,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
 import { BookOpen } from "lucide-react";
 import { ListCard } from "../components/ListCard";
-import { BookListHeader } from "../components/book-list/BookListHeader";
+import { Header } from "../components/Header";
 import { BookListCard } from "../components/book-list/BookListCard";
 import { BookListEmptyView } from "../components/book-list/BookListEmptyView";
 
@@ -34,7 +34,7 @@ export function BooksPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0">
-        <BookListHeader
+        <Header
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
         />

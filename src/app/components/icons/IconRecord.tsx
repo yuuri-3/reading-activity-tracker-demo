@@ -1,9 +1,12 @@
 import type { IconProps } from "./types";
 
-export function IconRecord({ className }: IconProps) {
+export function IconRecord({ className, size = 24, color }: IconProps) {
   return (
     <svg
       className={className}
+      width={size}
+      height={size}
+      style={color ? { color } : undefined}
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

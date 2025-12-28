@@ -18,21 +18,21 @@ export function TabBar({ currentPage, onChange }: TabBarProps) {
           label="計測"
           isActive={currentPage === "home"}
           onClick={() => onChange("home")}
-          icon={<IconTimer className="size-6" />}
+          icon={<IconTimer size={24} color="currentColor" />}
         />
 
         <TabBarItem
           label="本棚"
           isActive={currentPage === "books"}
           onClick={() => onChange("books")}
-          icon={<IconBookshelf className="size-6" />}
+          icon={<IconBookshelf size={24} color="currentColor" />}
         />
 
         <TabBarItem
           label="記録"
           isActive={currentPage === "histories"}
           onClick={() => onChange("histories")}
-          icon={<IconRecord className="size-6" />}
+          icon={<IconRecord size={24} color="currentColor" />}
         />
       </div>
 
