@@ -7,16 +7,23 @@ import { NeumorphicSelectTrigger } from "./NeumorphicSelectTrigger";
 import { Select, SelectContent, SelectItem, SelectValue } from "./ui/select";
 import { Play, Pause, Square } from "lucide-react";
 import { formatDuration } from "../utils/format";
-import { SaveTimerDialog } from "./SaveTimerDialog";
 import { AnimatePresence, motion } from "motion/react";
 
 export function TimerSection() {
-  const { timerState, startTimer, pauseTimer, books } = useApp();
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const {
+    timerState,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    books,
+    addHistory,
+    addBookMemo,
+  } = useApp();
   const [selectedBookId, setSelectedBookId] = useState<string>("");
   const [memo, setMemo] = useState("");
   const [bookMemo, setBookMemo] = useState("");
   const [isStarting, setIsStarting] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
   const startTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -28,10 +35,36 @@ export function TimerSection() {
     };
   }, []);
 
-  const handleStop = () => {
-    if (timerState.elapsedTime > 0) {
-      pauseTimer();
-      setShowSaveDialog(true);
+  const handleStop = async () => {
+    if (isStopping) return;
+    const duration = Math.floor(timerState.elapsedTime);
+    if (duration <= 0) return;
+
+    setIsStopping(true);
+    pauseTimer();
+
+    try {
+      const now = new Date();
+      const startTime = new Date(now.getTime() - duration * 1000).toISOString();
+
+      await addHistory({
+        duration,
+        memo,
+        startTime,
+        endTime: now.toISOString(),
+        ...(selectedBookId ? { bookId: selectedBookId } : {}),
+      });
+
+      if (bookMemo.trim() && selectedBookId) {
+        addBookMemo(selectedBookId, bookMemo.trim());
+      }
+
+      resetTimer();
+      setSelectedBookId("");
+      setMemo("");
+      setBookMemo("");
+    } finally {
+      setIsStopping(false);
     }
   };
 
@@ -48,31 +81,33 @@ export function TimerSection() {
   const getStartTimeText = () => {
     if (timerState.elapsedTime === 0) return "";
     const startTime = new Date(Date.now() - timerState.elapsedTime * 1000);
-    const month = startTime.getMonth() + 1;
-    const day = startTime.getDate();
-    const hours = startTime.getHours().toString().padStart(2, "0");
-    const minutes = startTime.getMinutes().toString().padStart(2, "0");
-    return `${month}/${day} ${hours}:${minutes}から計測開始`;
+    const formatted = new Intl.DateTimeFormat("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(startTime);
+    return `${formatted}から計測開始`;
   };
 
   return (
     <>
       <div className="flex flex-col gap-8">
-        <div className="w-full">
-          <div
-            className={`flex flex-col items-center py-6 ${
-              timerState.isRunning ? "px-0" : "px-6"
-            } ${timerState.elapsedTime > 0 ? "gap-3" : "gap-10"}`}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <p className="tabular-nums text-[96px] leading-[96px] text-foreground">
+        <div className="mx-auto w-[345px] p-6">
+          <div className="flex flex-col items-center gap-8">
+            <div className="flex flex-col items-center gap-4">
+              <p className="tabular-nums font-['Allerta_Stencil'] text-[96px] leading-[96px] text-foreground">
                 {formatDuration(timerState.elapsedTime)}
               </p>
-              {timerState.elapsedTime > 0 && (
-                <p className="text-center text-sm text-muted-foreground">
-                  {getStartTimeText()}
-                </p>
-              )}
+              <div className="flex h-5 items-center justify-center">
+                {timerState.elapsedTime > 0 ? (
+                  <p className="text-center text-[14px] leading-5 text-muted-foreground">
+                    {getStartTimeText()}
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <div className="relative flex w-full justify-center">
@@ -104,7 +139,7 @@ export function TimerSection() {
                         animate={{ opacity: isStarting ? 0 : 1 }}
                         transition={{ duration: 0.1 }}
                       >
-                        {timerState.elapsedTime > 0 ? "再開" : "Start"}
+                        {timerState.elapsedTime > 0 ? "計測再開" : "計測開始"}
                       </motion.span>
                     </PrimaryButton>
                   </motion.div>
@@ -114,7 +149,7 @@ export function TimerSection() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2, delay: 0.05 }}
-                    className="flex w-full gap-4"
+                    className="flex w-full gap-6"
                   >
                     <motion.div
                       initial={{ x: "100%", opacity: 0 }}
@@ -147,11 +182,14 @@ export function TimerSection() {
                       className="flex-1"
                     >
                       <PrimaryButton
-                        onClick={handleStop}
+                        onClick={() => {
+                          void handleStop();
+                        }}
+                        disabled={isStopping}
                         className="w-full"
                         icon={<Square />}
                       >
-                        停止
+                        計測終了
                       </PrimaryButton>
                     </motion.div>
                   </motion.div>
@@ -210,18 +248,6 @@ export function TimerSection() {
           />
         </div>
       </div>
-
-      <SaveTimerDialog
-        open={showSaveDialog}
-        onOpenChange={setShowSaveDialog}
-        duration={timerState.elapsedTime}
-        selectedBookId={selectedBookId}
-        setSelectedBookId={setSelectedBookId}
-        memo={memo}
-        setMemo={setMemo}
-        bookMemo={bookMemo}
-        setBookMemo={setBookMemo}
-      />
     </>
   );
 }
