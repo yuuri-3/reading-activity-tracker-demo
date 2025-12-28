@@ -31,15 +31,15 @@ export function BooksPage() {
   }
 
   return (
-    <div className="flex flex-col -mx-6 -mt-6">
-      <div className="sticky top-0 z-10 bg-[#E8EDF2]">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="shrink-0">
         <BookListHeader
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
         />
       </div>
 
-      <div className="px-6 pt-4 pb-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-4 pb-28">
         {filteredBooks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <BookOpen className="size-12 mb-4 text-muted-foreground" />
@@ -138,8 +138,8 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
+    <div className="flex flex-col h-full overflow-hidden p-6">
+      <div className="shrink-0">
         <button
           onClick={onBack}
           className="text-sm text-muted-foreground hover:text-foreground mb-4"
@@ -151,111 +151,117 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
         {book.author && <p className="text-muted-foreground">{book.author}</p>}
       </div>
 
-      <div className="p-4 border rounded-lg">
-        <p className="text-sm text-muted-foreground mb-2">累計時間</p>
-        <p className="text-3xl tabular-nums">{formatDuration(totalDuration)}</p>
-      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto pt-6 pb-28">
+        <div className="p-4 border rounded-lg">
+          <p className="text-sm text-muted-foreground mb-2">累計時間</p>
+          <p className="text-3xl tabular-nums">
+            {formatDuration(totalDuration)}
+          </p>
+        </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <p>メモ</p>
-          {!isAddingMemo && (
-            <button
-              onClick={() => setIsAddingMemo(true)}
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              追加
-            </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <p>メモ</p>
+            {!isAddingMemo && (
+              <button
+                onClick={() => setIsAddingMemo(true)}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                追加
+              </button>
+            )}
+          </div>
+
+          {isAddingMemo ? (
+            <div className="flex flex-col gap-2">
+              <Textarea
+                value={newMemo}
+                onChange={(e) => setNewMemo(e.target.value)}
+                className="min-h-[100px]"
+                placeholder="書籍に関するメモを入力..."
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setNewMemo("");
+                    setIsAddingMemo(false);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  キャンセル
+                </Button>
+                <Button onClick={handleSaveMemo} className="flex-1">
+                  保存
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-2">
+            {book.memos && book.memos.length > 0
+              ? book.memos.map((memo) => (
+                  <ListCard key={memo.id}>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      {new Date(memo.createdAt).toLocaleDateString("ja-JP", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="whitespace-pre-wrap">{memo.text}</p>
+                  </ListCard>
+                ))
+              : !isAddingMemo && (
+                  <p className="text-muted-foreground">メモなし</p>
+                )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p>履歴 ({histories.length}件)</p>
+          {histories.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-4 border rounded-lg">
+              履歴がありません
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {histories.map((history) => (
+                <ListCard key={history.id}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="tabular-nums">
+                      {formatDuration(history.duration)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(history.endTime).toLocaleDateString("ja-JP", {
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  {history.memo && (
+                    <p className="text-sm whitespace-pre-wrap">
+                      {history.memo}
+                    </p>
+                  )}
+                </ListCard>
+              ))}
+            </div>
           )}
         </div>
 
-        {isAddingMemo ? (
-          <div className="flex flex-col gap-2">
-            <Textarea
-              value={newMemo}
-              onChange={(e) => setNewMemo(e.target.value)}
-              className="min-h-[100px]"
-              placeholder="書籍に関するメモを入力..."
-            />
-            <div className="flex gap-2">
-              <Button
-                onClick={() => {
-                  setNewMemo("");
-                  setIsAddingMemo(false);
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                キャンセル
-              </Button>
-              <Button onClick={handleSaveMemo} className="flex-1">
-                保存
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="flex flex-col gap-2">
-          {book.memos && book.memos.length > 0
-            ? book.memos.map((memo) => (
-                <ListCard key={memo.id}>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {new Date(memo.createdAt).toLocaleDateString("ja-JP", {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  <p className="whitespace-pre-wrap">{memo.text}</p>
-                </ListCard>
-              ))
-            : !isAddingMemo && (
-                <p className="text-muted-foreground">メモなし</p>
-              )}
-        </div>
+        <Button
+          onClick={handleDelete}
+          variant="outline"
+          className="text-destructive border-destructive hover:bg-destructive/10"
+        >
+          書籍を削除
+        </Button>
       </div>
-
-      <div className="flex flex-col gap-2">
-        <p>履歴 ({histories.length}件)</p>
-        {histories.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-4 border rounded-lg">
-            履歴がありません
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {histories.map((history) => (
-              <ListCard key={history.id}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="tabular-nums">
-                    {formatDuration(history.duration)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(history.endTime).toLocaleDateString("ja-JP", {
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-                {history.memo && (
-                  <p className="text-sm whitespace-pre-wrap">{history.memo}</p>
-                )}
-              </ListCard>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <Button
-        onClick={handleDelete}
-        variant="outline"
-        className="text-destructive border-destructive hover:bg-destructive/10"
-      >
-        書籍を削除
-      </Button>
     </div>
   );
 }

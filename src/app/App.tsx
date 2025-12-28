@@ -14,8 +14,8 @@ function AppContent() {
   return (
     <div className="size-full flex flex-col">
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto p-6 pb-28">
+      <main className="flex-1 overflow-hidden">
+        <div className="max-w-2xl mx-auto h-full">
           {currentPage === "home" && <HomePage />}
           {currentPage === "books" && <BooksPage />}
           {currentPage === "histories" && <HistoriesPage />}
