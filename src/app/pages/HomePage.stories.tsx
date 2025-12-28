@@ -1,32 +1,32 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { HomePage } from "./HomePage";
 import { MockAppProvider } from "../stories/MockAppProvider";
 import { createDemoBooks } from "../stories/demoData";
-import { TimerSection } from "./TimerSection";
 
 export default {
-  title: "Components/TimerSection",
-  component: TimerSection,
+  title: "Pages/HomePage",
+  component: HomePage,
   parameters: {
-    layout: "centered",
+    layout: "fullscreen",
   },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh w-full">
-        <div className="max-w-2xl mx-auto p-6 pb-28">
+      <div className="h-dvh w-full overflow-hidden">
+        <div className="max-w-2xl mx-auto h-full">
           <Story />
         </div>
       </div>
     ),
   ],
-} satisfies Meta<typeof TimerSection>;
+} satisfies Meta<typeof HomePage>;
 
-type Story = StoryObj<typeof TimerSection>;
+type Story = StoryObj<typeof HomePage>;
 
 export const Default: Story = {
   render: () => (
     <MockAppProvider initialBooks={createDemoBooks({ variant: "simple" })}>
-      <TimerSection />
+      <HomePage />
     </MockAppProvider>
   ),
 };
@@ -37,7 +37,7 @@ export const WithElapsedTime: Story = {
       initialBooks={createDemoBooks({ variant: "simple" })}
       initialTimerSeconds={65}
     >
-      <TimerSection />
+      <HomePage />
     </MockAppProvider>
   ),
 };
@@ -49,7 +49,7 @@ export const Running: Story = {
       initialTimerSeconds={12}
       initialTimerRunning
     >
-      <TimerSection />
+      <HomePage />
     </MockAppProvider>
   ),
 };
