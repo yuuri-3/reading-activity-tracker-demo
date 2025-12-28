@@ -4,16 +4,36 @@ import { Book } from "../types";
 import { formatDuration } from "../utils/format";
 import { Textarea } from "../components/ui/textarea";
 import { Button } from "../components/ui/button";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Plus } from "lucide-react";
 import { ListCard } from "../components/ListCard";
 import { Header } from "../components/Header";
 import { BookListCard } from "../components/book-list/BookListCard";
-import { BookListEmptyView } from "../components/book-list/BookListEmptyView";
+import { ListEmptyView } from "../components/ListEmptyView";
+import { Dialog } from "../components/Dialog";
+import { PrimaryButton } from "../components/PrimaryButton";
+import { FieldItem } from "../components/FieldItem";
+import { Input } from "../components/ui/input";
 
 export function BooksPage() {
-  const { books, getTotalDurationByBook, getHistoriesByBook } = useApp();
+  const { books, getTotalDurationByBook, getHistoriesByBook, addBook } =
+    useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [isRegistBookDialogOpen, setIsRegistBookDialogOpen] = useState(false);
+  const [bookTitle, setBookTitle] = useState("");
+
+  const handleSubmitBook = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookTitle.trim()) return;
+
+    addBook({
+      title: bookTitle.trim(),
+      memos: [],
+    });
+
+    setBookTitle("");
+    setIsRegistBookDialogOpen(false);
+  };
 
   const filteredBooks = books.filter(
     (book) =>
@@ -43,7 +63,52 @@ export function BooksPage() {
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-4 pb-28">
         {books.length === 0 ? (
           <div className="min-h-full flex items-start justify-center">
-            <BookListEmptyView />
+            <ListEmptyView
+              message="書籍が登録されていません"
+              submessage="書籍の情報を登録してください"
+              action={
+                <Dialog
+                  open={isRegistBookDialogOpen}
+                  onOpenChange={setIsRegistBookDialogOpen}
+                  title="書籍を登録"
+                  description="読書時間を記録したい書籍を追加します"
+                  formPatternType="RegistBook"
+                  cancelLabel="キャンセル"
+                  confirmLabel="登録"
+                  confirmButtonType="submit"
+                  confirmForm="regist-book-form"
+                  onCancel={() => setIsRegistBookDialogOpen(false)}
+                  trigger={
+                    <PrimaryButton
+                      className="px-3 py-2 text-sm"
+                      icon={<Plus className="size-4" />}
+                    >
+                      書籍登録
+                    </PrimaryButton>
+                  }
+                >
+                  <form id="regist-book-form" onSubmit={handleSubmitBook}>
+                    <FieldItem
+                      className="w-full"
+                      labelProps={{
+                        text: "書籍タイトル",
+                        showOptionalLabel: false,
+                      }}
+                      instance={
+                        <Input
+                          id="title"
+                          value={bookTitle}
+                          onChange={(e) => setBookTitle(e.target.value)}
+                          placeholder="書籍名を入力"
+                          required
+                          className="h-auto min-h-[44px] rounded-[6px] px-4 py-3 text-sm leading-5"
+                        />
+                      }
+                    />
+                  </form>
+                </Dialog>
+              }
+            />
           </div>
         ) : filteredBooks.length === 0 ? (
           <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
