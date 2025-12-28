@@ -11,7 +11,7 @@ export type BookListSearchFieldProps = {
 export function BookListSearchField({
   value,
   onChange,
-  placeholder = "キーワードで書籍を検索",
+  placeholder = "書籍を検索",
 }: BookListSearchFieldProps) {
   return (
     <div className="relative w-full">

@@ -8,6 +8,7 @@ import { BookOpen } from "lucide-react";
 import { ListCard } from "../components/ListCard";
 import { BookListHeader } from "../components/book-list/BookListHeader";
 import { BookListCard } from "../components/book-list/BookListCard";
+import { BookListEmptyView } from "../components/book-list/BookListEmptyView";
 
 export function BooksPage() {
   const { books, getTotalDurationByBook, getHistoriesByBook } = useApp();
@@ -40,13 +41,15 @@ export function BooksPage() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-4 pb-28">
-        {filteredBooks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
+        {books.length === 0 ? (
+          <div className="min-h-full flex items-start justify-center">
+            <BookListEmptyView />
+          </div>
+        ) : filteredBooks.length === 0 ? (
+          <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
             <BookOpen className="size-12 mb-4 text-muted-foreground" />
             <p className="text-muted-foreground">
-              {searchQuery
-                ? "該当する書籍が見つかりません"
-                : "書籍が登録されていません"}
+              該当する書籍が見つかりません
             </p>
           </div>
         ) : (
