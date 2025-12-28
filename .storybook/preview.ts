@@ -2,7 +2,8 @@ import type { Preview } from "@storybook/react-vite";
 import React from "react";
 
 import "../src/styles/index.css";
-import { Toast } from "../src/app/components/ui/sonner";
+import { Toast } from "../src/app/components/Toast";
+import { MockAppProvider } from "../src/app/stories/MockAppProvider";
 
 const preview: Preview = {
   parameters: {
@@ -18,7 +19,11 @@ const preview: Preview = {
       React.createElement(
         React.Fragment,
         null,
-        React.createElement(Story),
+        React.createElement(
+          MockAppProvider,
+          { initialBooks: [], initialHistories: [] },
+          React.createElement(Story)
+        ),
         React.createElement(Toast)
       ),
   ],

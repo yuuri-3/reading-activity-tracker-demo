@@ -6,7 +6,7 @@ import { TimerPage } from "./pages/TimerPage";
 import { BooksPage } from "./pages/BooksPage";
 import { RecordsPage } from "./pages/RecordsPage";
 import { TabBar, type Page } from "./components/TabBar";
-import { Toast } from "./components/ui/sonner";
+import { Toast } from "./components/Toast";
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>("home");

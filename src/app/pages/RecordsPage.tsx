@@ -36,6 +36,7 @@ export function RecordsPage() {
     addHistory,
     updateHistory,
     deleteHistory,
+    restoreHistory,
     addBookMemo,
     getBook,
   } = useApp();
@@ -181,9 +182,22 @@ export function RecordsPage() {
   };
 
   const handleDelete = async (historyId: string) => {
+    const deletedHistory = histories.find((h) => h.id === historyId);
     try {
       await deleteHistory(historyId);
-      toast.success("記録を削除しました");
+      toast.success("記録を削除しました", {
+        action: deletedHistory
+          ? {
+              label: "Undo",
+              onClick: () => {
+                void restoreHistory(deletedHistory).catch((err) => {
+                  console.error(err);
+                  toast.error("記録の復元に失敗しました");
+                });
+              },
+            }
+          : undefined,
+      });
     } catch (err) {
       console.error(err);
       toast.error("記録の削除に失敗しました");

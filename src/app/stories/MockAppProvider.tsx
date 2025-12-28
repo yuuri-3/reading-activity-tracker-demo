@@ -122,6 +122,18 @@ export function MockAppProvider({
       setHistories((prev) => prev.filter((h) => h.id !== id));
     };
 
+    const restoreHistory = async (history: History) => {
+      setHistories((prev) => {
+        const idx = prev.findIndex((h) => h.id === history.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = history;
+          return next;
+        }
+        return [history, ...prev];
+      });
+    };
+
     const getHistoriesByBook = (bookId: string) =>
       histories.filter((h) => h.bookId === bookId);
 
@@ -167,6 +179,7 @@ export function MockAppProvider({
       addHistory,
       updateHistory,
       deleteHistory,
+      restoreHistory,
       getHistoriesByBook,
       getTotalDurationByBook,
       timerState,

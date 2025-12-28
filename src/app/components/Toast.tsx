@@ -1,6 +1,6 @@
 import { Toaster as Sonner, ToasterProps } from "sonner";
 
-import { cn } from "./utils";
+import { cn } from "./ui/utils";
 
 function SuccessToastIcon() {
   return (
@@ -29,7 +29,7 @@ const Toast = ({ ...props }: ToasterProps) => {
 
   const toastBaseClassName =
     // Matches Figma node 15:468 (Toast)
-    "relative flex items-center gap-3 border border-white/40 rounded-[8px] pl-[17px] pr-px py-[13px] w-[360px] [box-shadow:0_8px_32px_rgba(163,177,198,0.2),0_2px_8px_rgba(0,0,0,0.04)] after:content-[''] after:absolute after:inset-0 after:pointer-events-none after:rounded-[8px] after:shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]";
+    "relative flex items-center gap-3 border border-white/40 rounded-[8px] px-[17px] py-[13px] w-[360px] [box-shadow:0_8px_32px_rgba(163,177,198,0.2),0_2px_8px_rgba(0,0,0,0.04)] after:content-[''] after:absolute after:inset-0 after:pointer-events-none after:rounded-[8px] after:shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]";
 
   return (
     <Sonner
@@ -63,7 +63,12 @@ const Toast = ({ ...props }: ToasterProps) => {
             "flex size-5 shrink-0 items-center justify-center",
             toastClassNames?.icon
           ),
-          content: cn("min-w-0", toastClassNames?.content),
+          content: cn("min-w-0 flex-1", toastClassNames?.content),
+          actionButton: cn(
+            // Matches Figma node 15:468 (UndoButton)
+            "shrink-0 rounded-[4px] border-0 bg-transparent p-1 text-[14px] font-bold leading-none text-foreground",
+            toastClassNames?.actionButton
+          ),
         },
       }}
       style={

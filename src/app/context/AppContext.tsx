@@ -14,6 +14,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import { Book, History, TimerState, BookMemo } from "../types";
@@ -35,6 +36,7 @@ interface AppContextType {
   addHistory: (history: Omit<History, "id" | "createdAt">) => Promise<void>;
   updateHistory: (id: string, history: Partial<History>) => Promise<void>;
   deleteHistory: (id: string) => Promise<void>;
+  restoreHistory: (history: History) => Promise<void>;
   getHistoriesByBook: (bookId: string) => History[];
   getTotalDurationByBook: (bookId: string) => number;
 
@@ -215,6 +217,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await deleteDoc(doc(db, "users", uid, "histories", id));
   };
 
+  const restoreHistory = async (history: History) => {
+    if (!db || !uid) return;
+
+    const { id, ...rest } = history;
+    await setDoc(
+      doc(db, "users", uid, "histories", id),
+      stripUndefined(rest as unknown as Record<string, unknown>)
+    );
+  };
+
   const getHistoriesByBook = (bookId: string) => {
     return histories.filter((history) => history.bookId === bookId);
   };
@@ -264,6 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addHistory,
         updateHistory,
         deleteHistory,
+        restoreHistory,
         getHistoriesByBook,
         getTotalDurationByBook,
         timerState,
