@@ -1,16 +1,6 @@
 import { useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
-import { Button } from "./ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "./ui/dialog";
-import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { Label } from "./ui/label";
 import {
   Select,
   SelectContent,
@@ -19,6 +9,8 @@ import {
   SelectValue,
 } from "./ui/select";
 import { formatDuration } from "../utils/format";
+import { Dialog } from "./Dialog";
+import { FieldItem } from "./FieldItem";
 
 interface SaveTimerDialogProps {
   open: boolean;
@@ -122,25 +114,34 @@ export function SaveTimerDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        onEscapeKeyDown={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle>計測結果を保存</DialogTitle>
-          <DialogDescription>
-            計測時間を記録し、書籍やメモを関連付けることができます
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label>計測時間</Label>
-            <p>{formatDuration(duration)}</p>
-          </div>
+    <Dialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="計測結果を保存"
+      description="計測時間を記録し、書籍やメモを関連付けることができます"
+      formPatternType="AddRecord"
+      cancelLabel="破棄"
+      confirmLabel="保存"
+      onCancel={handleCancel}
+      onConfirm={() => {
+        void handleSave();
+      }}
+      disableEscapeClose
+      disableOutsideClose
+      cancelButtonProps={{ disabled: isSaving }}
+      confirmButtonProps={{ disabled: isSaving }}
+    >
+      <div className="flex flex-col gap-4">
+        <FieldItem
+          className="w-full"
+          labelProps={{ text: "計測時間", showOptionalLabel: false }}
+          instance={<p className="text-sm">{formatDuration(duration)}</p>}
+        />
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="book">書籍（任意）</Label>
+        <FieldItem
+          className="w-full"
+          labelProps={{ text: "書籍", showOptionalLabel: true }}
+          instance={
             <Select value={selectedBookId} onValueChange={setSelectedBookId}>
               <SelectTrigger id="book">
                 <SelectValue placeholder="選択なし" />
@@ -153,10 +154,13 @@ export function SaveTimerDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          }
+        />
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="memo">メモ（任意）</Label>
+        <FieldItem
+          className="w-full"
+          labelProps={{ text: "メモ", showOptionalLabel: true }}
+          instance={
             <Textarea
               id="memo"
               placeholder="例）P.10まで読んだ"
@@ -164,10 +168,13 @@ export function SaveTimerDialog({
               onChange={(e) => setMemo(e.target.value)}
               rows={3}
             />
-          </div>
+          }
+        />
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="bookMemo">書籍メモ（任意）</Label>
+        <FieldItem
+          className="w-full"
+          labelProps={{ text: "書籍メモ", showOptionalLabel: true }}
+          instance={
             <Textarea
               id="bookMemo"
               placeholder="例）この章は難しい"
@@ -175,35 +182,15 @@ export function SaveTimerDialog({
               onChange={(e) => setBookMemo(e.target.value)}
               rows={3}
             />
-          </div>
+          }
+        />
 
-          {saveError && (
-            <div className="text-sm text-destructive whitespace-pre-wrap">
-              {saveError}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              className="flex-1"
-              disabled={isSaving}
-            >
-              破棄
-            </Button>
-            <Button
-              onClick={() => {
-                void handleSave();
-              }}
-              className="flex-1"
-              disabled={isSaving}
-            >
-              保存
-            </Button>
+        {saveError && (
+          <div className="text-sm text-destructive whitespace-pre-wrap">
+            {saveError}
           </div>
-        </div>
-      </DialogContent>
+        )}
+      </div>
     </Dialog>
   );
 }

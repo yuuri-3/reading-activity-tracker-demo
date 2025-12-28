@@ -1,10 +1,13 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 
-import { AddBookDialog } from "./AddBookDialog";
+import { useApp } from "../context/AppContext";
+import { Dialog } from "./Dialog";
+import { FieldItem } from "./FieldItem";
 import { PrimaryButton } from "./PrimaryButton";
 import { BookListSearchField } from "./book-list/BookListSearchField";
 import { IconBookshelf } from "./icons/IconBookshelf";
+import { Input } from "./ui/input";
 
 export type HeaderProps = {
   /** Figma: pageTitle */
@@ -31,6 +34,23 @@ export function Header({
   onSearchQueryChange,
   searchPlaceholder = "書籍を検索",
 }: HeaderProps) {
+  const { addBook } = useApp();
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [bookTitle, setBookTitle] = React.useState("");
+
+  const handleSubmitBook = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookTitle.trim()) return;
+
+    addBook({
+      title: bookTitle.trim(),
+      memos: [],
+    });
+
+    setBookTitle("");
+    setIsDialogOpen(false);
+  };
+
   return (
     <div className="flex flex-col gap-6 px-6 pt-8 pb-4 min-h-[152px]">
       <div className="flex items-center justify-between">
@@ -48,7 +68,17 @@ export function Header({
         </div>
 
         {action === undefined ? (
-          <AddBookDialog
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            title="書籍を登録"
+            description="読書時間を記録したい書籍を追加します"
+            formPatternType="RegistBook"
+            cancelLabel="キャンセル"
+            confirmLabel="登録"
+            confirmButtonType="submit"
+            confirmForm="regist-book-form"
+            onCancel={() => setIsDialogOpen(false)}
             trigger={
               <PrimaryButton
                 className="px-3 py-2 text-sm"
@@ -57,7 +87,24 @@ export function Header({
                 {buttonLabel}
               </PrimaryButton>
             }
-          />
+          >
+            <form id="regist-book-form" onSubmit={handleSubmitBook}>
+              <FieldItem
+                className="w-full"
+                labelProps={{ text: "書籍タイトル", showOptionalLabel: false }}
+                instance={
+                  <Input
+                    id="title"
+                    value={bookTitle}
+                    onChange={(e) => setBookTitle(e.target.value)}
+                    placeholder="書籍名を入力"
+                    required
+                    className="h-auto min-h-[44px] rounded-[6px] px-4 py-3 text-sm leading-5"
+                  />
+                }
+              />
+            </form>
+          </Dialog>
         ) : (
           action
         )}
