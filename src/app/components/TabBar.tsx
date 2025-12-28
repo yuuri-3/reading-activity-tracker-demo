@@ -1,5 +1,7 @@
 import { TabBarItem } from "./TabBarItem";
-import { IconBookshelf, IconRecord, IconTimer } from "./TabBarIcons";
+import { IconBookshelf } from "./icons/IconBookshelf";
+import { IconRecord } from "./icons/IconRecord";
+import { IconTimer } from "./icons/IconTimer";
 
 export type Page = "home" | "books" | "histories";
 
