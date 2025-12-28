@@ -18,7 +18,7 @@ function AppContent() {
         <div className="max-w-2xl mx-auto h-full">
           {currentPage === "home" && <TimerPage />}
           {currentPage === "books" && <BookCollectionView />}
-          {currentPage === "histories" && <RecordSingleView />}
+          {currentPage === "records" && <RecordSingleView />}
         </div>
       </main>
 

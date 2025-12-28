@@ -21,7 +21,7 @@ import {
 } from "../components/ui/select";
 import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { NeumorphicSelectTrigger } from "../components/NeumorphicSelectTrigger";
-import type { Book, BookMemo, History } from "../types";
+import type { Book, BookMemo, ReadingRecord } from "../types";
 import { Tag } from "../components/Tag";
 
 type RecordsSegment = "all" | "reading" | "book";
@@ -31,7 +31,7 @@ type SearchItem =
       kind: "record";
       key: string;
       timestamp: string;
-      history: History;
+      record: ReadingRecord;
       matchedMemo: boolean;
       matchedTags: boolean;
     }
@@ -87,12 +87,12 @@ function toLocalDateTimeInputValue(date: Date) {
 
 export function RecordSingleView() {
   const {
-    histories,
+    records,
     books,
-    addHistory,
-    updateHistory,
-    deleteHistory,
-    restoreHistory,
+    addRecord,
+    updateRecord,
+    deleteRecord,
+    restoreRecord,
     addBookMemo,
     getBook,
   } = useApp();
@@ -103,7 +103,7 @@ export function RecordSingleView() {
   const isSearchActive = normalizedQuery.length > 0;
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [selectedBookId, setSelectedBookId] = useState<string>("");
   const [memo, setMemo] = useState("");
   const [bookMemo, setBookMemo] = useState("");
@@ -119,8 +119,8 @@ export function RecordSingleView() {
 
   const tagOptions = useMemo(() => {
     const unique = new Map<string, string>();
-    for (const h of histories) {
-      for (const t of h.tags ?? []) {
+    for (const record of records) {
+      for (const t of record.tags ?? []) {
         const trimmed = t.trim();
         if (!trimmed) continue;
         const key = trimmed.toLocaleLowerCase();
@@ -128,7 +128,7 @@ export function RecordSingleView() {
       }
     }
     return Array.from(unique.values()).sort((a, b) => a.localeCompare(b, "ja"));
-  }, [histories]);
+  }, [records]);
 
   const durationSeconds = useMemo(() => {
     const start = startAt ? new Date(startAt) : null;
@@ -146,7 +146,7 @@ export function RecordSingleView() {
   }, [startAt, endAt]);
 
   const resetAddForm = () => {
-    setEditingHistoryId(null);
+    setEditingRecordId(null);
     setSelectedBookId("");
     setMemo("");
     setBookMemo("");
@@ -164,19 +164,19 @@ export function RecordSingleView() {
     setIsAddDialogOpen(true);
   };
 
-  const handleOpenEditDialog = (historyId: string) => {
-    const history = histories.find((h) => h.id === historyId);
-    if (!history) return;
+  const handleOpenEditDialog = (recordId: string) => {
+    const record = records.find((r) => r.id === recordId);
+    if (!record) return;
 
     resetAddForm();
-    setEditingHistoryId(history.id);
-    setSelectedBookId(history.bookId ?? "");
-    setMemo(history.memo ?? "");
+    setEditingRecordId(record.id);
+    setSelectedBookId(record.bookId ?? "");
+    setMemo(record.memo ?? "");
     setBookMemo("");
-    setTags(history.tags ?? []);
+    setTags(record.tags ?? []);
 
-    const start = new Date(history.startTime);
-    const end = new Date(history.endTime);
+    const start = new Date(record.startTime);
+    const end = new Date(record.endTime);
     if (!Number.isNaN(start.getTime())) {
       setStartAt(toLocalDateTimeInputValue(start));
     }
@@ -207,8 +207,8 @@ export function RecordSingleView() {
         throw new Error("終了日時は開始日時より後にしてください");
       }
 
-      if (editingHistoryId) {
-        await updateHistory(editingHistoryId, {
+      if (editingRecordId) {
+        await updateRecord(editingRecordId, {
           duration,
           memo,
           startTime: start.toISOString(),
@@ -217,7 +217,7 @@ export function RecordSingleView() {
           ...(tags.length ? { tags } : {}),
         });
       } else {
-        await addHistory({
+        await addRecord({
           duration,
           memo,
           startTime: start.toISOString(),
@@ -241,16 +241,16 @@ export function RecordSingleView() {
     }
   };
 
-  const handleDelete = async (historyId: string) => {
-    const deletedHistory = histories.find((h) => h.id === historyId);
+  const handleDelete = async (recordId: string) => {
+    const deletedRecord = records.find((r) => r.id === recordId);
     try {
-      await deleteHistory(historyId);
+      await deleteRecord(recordId);
       toast.success("記録を削除しました", {
-        action: deletedHistory
+        action: deletedRecord
           ? {
               label: "Undo",
               onClick: () => {
-                void restoreHistory(deletedHistory).catch((err) => {
+                void restoreRecord(deletedRecord).catch((err) => {
                   console.error(err);
                   toast.error("記録の復元に失敗しました");
                 });
@@ -274,10 +274,10 @@ export function RecordSingleView() {
   const recordSearchItems = useMemo(() => {
     if (!isSearchActive) return [] as SearchItem[];
 
-    return histories
-      .map((history) => {
-        const memoText = (history.memo ?? "").toLowerCase();
-        const tags = history.tags ?? [];
+    return records
+      .map((record) => {
+        const memoText = (record.memo ?? "").toLowerCase();
+        const tags = record.tags ?? [];
         const matchedMemo = memoText.includes(normalizedQuery);
         const matchedTags = tags.some((t) =>
           t.trim().toLowerCase().includes(normalizedQuery)
@@ -287,15 +287,15 @@ export function RecordSingleView() {
 
         return {
           kind: "record" as const,
-          key: `record:${history.id}`,
-          timestamp: history.endTime,
-          history,
+          key: `record:${record.id}`,
+          timestamp: record.endTime,
+          record,
           matchedMemo,
           matchedTags,
         };
       })
       .filter(Boolean) as SearchItem[];
-  }, [histories, isSearchActive, normalizedQuery]);
+  }, [records, isSearchActive, normalizedQuery]);
 
   const bookMemoSearchItems = useMemo(() => {
     if (!isSearchActive) return [] as SearchItem[];
@@ -331,13 +331,13 @@ export function RecordSingleView() {
     ];
   }, [bookMemoSearchItems, isSearchActive, recordSearchItems]);
 
-  const groupedHistories = useMemo(() => {
+  const groupedRecords = useMemo(() => {
     const groups = new Map<
       string,
       { date: Date; dateLabel: string; totalSeconds: number; ids: string[] }
     >();
 
-    for (const h of histories) {
+    for (const h of records) {
       const end = new Date(h.endTime);
       if (Number.isNaN(end.getTime())) continue;
 
@@ -363,7 +363,7 @@ export function RecordSingleView() {
       }
     }
 
-    const itemsById = new Map(histories.map((h) => [h.id, h] as const));
+    const itemsById = new Map(records.map((h) => [h.id, h] as const));
 
     return Array.from(groups.values())
       .sort((a, b) => b.date.getTime() - a.date.getTime())
@@ -374,10 +374,10 @@ export function RecordSingleView() {
           .sort(
             (a, b) =>
               new Date(b!.endTime).getTime() - new Date(a!.endTime).getTime()
-          ) as History[];
+          ) as ReadingRecord[];
         return { ...g, items };
       });
-  }, [histories]);
+  }, [records]);
 
   const groupedSearchItems = useMemo(() => {
     if (!isSearchActive)
@@ -420,13 +420,13 @@ export function RecordSingleView() {
       if (existing) {
         existing.items.push(item);
         if (item.kind === "record") {
-          existing.totalSeconds += item.history.duration;
+          existing.totalSeconds += item.record.duration;
         }
       } else {
         groups.set(key, {
           date,
           dateLabel,
-          totalSeconds: item.kind === "record" ? item.history.duration : 0,
+          totalSeconds: item.kind === "record" ? item.record.duration : 0,
           items: [item],
         });
       }
@@ -481,7 +481,7 @@ export function RecordSingleView() {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-28">
-          {!isSearchActive && histories.length === 0 ? (
+          {!isSearchActive && records.length === 0 ? (
             <div className="min-h-full flex items-start justify-center">
               <ListEmptyView
                 icon={<IconRecord size={48} color="var(--muted-foreground)" />}
@@ -502,8 +502,8 @@ export function RecordSingleView() {
               </p>
             </div>
           ) : !isSearchActive &&
-            histories.length > 0 &&
-            groupedHistories.length === 0 ? (
+            records.length > 0 &&
+            groupedRecords.length === 0 ? (
             <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
               <p className="text-muted-foreground">
                 該当する記録が見つかりません
@@ -550,17 +550,17 @@ export function RecordSingleView() {
                               );
                             }
 
-                            const history = item.history;
-                            const book = history.bookId
-                              ? getBook(history.bookId)
+                            const record = item.record;
+                            const book = record.bookId
+                              ? getBook(record.bookId)
                               : null;
 
                             const recordNoteNode = item.matchedMemo
-                              ? highlightText(history.memo ?? "", searchQuery)
-                              : history.memo;
+                              ? highlightText(record.memo ?? "", searchQuery)
+                              : record.memo;
 
-                            const tagsNode = (history.tags ?? []).length
-                              ? (history.tags ?? []).map((t) => {
+                            const tagsNode = (record.tags ?? []).length
+                              ? (record.tags ?? []).map((t) => {
                                   const tagMatched = t
                                     .trim()
                                     .toLowerCase()
@@ -579,20 +579,20 @@ export function RecordSingleView() {
                               <ListCard
                                 key={item.key}
                                 type="Record"
-                                durationSeconds={history.duration}
-                                dateTime={history.endTime}
+                                durationSeconds={record.duration}
+                                dateTime={record.endTime}
                                 recordNote={recordNoteNode}
                                 bookName={book?.title}
                                 tagsNode={tagsNode}
-                                onEdit={() => handleOpenEditDialog(history.id)}
-                                onDelete={() => void handleDelete(history.id)}
+                                onEdit={() => handleOpenEditDialog(record.id)}
+                                onDelete={() => void handleDelete(record.id)}
                               />
                             );
                           })}
                         </div>
                       </section>
                     ))
-                  : groupedHistories.map((group) => (
+                  : groupedRecords.map((group) => (
                       <section
                         key={group.dateLabel}
                         className="flex flex-col gap-5"
@@ -613,22 +613,22 @@ export function RecordSingleView() {
                         </div>
 
                         <div className="flex flex-col gap-5">
-                          {group.items.map((history) => {
-                            const book = history.bookId
-                              ? getBook(history.bookId)
+                          {group.items.map((record) => {
+                            const book = record.bookId
+                              ? getBook(record.bookId)
                               : null;
 
                             return (
                               <ListCard
-                                key={history.id}
+                                key={record.id}
                                 type="Record"
-                                durationSeconds={history.duration}
-                                dateTime={history.endTime}
-                                recordNote={history.memo}
+                                durationSeconds={record.duration}
+                                dateTime={record.endTime}
+                                recordNote={record.memo}
                                 bookName={book?.title}
-                                tags={history.tags}
-                                onEdit={() => handleOpenEditDialog(history.id)}
-                                onDelete={() => void handleDelete(history.id)}
+                                tags={record.tags}
+                                onEdit={() => handleOpenEditDialog(record.id)}
+                                onDelete={() => void handleDelete(record.id)}
                               />
                             );
                           })}
@@ -649,15 +649,15 @@ export function RecordSingleView() {
           }
           setIsAddDialogOpen(open);
         }}
-        title={editingHistoryId ? "記録を編集" : "記録を追加"}
+        title={editingRecordId ? "記録を編集" : "記録を追加"}
         description={
-          editingHistoryId
+          editingRecordId
             ? "記録の内容を編集できます"
             : "手動で記録を追加できます"
         }
         formPatternType="AddRecord"
         cancelLabel="キャンセル"
-        confirmLabel={editingHistoryId ? "保存" : "追加"}
+        confirmLabel={editingRecordId ? "保存" : "追加"}
         onCancel={handleCancelAdd}
         onConfirm={() => {
           void handleConfirmAdd();

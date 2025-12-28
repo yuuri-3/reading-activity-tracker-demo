@@ -3,7 +3,7 @@ import { IconBookshelf } from "./icons/IconBookshelf";
 import { IconRecord } from "./icons/IconRecord";
 import { IconTimer } from "./icons/IconTimer";
 
-export type Page = "home" | "books" | "histories";
+export type Page = "home" | "books" | "records";
 
 export type TabBarProps = {
   currentPage: Page;
@@ -30,8 +30,8 @@ export function TabBar({ currentPage, onChange }: TabBarProps) {
 
         <TabBarItem
           label="記録"
-          isActive={currentPage === "histories"}
-          onClick={() => onChange("histories")}
+          isActive={currentPage === "records"}
+          onClick={() => onChange("records")}
           icon={<IconRecord size={24} color="currentColor" />}
         />
       </div>

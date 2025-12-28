@@ -16,8 +16,7 @@ import { Input } from "../components/ui/input";
 import { BookSingleView } from "./BookSingleView";
 
 export function BookCollectionView() {
-  const { books, getTotalDurationByBook, getHistoriesByBook, addBook } =
-    useApp();
+  const { books, getTotalDurationByBook, getRecordsByBook, addBook } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [isRegistBookDialogOpen, setIsRegistBookDialogOpen] = useState(false);
@@ -123,11 +122,11 @@ export function BookCollectionView() {
           <div className="flex flex-col gap-5">
             {filteredBooks.map((book) => {
               const totalDuration = getTotalDurationByBook(book.id);
-              const histories = getHistoriesByBook(book.id);
+              const records = getRecordsByBook(book.id);
 
-              const lastHistoryEnd = histories.reduce<string | null>(
-                (latest, history) => {
-                  const t = history.endTime;
+              const lastRecordEnd = records.reduce<string | null>(
+                (latest, record) => {
+                  const t = record.endTime;
                   if (!latest) return t;
                   return new Date(t).getTime() > new Date(latest).getTime()
                     ? t
@@ -151,7 +150,7 @@ export function BookCollectionView() {
                 const candidates = [
                   book.createdAt,
                   lastMemoAt,
-                  lastHistoryEnd,
+                  lastRecordEnd,
                 ].filter(Boolean) as string[];
                 return candidates.reduce((latest, t) =>
                   new Date(t).getTime() > new Date(latest).getTime()

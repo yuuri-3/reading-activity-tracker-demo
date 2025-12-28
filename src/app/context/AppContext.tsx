@@ -17,7 +17,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { Book, History, TimerState, BookMemo } from "../types";
+import { Book, ReadingRecord, TimerState, BookMemo } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { getFirestoreDb } from "../firebase/firebase";
 
@@ -31,13 +31,13 @@ interface AppContextType {
   getBook: (id: string) => Book | undefined;
   addBookMemo: (bookId: string, memoText: string) => void;
 
-  // Histories
-  histories: History[];
-  addHistory: (history: Omit<History, "id" | "createdAt">) => Promise<void>;
-  updateHistory: (id: string, history: Partial<History>) => Promise<void>;
-  deleteHistory: (id: string) => Promise<void>;
-  restoreHistory: (history: History) => Promise<void>;
-  getHistoriesByBook: (bookId: string) => History[];
+  // Records
+  records: ReadingRecord[];
+  addRecord: (record: Omit<ReadingRecord, "id" | "createdAt">) => Promise<void>;
+  updateRecord: (id: string, record: Partial<ReadingRecord>) => Promise<void>;
+  deleteRecord: (id: string) => Promise<void>;
+  restoreRecord: (record: ReadingRecord) => Promise<void>;
+  getRecordsByBook: (bookId: string) => ReadingRecord[];
   getTotalDurationByBook: (bookId: string) => number;
 
   // Timer
@@ -62,7 +62,7 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
-  const [histories, setHistories] = useState<History[]>([]);
+  const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [searchText, setSearchText] = useState("");
   const [timerState, setTimerState] = useState<TimerState>({
     isRunning: false,
@@ -82,7 +82,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!db || !uid) {
       setBooks([]);
-      setHistories([]);
+      setRecords([]);
       return;
     }
 
@@ -91,8 +91,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       orderBy("createdAt", "desc")
     );
 
-    const historiesQuery = query(
-      collection(db, "users", uid, "histories"),
+    const recordsQuery = query(
+      collection(db, "users", uid, "records"),
       orderBy("createdAt", "desc")
     );
 
@@ -111,10 +111,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     });
 
-    const unsubHistories = onSnapshot(historiesQuery, (snapshot) => {
-      setHistories(
+    const unsubRecords = onSnapshot(recordsQuery, (snapshot) => {
+      setRecords(
         snapshot.docs.map((d) => {
-          const data = d.data() as Omit<History, "id">;
+          const data = d.data() as Omit<ReadingRecord, "id">;
           return {
             id: d.id,
             bookId: data.bookId,
@@ -131,7 +131,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return () => {
       unsubBooks();
-      unsubHistories();
+      unsubRecords();
     };
   }, [db, uid]);
 
@@ -193,48 +193,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // History operations
-  const addHistory = async (history: Omit<History, "id" | "createdAt">) => {
+  // Record operations
+  const addRecord = async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
     if (!db || !uid) return;
     const now = new Date().toISOString();
-    await addDoc(collection(db, "users", uid, "histories"), {
-      ...stripUndefined(history as unknown as Record<string, unknown>),
+    await addDoc(collection(db, "users", uid, "records"), {
+      ...stripUndefined(record as unknown as Record<string, unknown>),
       createdAt: now,
     });
   };
 
-  const updateHistory = async (id: string, updates: Partial<History>) => {
+  const updateRecord = async (id: string, updates: Partial<ReadingRecord>) => {
     if (!db || !uid) return;
     const { id: _id, ...rest } = updates;
-    await updateDoc(
-      doc(db, "users", uid, "histories", id),
-      stripUndefined(rest)
-    );
+    await updateDoc(doc(db, "users", uid, "records", id), stripUndefined(rest));
   };
 
-  const deleteHistory = async (id: string) => {
+  const deleteRecord = async (id: string) => {
     if (!db || !uid) return;
-    await deleteDoc(doc(db, "users", uid, "histories", id));
+    await deleteDoc(doc(db, "users", uid, "records", id));
   };
 
-  const restoreHistory = async (history: History) => {
+  const restoreRecord = async (record: ReadingRecord) => {
     if (!db || !uid) return;
 
-    const { id, ...rest } = history;
+    const { id, ...rest } = record;
     await setDoc(
-      doc(db, "users", uid, "histories", id),
+      doc(db, "users", uid, "records", id),
       stripUndefined(rest as unknown as Record<string, unknown>)
     );
   };
 
-  const getHistoriesByBook = (bookId: string) => {
-    return histories.filter((history) => history.bookId === bookId);
+  const getRecordsByBook = (bookId: string) => {
+    return records.filter((record) => record.bookId === bookId);
   };
 
   const getTotalDurationByBook = (bookId: string) => {
-    return histories
-      .filter((history) => history.bookId === bookId)
-      .reduce((total, history) => total + history.duration, 0);
+    return records
+      .filter((record) => record.bookId === bookId)
+      .reduce((total, record) => total + record.duration, 0);
   };
 
   // Timer operations
@@ -272,12 +269,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteBook,
         getBook,
         addBookMemo,
-        histories,
-        addHistory,
-        updateHistory,
-        deleteHistory,
-        restoreHistory,
-        getHistoriesByBook,
+        records,
+        addRecord,
+        updateRecord,
+        deleteRecord,
+        restoreRecord,
+        getRecordsByBook,
         getTotalDurationByBook,
         timerState,
         startTimer,

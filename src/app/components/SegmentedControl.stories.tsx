@@ -23,7 +23,7 @@ function SegmentedControlPreview() {
       items={[
         { value: "all", text: "すべて", amount: 2 },
         { value: "books", text: "書籍", amount: 1 },
-        { value: "histories", text: "履歴", amount: 1 },
+        { value: "records", text: "記録", amount: 1 },
       ]}
     />
   );

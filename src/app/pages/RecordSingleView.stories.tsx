@@ -4,7 +4,7 @@ import { RecordSingleView } from "./RecordSingleView";
 import { MockAppProvider } from "../stories/MockAppProvider";
 import {
   createDemoBooks,
-  createDemoHistories,
+  createDemoRecords,
   createIsoDate,
 } from "../stories/demoData";
 
@@ -29,54 +29,54 @@ type Story = StoryObj<typeof RecordSingleView>;
 
 function createDefaultRecordsStoryData() {
   const books = createDemoBooks({ variant: "rich" });
-  const baseHistories = createDemoHistories({ variant: "recent" });
+  const baseRecords = createDemoRecords({ variant: "recent" });
 
   const withAllCombos = [
     // tags: on/off, book: on/off, memo: on/off (8 patterns)
     {
-      id: "history-combo-1",
+      id: "record-combo-1",
       bookId: books[0]?.id ?? "book-1",
       memo: "記録メモ",
       tags: ["タグ1", "タグ2", "タグ3"],
     },
     {
-      id: "history-combo-2",
+      id: "record-combo-2",
       bookId: books[0]?.id ?? "book-1",
       memo: "記録メモ",
       tags: [],
     },
     {
-      id: "history-combo-3",
+      id: "record-combo-3",
       bookId: undefined,
       memo: "記録メモ",
       tags: ["タグ1", "タグ2", "タグ3"],
     },
     {
-      id: "history-combo-4",
+      id: "record-combo-4",
       bookId: books[0]?.id ?? "book-1",
       memo: "",
       tags: ["タグ1", "タグ2", "タグ3"],
     },
     {
-      id: "history-combo-5",
+      id: "record-combo-5",
       bookId: undefined,
       memo: "記録メモ",
       tags: [],
     },
     {
-      id: "history-combo-6",
+      id: "record-combo-6",
       bookId: books[0]?.id ?? "book-1",
       memo: "",
       tags: [],
     },
     {
-      id: "history-combo-7",
+      id: "record-combo-7",
       bookId: undefined,
       memo: "",
       tags: ["タグ1", "タグ2", "タグ3"],
     },
     {
-      id: "history-combo-8",
+      id: "record-combo-8",
       bookId: undefined,
       memo: "",
       tags: [],
@@ -100,15 +100,15 @@ function createDefaultRecordsStoryData() {
     };
   });
 
-  return { books, histories: [...withAllCombos, ...baseHistories] };
+  return { books, records: [...withAllCombos, ...baseRecords] };
 }
 
 export const Default: Story = {
   render: () => {
-    const { books, histories } = createDefaultRecordsStoryData();
+    const { books, records } = createDefaultRecordsStoryData();
 
     return (
-      <MockAppProvider initialBooks={books} initialHistories={histories}>
+      <MockAppProvider initialBooks={books} initialRecords={records}>
         <RecordSingleView />
       </MockAppProvider>
     );
@@ -117,7 +117,7 @@ export const Default: Story = {
 
 export const Empty: Story = {
   render: () => (
-    <MockAppProvider initialBooks={createDemoBooks()} initialHistories={[]}>
+    <MockAppProvider initialBooks={createDemoBooks()} initialRecords={[]}>
       <RecordSingleView />
     </MockAppProvider>
   ),
@@ -125,10 +125,10 @@ export const Empty: Story = {
 
 export const Filtered: Story = {
   render: () => {
-    const { books, histories } = createDefaultRecordsStoryData();
+    const { books, records } = createDefaultRecordsStoryData();
 
     return (
-      <MockAppProvider initialBooks={books} initialHistories={histories}>
+      <MockAppProvider initialBooks={books} initialRecords={records}>
         <RecordSingleView />
       </MockAppProvider>
     );

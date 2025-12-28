@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { BookCollectionView } from "./BookCollectionView";
 import { MockAppProvider } from "../stories/MockAppProvider";
-import { createDemoBooks, createDemoHistories } from "../stories/demoData";
+import { createDemoBooks, createDemoRecords } from "../stories/demoData";
 
 export default {
   title: "Pages/BookCollectionView",
@@ -27,7 +27,7 @@ export const Default: Story = {
   render: () => (
     <MockAppProvider
       initialBooks={createDemoBooks({ variant: "rich" })}
-      initialHistories={createDemoHistories({ variant: "recent" })}
+      initialRecords={createDemoRecords({ variant: "recent" })}
     >
       <BookCollectionView />
     </MockAppProvider>
@@ -36,7 +36,7 @@ export const Default: Story = {
 
 export const Empty: Story = {
   render: () => (
-    <MockAppProvider initialBooks={[]} initialHistories={[]}>
+    <MockAppProvider initialBooks={[]} initialRecords={[]}>
       <BookCollectionView />
     </MockAppProvider>
   ),

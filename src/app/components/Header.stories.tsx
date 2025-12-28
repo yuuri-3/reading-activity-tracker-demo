@@ -30,7 +30,7 @@ const meta = {
   tags: ["autodocs"],
   decorators: [
     (Story) => (
-      <MockAppProvider initialBooks={[]} initialHistories={[]}>
+      <MockAppProvider initialBooks={[]} initialRecords={[]}>
         <div className="h-dvh w-full overflow-hidden">
           <div className="max-w-2xl mx-auto">
             <div className="bg-background">

@@ -3,7 +3,7 @@ import * as React from "react";
 
 import { BookSingleView } from "./BookSingleView";
 import { MockAppProvider } from "../stories/MockAppProvider";
-import { createDemoBooks, createDemoHistories } from "../stories/demoData";
+import { createDemoBooks, createDemoRecords } from "../stories/demoData";
 import { useApp } from "../context/AppContext";
 
 function BookSingleViewHarness({ bookId }: { bookId?: string }) {
@@ -41,7 +41,7 @@ export const Default: Story = {
   render: () => (
     <MockAppProvider
       initialBooks={createDemoBooks({ variant: "rich" })}
-      initialHistories={createDemoHistories({ variant: "recent" })}
+      initialRecords={createDemoRecords({ variant: "recent" })}
     >
       <BookSingleViewHarness />
     </MockAppProvider>
@@ -52,7 +52,7 @@ export const WithNoItems: Story = {
   render: () => (
     <MockAppProvider
       initialBooks={createDemoBooks({ variant: "simple" })}
-      initialHistories={createDemoHistories({ variant: "none" })}
+      initialRecords={createDemoRecords({ variant: "none" })}
     >
       <BookSingleViewHarness />
     </MockAppProvider>

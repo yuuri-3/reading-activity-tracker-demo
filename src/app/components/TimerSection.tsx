@@ -26,7 +26,7 @@ export function TimerSection({
     startTimer,
     pauseTimer,
     resetTimer,
-    addHistory,
+    addRecord,
     addBookMemo,
   } = useApp();
   const [isStarting, setIsStarting] = useState(false);
@@ -59,7 +59,7 @@ export function TimerSection({
       const now = new Date();
       const startTime = new Date(now.getTime() - duration * 1000).toISOString();
 
-      await addHistory({
+      await addRecord({
         duration,
         memo,
         startTime,

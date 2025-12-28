@@ -12,7 +12,7 @@ export interface Book {
   createdAt: string;
 }
 
-export interface History {
+export interface ReadingRecord {
   id: string;
   bookId?: string;
   duration: number; // seconds

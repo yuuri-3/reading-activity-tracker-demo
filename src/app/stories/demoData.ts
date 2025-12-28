@@ -1,4 +1,4 @@
-import type { Book, History } from "../types";
+import type { Book, ReadingRecord } from "../types";
 
 export function createIsoDate(offsetMinutes: number) {
   return new Date(Date.now() + offsetMinutes * 60 * 1000).toISOString();
@@ -56,18 +56,18 @@ export function createDemoBooks({
   ];
 }
 
-type DemoHistoriesOptions = {
+type DemoRecordsOptions = {
   variant?: "none" | "recent";
 };
 
-export function createDemoHistories({
+export function createDemoRecords({
   variant = "recent",
-}: DemoHistoriesOptions = {}): History[] {
+}: DemoRecordsOptions = {}): ReadingRecord[] {
   if (variant === "none") return [];
 
   return [
     {
-      id: "history-1",
+      id: "record-1",
       bookId: "book-1",
       duration: 2 * 3600 + 32 * 60,
       memo: "P.10まで読んだ",
@@ -76,7 +76,7 @@ export function createDemoHistories({
       createdAt: createIsoDate(-180),
     },
     {
-      id: "history-2",
+      id: "record-2",
       bookId: "book-2",
       duration: 25 * 60,
       memo: "集中できた",

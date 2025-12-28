@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AppContext } from "../context/AppContext";
-import type { Book, History, TimerState } from "../types";
+import type { Book, ReadingRecord, TimerState } from "../types";
 
 export type MockAppProviderProps = {
   children: ReactNode;
 
   initialBooks?: Book[];
-  initialHistories?: History[];
+  initialRecords?: ReadingRecord[];
   initialSearchText?: string;
 
   initialTimerSeconds?: number;
@@ -19,15 +19,15 @@ export type MockAppProviderProps = {
 export function MockAppProvider({
   children,
   initialBooks,
-  initialHistories,
+  initialRecords,
   initialSearchText,
   initialTimerSeconds = 0,
   initialTimerRunning = false,
   timerTickMs = 100,
 }: MockAppProviderProps) {
   const [books, setBooks] = useState<Book[]>(() => initialBooks ?? []);
-  const [histories, setHistories] = useState<History[]>(
-    () => initialHistories ?? []
+  const [records, setRecords] = useState<ReadingRecord[]>(
+    () => initialRecords ?? []
   );
   const [searchText, setSearchText] = useState(initialSearchText ?? "");
   const [timerState, setTimerState] = useState<TimerState>(() => {
@@ -83,7 +83,7 @@ export function MockAppProvider({
 
     const deleteBook = async (id: string) => {
       setBooks((prev) => prev.filter((b) => b.id !== id));
-      setHistories((prev) => prev.filter((h) => h.bookId !== id));
+      setRecords((prev) => prev.filter((r) => r.bookId !== id));
     };
 
     const addBookMemo = (bookId: string, memoText: string) => {
@@ -101,46 +101,51 @@ export function MockAppProvider({
       });
     };
 
-    const addHistory = async (history: Omit<History, "id" | "createdAt">) => {
-      setHistories((prev) => [
+    const addRecord = async (
+      record: Omit<ReadingRecord, "id" | "createdAt">
+    ) => {
+      setRecords((prev) => [
         {
-          id: `history-${Date.now()}`,
-          ...history,
+          id: `record-${Date.now()}`,
+          ...record,
           createdAt: new Date().toISOString(),
         },
         ...prev,
       ]);
     };
 
-    const updateHistory = async (id: string, updates: Partial<History>) => {
-      setHistories((prev) =>
-        prev.map((h) => (h.id === id ? { ...h, ...updates, id: h.id } : h))
+    const updateRecord = async (
+      id: string,
+      updates: Partial<ReadingRecord>
+    ) => {
+      setRecords((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, ...updates, id: r.id } : r))
       );
     };
 
-    const deleteHistory = async (id: string) => {
-      setHistories((prev) => prev.filter((h) => h.id !== id));
+    const deleteRecord = async (id: string) => {
+      setRecords((prev) => prev.filter((r) => r.id !== id));
     };
 
-    const restoreHistory = async (history: History) => {
-      setHistories((prev) => {
-        const idx = prev.findIndex((h) => h.id === history.id);
+    const restoreRecord = async (record: ReadingRecord) => {
+      setRecords((prev) => {
+        const idx = prev.findIndex((r) => r.id === record.id);
         if (idx >= 0) {
           const next = [...prev];
-          next[idx] = history;
+          next[idx] = record;
           return next;
         }
-        return [history, ...prev];
+        return [record, ...prev];
       });
     };
 
-    const getHistoriesByBook = (bookId: string) =>
-      histories.filter((h) => h.bookId === bookId);
+    const getRecordsByBook = (bookId: string) =>
+      records.filter((r) => r.bookId === bookId);
 
     const getTotalDurationByBook = (bookId: string) =>
-      histories
-        .filter((h) => h.bookId === bookId)
-        .reduce((total, h) => total + h.duration, 0);
+      records
+        .filter((r) => r.bookId === bookId)
+        .reduce((total, r) => total + r.duration, 0);
 
     const startTimer = () => {
       setTimerState((prev) => ({
@@ -175,12 +180,12 @@ export function MockAppProvider({
       deleteBook,
       getBook,
       addBookMemo,
-      histories,
-      addHistory,
-      updateHistory,
-      deleteHistory,
-      restoreHistory,
-      getHistoriesByBook,
+      records,
+      addRecord,
+      updateRecord,
+      deleteRecord,
+      restoreRecord,
+      getRecordsByBook,
       getTotalDurationByBook,
       timerState,
       startTimer,
@@ -189,7 +194,7 @@ export function MockAppProvider({
       searchText,
       setSearchText,
     };
-  }, [books, histories, searchText, timerState]);
+  }, [books, records, searchText, timerState]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

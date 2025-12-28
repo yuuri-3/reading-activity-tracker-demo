@@ -14,7 +14,7 @@ import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { useApp } from "../context/AppContext";
 
 export function TimerPage() {
-  const { books, histories } = useApp();
+  const { books, records } = useApp();
   const [values, setValues] = useState({
     memo: "",
     selectedBookId: "",
@@ -24,8 +24,8 @@ export function TimerPage() {
 
   const tagOptions = useMemo(() => {
     const unique = new Map<string, string>();
-    for (const h of histories) {
-      for (const t of h.tags ?? []) {
+    for (const r of records) {
+      for (const t of r.tags ?? []) {
         const trimmed = t.trim();
         if (!trimmed) continue;
         const key = trimmed.toLocaleLowerCase();
@@ -33,11 +33,11 @@ export function TimerPage() {
       }
     }
     return Array.from(unique.values()).sort((a, b) => a.localeCompare(b, "ja"));
-  }, [histories]);
+  }, [records]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-y-auto p-6 pt-16 pb-28">
+      <div className="flex-1 min-h-0 overflow-y-auto p-6 pt-14 pb-28">
         <div className="flex flex-col gap-4">
           <TimerSection
             memo={values.memo}

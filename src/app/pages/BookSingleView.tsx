@@ -21,10 +21,10 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   const {
     updateBook,
     deleteBook,
-    getHistoriesByBook,
+    getRecordsByBook,
     getTotalDurationByBook,
-    updateHistory,
-    deleteHistory,
+    updateRecord,
+    deleteRecord,
   } = useApp();
 
   const [segment, setSegment] = useState<"all" | "reading" | "book">("all");
@@ -35,16 +35,16 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   );
   const [editingBookMemoText, setEditingBookMemoText] = useState("");
 
-  const [isEditHistoryOpen, setIsEditHistoryOpen] = useState(false);
-  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
-  const [editingHistoryMemo, setEditingHistoryMemo] = useState("");
+  const [isEditRecordOpen, setIsEditRecordOpen] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editingRecordMemo, setEditingRecordMemo] = useState("");
 
-  const histories = getHistoriesByBook(book.id);
+  const records = getRecordsByBook(book.id);
   const totalDuration = getTotalDurationByBook(book.id);
   const memos = book.memos ?? [];
 
-  const lastHistoryEnd = histories.reduce<string | null>((latest, history) => {
-    const t = history.endTime;
+  const lastRecordEnd = records.reduce<string | null>((latest, record) => {
+    const t = record.endTime;
     if (!t) return latest;
     if (!latest) return t;
     return new Date(t).getTime() > new Date(latest).getTime() ? t : latest;
@@ -58,7 +58,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   }, null);
 
   const lastActivityAt = (() => {
-    const candidates = [book.createdAt, lastMemoAt, lastHistoryEnd].filter(
+    const candidates = [book.createdAt, lastMemoAt, lastRecordEnd].filter(
       Boolean
     ) as string[];
     if (candidates.length === 0) return new Date().toISOString();
@@ -67,14 +67,14 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     );
   })();
 
-  const allCount = histories.length + memos.length;
+  const allCount = records.length + memos.length;
 
   const feedItems = (() => {
-    const historyItems = histories.map((h) => ({
-      key: `history:${h.id}`,
-      kind: "history" as const,
-      time: h.endTime || h.createdAt,
-      history: h,
+    const recordItems = records.map((r) => ({
+      key: `record:${r.id}`,
+      kind: "record" as const,
+      time: r.endTime || r.createdAt,
+      record: r,
     }));
     const memoItems = memos.map((m) => ({
       key: `memo:${m.id}`,
@@ -83,13 +83,13 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
       memo: m,
     }));
 
-    const combined = [...historyItems, ...memoItems].sort((a, b) => {
+    const combined = [...recordItems, ...memoItems].sort((a, b) => {
       return new Date(b.time).getTime() - new Date(a.time).getTime();
     });
 
     switch (segment) {
       case "reading":
-        return historyItems.sort(
+        return recordItems.sort(
           (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
         );
       case "book":
@@ -136,25 +136,25 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     setEditingBookMemoText("");
   };
 
-  const handleDeleteHistory = (historyId: string) => {
+  const handleDeleteRecord = (recordId: string) => {
     if (!confirm("この記録を削除しますか？")) return;
-    void deleteHistory(historyId);
+    void deleteRecord(recordId);
   };
 
-  const handleOpenEditHistory = (historyId: string) => {
-    const history = histories.find((h) => h.id === historyId);
-    if (!history) return;
-    setEditingHistoryId(historyId);
-    setEditingHistoryMemo(history.memo ?? "");
-    setIsEditHistoryOpen(true);
+  const handleOpenEditRecord = (recordId: string) => {
+    const record = records.find((r) => r.id === recordId);
+    if (!record) return;
+    setEditingRecordId(recordId);
+    setEditingRecordMemo(record.memo ?? "");
+    setIsEditRecordOpen(true);
   };
 
-  const handleConfirmEditHistory = () => {
-    if (!editingHistoryId) return;
-    void updateHistory(editingHistoryId, { memo: editingHistoryMemo });
-    setIsEditHistoryOpen(false);
-    setEditingHistoryId(null);
-    setEditingHistoryMemo("");
+  const handleConfirmEditRecord = () => {
+    if (!editingRecordId) return;
+    void updateRecord(editingRecordId, { memo: editingRecordMemo });
+    setIsEditRecordOpen(false);
+    setEditingRecordId(null);
+    setEditingRecordMemo("");
   };
 
   return (
@@ -203,7 +203,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
           className="w-full rounded-full"
           items={[
             { value: "all", text: "すべて", amount: allCount },
-            { value: "reading", text: "記録メモ", amount: histories.length },
+            { value: "reading", text: "記録メモ", amount: records.length },
             { value: "book", text: "書籍メモ", amount: memos.length },
           ]}
         />
@@ -217,19 +217,19 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
             </p>
           ) : (
             feedItems.map((item) => {
-              if (item.kind === "history") {
-                const h = item.history;
+              if (item.kind === "record") {
+                const r = item.record;
                 return (
                   <ListCard
                     key={item.key}
                     type="Record"
-                    durationSeconds={h.duration}
-                    dateTime={h.endTime}
-                    recordNote={h.memo}
+                    durationSeconds={r.duration}
+                    dateTime={r.endTime}
+                    recordNote={r.memo}
                     bookName={book.title}
-                    tags={h.tags}
-                    onDelete={() => handleDeleteHistory(h.id)}
-                    onEdit={() => handleOpenEditHistory(h.id)}
+                    tags={r.tags}
+                    onDelete={() => handleDeleteRecord(r.id)}
+                    onEdit={() => handleOpenEditRecord(r.id)}
                   />
                 );
               }
@@ -293,12 +293,12 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
       </Dialog>
 
       <Dialog
-        open={isEditHistoryOpen}
+        open={isEditRecordOpen}
         onOpenChange={(open) => {
-          setIsEditHistoryOpen(open);
+          setIsEditRecordOpen(open);
           if (!open) {
-            setEditingHistoryId(null);
-            setEditingHistoryMemo("");
+            setEditingRecordId(null);
+            setEditingRecordMemo("");
           }
         }}
         title="記録メモを編集"
@@ -306,8 +306,8 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
         formPatternType="AddRecord"
         cancelLabel="キャンセル"
         confirmLabel="保存"
-        onCancel={() => setIsEditHistoryOpen(false)}
-        onConfirm={handleConfirmEditHistory}
+        onCancel={() => setIsEditRecordOpen(false)}
+        onConfirm={handleConfirmEditRecord}
       >
         <FieldItem
           className="w-full"
@@ -315,8 +315,8 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
           instance={
             <NeumorphicTextarea
               id="editHistoryMemo"
-              value={editingHistoryMemo}
-              onChange={(e) => setEditingHistoryMemo(e.target.value)}
+              value={editingRecordMemo}
+              onChange={(e) => setEditingRecordMemo(e.target.value)}
               rows={3}
               placeholder="例）P.10まで読んだ"
             />
