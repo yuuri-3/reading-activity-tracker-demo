@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { RecordsPage } from "./RecordsPage";
 import { MockAppProvider } from "../stories/MockAppProvider";
-import { createDemoBooks, createDemoHistories } from "../stories/demoData";
+import {
+  createDemoBooks,
+  createDemoHistories,
+  createIsoDate,
+} from "../stories/demoData";
 
 export default {
   title: "Pages/RecordsPage",
@@ -24,14 +28,88 @@ export default {
 type Story = StoryObj<typeof RecordsPage>;
 
 export const Default: Story = {
-  render: () => (
-    <MockAppProvider
-      initialBooks={createDemoBooks({ variant: "rich" })}
-      initialHistories={createDemoHistories({ variant: "recent" })}
-    >
-      <RecordsPage />
-    </MockAppProvider>
-  ),
+  render: () => {
+    const books = createDemoBooks({ variant: "rich" });
+    const baseHistories = createDemoHistories({ variant: "recent" });
+
+    const withAllCombos = [
+      // tags: on/off, book: on/off, memo: on/off (8 patterns)
+      {
+        id: "history-combo-1",
+        bookId: books[0]?.id ?? "book-1",
+        memo: "記録メモ",
+        tags: ["タグ1", "タグ2", "タグ3"],
+      },
+      {
+        id: "history-combo-2",
+        bookId: books[0]?.id ?? "book-1",
+        memo: "記録メモ",
+        tags: [],
+      },
+      {
+        id: "history-combo-3",
+        bookId: undefined,
+        memo: "記録メモ",
+        tags: ["タグ1", "タグ2", "タグ3"],
+      },
+      {
+        id: "history-combo-4",
+        bookId: books[0]?.id ?? "book-1",
+        memo: "",
+        tags: ["タグ1", "タグ2", "タグ3"],
+      },
+      {
+        id: "history-combo-5",
+        bookId: undefined,
+        memo: "記録メモ",
+        tags: [],
+      },
+      {
+        id: "history-combo-6",
+        bookId: books[0]?.id ?? "book-1",
+        memo: "",
+        tags: [],
+      },
+      {
+        id: "history-combo-7",
+        bookId: undefined,
+        memo: "",
+        tags: ["タグ1", "タグ2", "タグ3"],
+      },
+      {
+        id: "history-combo-8",
+        bookId: undefined,
+        memo: "",
+        tags: [],
+      },
+    ].map((p, idx) => {
+      const duration = 2 * 3600 + 32 * 60;
+      const endTime = createIsoDate(-180 - idx * 15);
+      const startTime = createIsoDate(
+        -180 - idx * 15 - Math.floor(duration / 60)
+      );
+
+      return {
+        id: p.id,
+        bookId: p.bookId,
+        duration,
+        memo: p.memo,
+        tags: p.tags,
+        startTime,
+        endTime,
+        createdAt: endTime,
+      };
+    });
+
+    return (
+      <MockAppProvider
+        initialBooks={books}
+        initialHistories={[...withAllCombos, ...baseHistories]}
+      >
+        <RecordsPage />
+      </MockAppProvider>
+    );
+  },
 };
 
 export const Empty: Story = {
@@ -53,7 +131,7 @@ export const Filtered: Story = {
   ),
   play: async ({ canvasElement }) => {
     const input = canvasElement.querySelector(
-      'input[placeholder="書籍を検索"]'
+      'input[placeholder="キーワードで検索"]'
     ) as HTMLInputElement | null;
 
     if (input) {

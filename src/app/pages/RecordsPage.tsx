@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Clock, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { useApp } from "../context/AppContext";
-import { formatDateTime } from "../utils/format";
+import { formatDurationHm } from "../utils/format";
 import { Header } from "../components/Header";
 import { IconRecord } from "../components/icons/IconRecord";
 import { ListCard } from "../components/ListCard";
@@ -29,10 +30,19 @@ function toLocalDateTimeInputValue(date: Date) {
 }
 
 export function RecordsPage() {
-  const { histories, books, addHistory, addBookMemo, getBook } = useApp();
+  const {
+    histories,
+    books,
+    addHistory,
+    updateHistory,
+    deleteHistory,
+    addBookMemo,
+    getBook,
+  } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
   const [selectedBookId, setSelectedBookId] = useState<string>("");
   const [memo, setMemo] = useState("");
   const [bookMemo, setBookMemo] = useState("");
@@ -75,6 +85,7 @@ export function RecordsPage() {
   }, [startAt, endAt]);
 
   const resetAddForm = () => {
+    setEditingHistoryId(null);
     setSelectedBookId("");
     setMemo("");
     setBookMemo("");
@@ -89,6 +100,29 @@ export function RecordsPage() {
 
   const handleOpenAddDialog = () => {
     resetAddForm();
+    setIsAddDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (historyId: string) => {
+    const history = histories.find((h) => h.id === historyId);
+    if (!history) return;
+
+    resetAddForm();
+    setEditingHistoryId(history.id);
+    setSelectedBookId(history.bookId ?? "");
+    setMemo(history.memo ?? "");
+    setBookMemo("");
+    setTags(history.tags ?? []);
+
+    const start = new Date(history.startTime);
+    const end = new Date(history.endTime);
+    if (!Number.isNaN(start.getTime())) {
+      setStartAt(toLocalDateTimeInputValue(start));
+    }
+    if (!Number.isNaN(end.getTime())) {
+      setEndAt(toLocalDateTimeInputValue(end));
+    }
+
     setIsAddDialogOpen(true);
   };
 
@@ -112,14 +146,25 @@ export function RecordsPage() {
         throw new Error("終了日時は開始日時より後にしてください");
       }
 
-      await addHistory({
-        duration,
-        memo,
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-        ...(selectedBookId ? { bookId: selectedBookId } : {}),
-        ...(tags.length ? { tags } : {}),
-      });
+      if (editingHistoryId) {
+        await updateHistory(editingHistoryId, {
+          duration,
+          memo,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          ...(selectedBookId ? { bookId: selectedBookId } : {}),
+          ...(tags.length ? { tags } : {}),
+        });
+      } else {
+        await addHistory({
+          duration,
+          memo,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          ...(selectedBookId ? { bookId: selectedBookId } : {}),
+          ...(tags.length ? { tags } : {}),
+        });
+      }
 
       if (bookMemo.trim() && selectedBookId) {
         addBookMemo(selectedBookId, bookMemo.trim());
@@ -132,6 +177,16 @@ export function RecordsPage() {
         err instanceof Error ? err.message : "記録の追加に失敗しました"
       );
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (historyId: string) => {
+    try {
+      await deleteHistory(historyId);
+      toast.success("記録を削除しました");
+    } catch (err) {
+      console.error(err);
+      toast.error("記録の削除に失敗しました");
     }
   };
 
@@ -148,6 +203,78 @@ export function RecordsPage() {
     });
   }, [histories, searchQuery, getBook]);
 
+  const monthlyTotalSeconds = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    return histories.reduce((total, h) => {
+      const end = new Date(h.endTime);
+      if (Number.isNaN(end.getTime())) return total;
+      return end.getFullYear() === year && end.getMonth() === month
+        ? total + h.duration
+        : total;
+    }, 0);
+  }, [histories]);
+
+  const groupedHistories = useMemo(() => {
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+
+    const groups = new Map<
+      string,
+      { date: Date; dateLabel: string; totalSeconds: number; ids: string[] }
+    >();
+
+    for (const h of filteredHistories) {
+      const end = new Date(h.endTime);
+      if (Number.isNaN(end.getTime())) continue;
+
+      const y = end.getFullYear();
+      const m = end.getMonth() + 1;
+      const d = end.getDate();
+      const key = `${y}-${pad2(m)}-${pad2(d)}`;
+      const date = new Date(y, m - 1, d);
+      const dateLabel = new Intl.DateTimeFormat("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(date);
+
+      const existing = groups.get(key);
+      if (existing) {
+        existing.totalSeconds += h.duration;
+        existing.ids.push(h.id);
+      } else {
+        groups.set(key, {
+          date,
+          dateLabel,
+          totalSeconds: h.duration,
+          ids: [h.id],
+        });
+      }
+    }
+
+    const itemsById = new Map(filteredHistories.map((h) => [h.id, h] as const));
+
+    return Array.from(groups.values())
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .map((g) => {
+        const items = g.ids
+          .map((id) => itemsById.get(id))
+          .filter(Boolean)
+          .sort(
+            (a, b) =>
+              new Date(b!.endTime).getTime() - new Date(a!.endTime).getTime()
+          ) as typeof filteredHistories;
+        return { ...g, items };
+      });
+  }, [filteredHistories]);
+
+  const formatHoursMinutes = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}:${String(minutes).padStart(2, "0")}`;
+  };
+
   const addRecordButton = (
     <PrimaryButton
       className="px-3 py-2 text-sm"
@@ -155,7 +282,7 @@ export function RecordsPage() {
       type="button"
       onClick={handleOpenAddDialog}
     >
-      記録追加
+      記録を追加
     </PrimaryButton>
   );
 
@@ -175,12 +302,12 @@ export function RecordsPage() {
             action={addRecordButton}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
-            searchPlaceholder="書籍を検索"
+            searchPlaceholder="キーワードで検索"
             showSegmentedControl={false}
           />
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-4 pb-28">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-28">
           {histories.length === 0 ? (
             <div className="min-h-full flex items-start justify-center">
               <ListEmptyView
@@ -202,22 +329,56 @@ export function RecordsPage() {
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {filteredHistories.map((history) => {
-                const book = history.bookId ? getBook(history.bookId) : null;
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="size-4" />
+                  <p className="text-sm">今月の合計時間</p>
+                </div>
+                <p className="text-2xl font-bold leading-8 tabular-nums text-foreground">
+                  {formatHoursMinutes(monthlyTotalSeconds)}
+                </p>
+              </div>
 
-                return (
-                  <ListCard
-                    key={history.id}
-                    type="Record"
-                    durationSeconds={history.duration}
-                    dateTime={history.endTime}
-                    recordNote={history.memo}
-                    bookName={book?.title}
-                    tags={history.tags}
-                  />
-                );
-              })}
+              <div className="flex flex-col gap-10">
+                {groupedHistories.map((group) => (
+                  <section
+                    key={group.dateLabel}
+                    className="flex flex-col gap-5"
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground tabular-nums">
+                        <span>{group.dateLabel}</span>
+                        <span>:</span>
+                        <span>{formatDurationHm(group.totalSeconds)}</span>
+                      </div>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+
+                    <div className="flex flex-col gap-5">
+                      {group.items.map((history) => {
+                        const book = history.bookId
+                          ? getBook(history.bookId)
+                          : null;
+
+                        return (
+                          <ListCard
+                            key={history.id}
+                            type="Record"
+                            durationSeconds={history.duration}
+                            dateTime={history.endTime}
+                            recordNote={history.memo}
+                            bookName={book?.title}
+                            tags={history.tags}
+                            onEdit={() => handleOpenEditDialog(history.id)}
+                            onDelete={() => void handleDelete(history.id)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -231,11 +392,15 @@ export function RecordsPage() {
           }
           setIsAddDialogOpen(open);
         }}
-        title="記録を追加"
-        description="手動で記録を追加できます"
+        title={editingHistoryId ? "記録を編集" : "記録を追加"}
+        description={
+          editingHistoryId
+            ? "記録の内容を編集できます"
+            : "手動で記録を追加できます"
+        }
         formPatternType="AddRecord"
         cancelLabel="キャンセル"
-        confirmLabel="追加"
+        confirmLabel={editingHistoryId ? "保存" : "追加"}
         onCancel={handleCancelAdd}
         onConfirm={() => {
           void handleConfirmAdd();
