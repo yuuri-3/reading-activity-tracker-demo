@@ -5,7 +5,6 @@ import { AppProvider } from "./context/AppContext";
 import { HomePage } from "./pages/HomePage";
 import { BooksPage } from "./pages/BooksPage";
 import { HistoriesPage } from "./pages/HistoriesPage";
-import { SearchPage } from "./pages/SearchPage";
 import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/ui/sonner";
 
@@ -20,12 +19,17 @@ function AppContent() {
           {currentPage === "home" && <HomePage />}
           {currentPage === "books" && <BooksPage />}
           {currentPage === "histories" && <HistoriesPage />}
-          {currentPage === "search" && <SearchPage />}
         </div>
       </main>
 
       {/* Bottom Navigation - iOS Floating Style */}
-      <TabBar currentPage={currentPage} onChange={setCurrentPage} />
+      <nav className="fixed bottom-0 left-0 right-0 pointer-events-none">
+        <div className="max-w-2xl mx-auto px-4 pb-4">
+          <div className="pointer-events-auto -translate-y-6 max-w-[345px] mx-auto">
+            <TabBar currentPage={currentPage} onChange={setCurrentPage} />
+          </div>
+        </div>
+      </nav>
 
       <Toast />
     </div>
