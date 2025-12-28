@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 
 import { useApp } from "../context/AppContext";
-import { formatDateTime, formatDuration } from "../utils/format";
+import { formatDateTime } from "../utils/format";
 import { Header } from "../components/Header";
 import { IconRecord } from "../components/icons/IconRecord";
 import { ListCard } from "../components/ListCard";
@@ -207,29 +207,15 @@ export function RecordsPage() {
                 const book = history.bookId ? getBook(history.bookId) : null;
 
                 return (
-                  <ListCard key={history.id}>
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="tabular-nums">
-                          {formatDuration(history.duration)}
-                        </p>
-                        {book && (
-                          <p className="text-sm text-muted-foreground truncate">
-                            {book.title}
-                          </p>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground ml-4">
-                        {formatDateTime(history.endTime)}
-                      </p>
-                    </div>
-
-                    {history.memo && (
-                      <p className="text-sm whitespace-pre-wrap">
-                        {history.memo}
-                      </p>
-                    )}
-                  </ListCard>
+                  <ListCard
+                    key={history.id}
+                    type="Record"
+                    durationSeconds={history.duration}
+                    dateTime={history.endTime}
+                    recordNote={history.memo}
+                    bookName={book?.title}
+                    tags={history.tags}
+                  />
                 );
               })}
             </div>

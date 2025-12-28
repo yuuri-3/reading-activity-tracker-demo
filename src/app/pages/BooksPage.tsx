@@ -7,7 +7,6 @@ import { Button } from "../components/ui/button";
 import { BookOpen, Plus } from "lucide-react";
 import { ListCard } from "../components/ListCard";
 import { Header } from "../components/Header";
-import { BookListCard } from "../components/book-list/BookListCard";
 import { ListEmptyView } from "../components/ListEmptyView";
 import { Dialog } from "../components/Dialog";
 import { PrimaryButton } from "../components/PrimaryButton";
@@ -160,8 +159,9 @@ export function BooksPage() {
               })();
 
               return (
-                <BookListCard
+                <ListCard
                   key={book.id}
+                  type="Book"
                   title={book.title}
                   lastActivityAt={lastActivityAt}
                   notesCount={book.memos?.length ?? 0}
@@ -270,18 +270,13 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
           <div className="flex flex-col gap-2">
             {book.memos && book.memos.length > 0
               ? book.memos.map((memo) => (
-                  <ListCard key={memo.id}>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {new Date(memo.createdAt).toLocaleDateString("ja-JP", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                    <p className="whitespace-pre-wrap">{memo.text}</p>
-                  </ListCard>
+                  <ListCard
+                    key={memo.id}
+                    type="BookNote"
+                    createdAt={memo.createdAt}
+                    bookName={book.title}
+                    bookNote={memo.text}
+                  />
                 ))
               : !isAddingMemo && (
                   <p className="text-muted-foreground">メモなし</p>
@@ -298,26 +293,15 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
           ) : (
             <div className="flex flex-col gap-2">
               {histories.map((history) => (
-                <ListCard key={history.id}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="tabular-nums">
-                      {formatDuration(history.duration)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(history.endTime).toLocaleDateString("ja-JP", {
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                  {history.memo && (
-                    <p className="text-sm whitespace-pre-wrap">
-                      {history.memo}
-                    </p>
-                  )}
-                </ListCard>
+                <ListCard
+                  key={history.id}
+                  type="Record"
+                  durationSeconds={history.duration}
+                  dateTime={history.endTime}
+                  recordNote={history.memo}
+                  bookName={book.title}
+                  tags={history.tags}
+                />
               ))}
             </div>
           )}
