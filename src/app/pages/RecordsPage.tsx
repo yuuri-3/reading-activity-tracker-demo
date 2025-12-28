@@ -28,7 +28,7 @@ function toLocalDateTimeInputValue(date: Date) {
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function RecordList() {
+export function RecordsPage() {
   const { histories, books, addHistory, addBookMemo, getBook } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -326,7 +326,7 @@ export function RecordList() {
             instance={
               <NeumorphicTextarea
                 id="bookMemo"
-                placeholder="例）P.10まで読んだ"
+                placeholder="例）第2章に具体的な例が多い"
                 value={bookMemo}
                 onChange={(e) => setBookMemo(e.target.value)}
                 rows={3}

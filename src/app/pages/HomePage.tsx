@@ -79,7 +79,7 @@ export function HomePage() {
               instance={
                 <NeumorphicTextarea
                   id="bookMemo"
-                  placeholder="例）第2章が面白かった"
+                  placeholder="例）第2章に具体的な例が多い"
                   value={values.bookMemo}
                   onChange={(e) =>
                     setValues((prev) => ({ ...prev, bookMemo: e.target.value }))

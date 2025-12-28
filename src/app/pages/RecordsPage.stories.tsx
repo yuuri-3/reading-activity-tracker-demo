@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { RecordList } from "./RecordList";
+import { RecordsPage } from "./RecordsPage";
 import { MockAppProvider } from "../stories/MockAppProvider";
 import { createDemoBooks, createDemoHistories } from "../stories/demoData";
 
 export default {
-  title: "Pages/RecordList",
-  component: RecordList,
+  title: "Pages/RecordsPage",
+  component: RecordsPage,
   parameters: {
     layout: "fullscreen",
   },
@@ -19,9 +19,9 @@ export default {
       </div>
     ),
   ],
-} satisfies Meta<typeof RecordList>;
+} satisfies Meta<typeof RecordsPage>;
 
-type Story = StoryObj<typeof RecordList>;
+type Story = StoryObj<typeof RecordsPage>;
 
 export const Default: Story = {
   render: () => (
@@ -29,7 +29,7 @@ export const Default: Story = {
       initialBooks={createDemoBooks({ variant: "rich" })}
       initialHistories={createDemoHistories({ variant: "recent" })}
     >
-      <RecordList />
+      <RecordsPage />
     </MockAppProvider>
   ),
 };
@@ -37,7 +37,7 @@ export const Default: Story = {
 export const Empty: Story = {
   render: () => (
     <MockAppProvider initialBooks={createDemoBooks()} initialHistories={[]}>
-      <RecordList />
+      <RecordsPage />
     </MockAppProvider>
   ),
 };
@@ -48,7 +48,7 @@ export const Filtered: Story = {
       initialBooks={createDemoBooks({ variant: "rich" })}
       initialHistories={createDemoHistories({ variant: "recent" })}
     >
-      <RecordList />
+      <RecordsPage />
     </MockAppProvider>
   ),
   play: async ({ canvasElement }) => {

@@ -247,7 +247,7 @@ function BookDetailView({ book, onBack }: { book: Book; onBack: () => void }) {
                 value={newMemo}
                 onChange={(e) => setNewMemo(e.target.value)}
                 className="min-h-[100px]"
-                placeholder="書籍に関するメモを入力..."
+                placeholder="例）第2章に具体的な例が多い"
               />
               <div className="flex gap-2">
                 <Button
