@@ -7,6 +7,7 @@ import { BooksPage } from "./pages/BooksPage";
 import { HistoriesPage } from "./pages/HistoriesPage";
 import { SearchPage } from "./pages/SearchPage";
 import { TabBar, type Page } from "./components/TabBar";
+import { Toast } from "./components/ui/sonner";
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
@@ -25,6 +26,8 @@ function AppContent() {
 
       {/* Bottom Navigation - iOS Floating Style */}
       <TabBar currentPage={currentPage} onChange={setCurrentPage} />
+
+      <Toast />
     </div>
   );
 }

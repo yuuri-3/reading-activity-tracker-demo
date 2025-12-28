@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectValue } from "./ui/select";
 import { Play, Pause, Square } from "lucide-react";
 import { formatDuration } from "../utils/format";
 import { AnimatePresence, motion } from "motion/react";
+import { toast } from "sonner";
 
 export function TimerSection() {
   const {
@@ -43,6 +44,11 @@ export function TimerSection() {
     setIsStopping(true);
     pauseTimer();
 
+    const watchdogId = window.setTimeout(() => {
+      setIsStopping(false);
+      toast.error("計測結果の保存に失敗しました");
+    }, 8000);
+
     try {
       const now = new Date();
       const startTime = new Date(now.getTime() - duration * 1000).toISOString();
@@ -63,7 +69,12 @@ export function TimerSection() {
       setSelectedBookId("");
       setMemo("");
       setBookMemo("");
+      toast.success("計測結果を保存しました");
+    } catch (err) {
+      console.error(err);
+      toast.error("計測結果の保存に失敗しました");
     } finally {
+      window.clearTimeout(watchdogId);
       setIsStopping(false);
     }
   };
@@ -92,6 +103,8 @@ export function TimerSection() {
     return `${formatted}から計測開始`;
   };
 
+  const isRunningUi = timerState.isRunning || isStopping;
+
   return (
     <>
       <div className="flex flex-col gap-8">
@@ -112,7 +125,7 @@ export function TimerSection() {
 
             <div className="relative flex w-full justify-center">
               <AnimatePresence mode="wait">
-                {!timerState.isRunning ? (
+                {!isRunningUi ? (
                   <motion.div
                     key="start-button"
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -164,6 +177,7 @@ export function TimerSection() {
                     >
                       <PrimaryButton
                         onClick={pauseTimer}
+                        disabled={isStopping}
                         className="w-full"
                         icon={<Pause />}
                       >
