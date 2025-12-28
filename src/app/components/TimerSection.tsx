@@ -10,6 +10,7 @@ export type TimerSectionProps = {
   memo?: string;
   selectedBookId?: string;
   bookMemo?: string;
+  tags?: string[];
   onClearInputs?: () => void;
 };
 
@@ -17,6 +18,7 @@ export function TimerSection({
   memo = "",
   selectedBookId = "",
   bookMemo = "",
+  tags = [],
   onClearInputs,
 }: TimerSectionProps) {
   const {
@@ -63,6 +65,7 @@ export function TimerSection({
         startTime,
         endTime: now.toISOString(),
         ...(selectedBookId ? { bookId: selectedBookId } : {}),
+        ...(tags.length ? { tags } : {}),
       });
 
       if (bookMemo.trim() && selectedBookId) {

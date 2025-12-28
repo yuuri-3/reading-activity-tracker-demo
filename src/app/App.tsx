@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AuthGate } from "./auth/AuthGate";
 import { AuthProvider } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
-import { HomePage } from "./pages/HomePage";
+import { TimerPage } from "./pages/TimerPage";
 import { BooksPage } from "./pages/BooksPage";
 import { RecordsPage } from "./pages/RecordsPage";
 import { TabBar, type Page } from "./components/TabBar";
@@ -16,7 +16,7 @@ function AppContent() {
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
         <div className="max-w-2xl mx-auto h-full">
-          {currentPage === "home" && <HomePage />}
+          {currentPage === "home" && <TimerPage />}
           {currentPage === "books" && <BooksPage />}
           {currentPage === "histories" && <RecordsPage />}
         </div>

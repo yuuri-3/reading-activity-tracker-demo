@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+
 import { TimerSection } from "../components/TimerSection";
 import { FieldItem } from "../components/FieldItem";
 import { NeumorphicSelectTrigger } from "../components/NeumorphicSelectTrigger";
@@ -8,16 +10,30 @@ import {
   SelectItem,
   SelectValue,
 } from "../components/ui/select";
+import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { useApp } from "../context/AppContext";
-import { useState } from "react";
 
-export function HomePage() {
-  const { books } = useApp();
+export function TimerPage() {
+  const { books, histories } = useApp();
   const [values, setValues] = useState({
     memo: "",
     selectedBookId: "",
     bookMemo: "",
+    tags: [] as string[],
   });
+
+  const tagOptions = useMemo(() => {
+    const unique = new Map<string, string>();
+    for (const h of histories) {
+      for (const t of h.tags ?? []) {
+        const trimmed = t.trim();
+        if (!trimmed) continue;
+        const key = trimmed.toLocaleLowerCase();
+        if (!unique.has(key)) unique.set(key, trimmed);
+      }
+    }
+    return Array.from(unique.values()).sort((a, b) => a.localeCompare(b, "ja"));
+  }, [histories]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -27,8 +43,14 @@ export function HomePage() {
             memo={values.memo}
             selectedBookId={values.selectedBookId}
             bookMemo={values.bookMemo}
+            tags={values.tags}
             onClearInputs={() =>
-              setValues({ memo: "", selectedBookId: "", bookMemo: "" })
+              setValues({
+                memo: "",
+                selectedBookId: "",
+                bookMemo: "",
+                tags: [],
+              })
             }
           />
 
@@ -85,6 +107,20 @@ export function HomePage() {
                     setValues((prev) => ({ ...prev, bookMemo: e.target.value }))
                   }
                   rows={1}
+                />
+              }
+            />
+
+            <FieldItem
+              className="w-full"
+              labelProps={{ text: "タグ" }}
+              instance={
+                <TagMultiSelectInput
+                  id="tags"
+                  value={values.tags}
+                  onChange={(tags) => setValues((prev) => ({ ...prev, tags }))}
+                  options={tagOptions}
+                  placeholder="タグを入力してEnterで追加（日本語確定後はもう一度Enter）"
                 />
               }
             />
