@@ -1,16 +1,12 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
-import { Textarea } from "./ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { NeumorphicTextarea } from "./NeumorphicTextarea";
+import { Select, SelectContent, SelectItem, SelectValue } from "./ui/select";
+import { NeumorphicSelectTrigger } from "./NeumorphicSelectTrigger";
 import { formatDuration } from "../utils/format";
 import { Dialog } from "./Dialog";
 import { FieldItem } from "./FieldItem";
+import { TagMultiSelectInput } from "./TagMultiSelectInput";
 
 interface SaveTimerDialogProps {
   open: boolean;
@@ -37,14 +33,28 @@ export function SaveTimerDialog({
   bookMemo: controlledBookMemo,
   setBookMemo: setControlledBookMemo,
 }: SaveTimerDialogProps) {
-  const { books, addHistory, addBookMemo, resetTimer } = useApp();
+  const { books, histories, addHistory, addBookMemo, resetTimer } = useApp();
   const [uncontrolledSelectedBookId, setUncontrolledSelectedBookId] =
     useState<string>("");
   const [uncontrolledMemo, setUncontrolledMemo] = useState("");
   const [uncontrolledBookMemo, setUncontrolledBookMemo] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const allowCloseRef = useRef(false);
+
+  const tagOptions = useMemo(() => {
+    const unique = new Map<string, string>();
+    for (const h of histories) {
+      for (const t of h.tags ?? []) {
+        const trimmed = t.trim();
+        if (!trimmed) continue;
+        const key = trimmed.toLocaleLowerCase();
+        if (!unique.has(key)) unique.set(key, trimmed);
+      }
+    }
+    return Array.from(unique.values()).sort((a, b) => a.localeCompare(b, "ja"));
+  }, [histories]);
 
   const selectedBookId = controlledSelectedBookId ?? uncontrolledSelectedBookId;
   const setSelectedBookId =
@@ -58,6 +68,7 @@ export function SaveTimerDialog({
     setSelectedBookId("");
     setMemo("");
     setBookMemo("");
+    setTags([]);
     setSaveError(null);
     setIsSaving(false);
   };
@@ -72,6 +83,7 @@ export function SaveTimerDialog({
       const history = {
         duration: Math.floor(duration),
         memo,
+        ...(tags.length ? { tags } : {}),
         startTime,
         endTime: now.toISOString(),
         ...(selectedBookId ? { bookId: selectedBookId } : {}),
@@ -143,9 +155,9 @@ export function SaveTimerDialog({
           labelProps={{ text: "書籍", showOptionalLabel: true }}
           instance={
             <Select value={selectedBookId} onValueChange={setSelectedBookId}>
-              <SelectTrigger id="book">
+              <NeumorphicSelectTrigger id="book">
                 <SelectValue placeholder="選択なし" />
-              </SelectTrigger>
+              </NeumorphicSelectTrigger>
               <SelectContent>
                 {books.map((book) => (
                   <SelectItem key={book.id} value={book.id}>
@@ -161,7 +173,7 @@ export function SaveTimerDialog({
           className="w-full"
           labelProps={{ text: "メモ", showOptionalLabel: true }}
           instance={
-            <Textarea
+            <NeumorphicTextarea
               id="memo"
               placeholder="例）P.10まで読んだ"
               value={memo}
@@ -175,12 +187,27 @@ export function SaveTimerDialog({
           className="w-full"
           labelProps={{ text: "書籍メモ", showOptionalLabel: true }}
           instance={
-            <Textarea
+            <NeumorphicTextarea
               id="bookMemo"
               placeholder="例）この章は難しい"
               value={bookMemo}
               onChange={(e) => setBookMemo(e.target.value)}
               rows={3}
+            />
+          }
+        />
+
+        <FieldItem
+          className="w-full"
+          labelProps={{ text: "タグ", showOptionalLabel: true }}
+          instance={
+            <TagMultiSelectInput
+              id="tags"
+              value={tags}
+              onChange={setTags}
+              options={tagOptions}
+              placeholder="タグを入力してEnterで追加（日本語確定後はもう一度Enter）"
+              disabled={isSaving}
             />
           }
         />

@@ -118,6 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             bookId: data.bookId,
             duration: data.duration,
             memo: data.memo,
+            tags: data.tags ?? [],
             startTime: data.startTime,
             endTime: data.endTime,
             createdAt: data.createdAt,
@@ -134,7 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Timer interval
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
+    let interval: number | undefined;
 
     if (timerState.isRunning && timerState.startTime) {
       interval = window.setInterval(() => {
@@ -146,7 +147,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     return () => {
-      if (interval) window.clearInterval(interval);
+      if (interval !== undefined) window.clearInterval(interval);
     };
   }, [timerState.isRunning, timerState.startTime]);
 

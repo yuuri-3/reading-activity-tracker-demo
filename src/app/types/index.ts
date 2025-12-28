@@ -17,6 +17,8 @@ export interface History {
   bookId?: string;
   duration: number; // seconds
   memo: string;
+  /** Optional tags attached to the record. */
+  tags?: string[];
   startTime: string;
   endTime: string;
   createdAt: string;

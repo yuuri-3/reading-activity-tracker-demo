@@ -23,7 +23,7 @@ function HeaderHarness(
 
 const meta = {
   title: "Components/Header",
-  component: Header,
+  component: HeaderHarness,
   parameters: {
     layout: "fullscreen",
   },
@@ -42,17 +42,15 @@ const meta = {
     ),
   ],
   argTypes: {
-    onSearchQueryChange: { control: false },
     icon: { control: false },
     action: { control: false },
-    searchQuery: { control: false },
   },
   args: {
     pageTitle: "本棚",
     buttonLabel: "書籍登録",
     searchPlaceholder: "書籍を検索",
   },
-} satisfies Meta<typeof Header>;
+} satisfies Meta<typeof HeaderHarness>;
 
 export default meta;
 
