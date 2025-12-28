@@ -4,7 +4,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
 import { HomePage } from "./pages/HomePage";
 import { BooksPage } from "./pages/BooksPage";
-import { HistoriesPage } from "./pages/HistoriesPage";
+import { RecordList } from "./pages/RecordList";
 import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/ui/sonner";
 
@@ -18,7 +18,7 @@ function AppContent() {
         <div className="max-w-2xl mx-auto h-full">
           {currentPage === "home" && <HomePage />}
           {currentPage === "books" && <BooksPage />}
-          {currentPage === "histories" && <HistoriesPage />}
+          {currentPage === "histories" && <RecordList />}
         </div>
       </main>
 
