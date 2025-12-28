@@ -112,7 +112,7 @@ export function TimerSection({
 
   return (
     <div className="mx-auto w-[345px] p-6">
-      <div className="flex flex-col items-center gap-8">
+      <div className="flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-4">
           <p className="tabular-nums font-['Allerta_Stencil'] text-[96px] leading-[96px] text-foreground">
             {formatDuration(timerState.elapsedTime)}

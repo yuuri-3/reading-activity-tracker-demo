@@ -38,7 +38,7 @@ export function TimerPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-1 min-h-0 overflow-y-auto p-6 pb-28">
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4">
           <TimerSection
             memo={values.memo}
             selectedBookId={values.selectedBookId}
