@@ -65,7 +65,7 @@ export function TimerSection() {
             } ${timerState.elapsedTime > 0 ? "gap-3" : "gap-10"}`}
           >
             <div className="flex flex-col items-center gap-2">
-              <p className="tabular-nums text-[96px] leading-[96px] text-foreground font-['Allerta_Stencil']">
+              <p className="tabular-nums text-[96px] leading-[96px] text-foreground">
                 {formatDuration(timerState.elapsedTime)}
               </p>
               {timerState.elapsedTime > 0 && (
