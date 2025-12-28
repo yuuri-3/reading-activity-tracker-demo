@@ -10,6 +10,9 @@ node_modules/
 # Vite
 .vite/
 
+# Firebase CLI local state
+.firebase/
+
 # logs
 npm-debug.log*
 yarn-debug.log*
@@ -19,6 +22,7 @@ pnpm-debug.log*
 # local env files
 .env
 .env.*
+!.env.example
 
 # OS
 .DS_Store
