@@ -27,9 +27,10 @@ type RecordVariantProps = BaseProps & {
   isDetected?: boolean;
   durationSeconds: number;
   dateTime: string;
-  recordNote?: string;
+  recordNote?: React.ReactNode;
   bookName?: string;
   tags?: string[];
+  tagsNode?: React.ReactNode;
   onEdit?: () => void;
   onDelete?: () => void;
 };
@@ -39,7 +40,7 @@ type BookNoteVariantProps = BaseProps & {
   isDetected?: boolean;
   createdAt: string;
   bookName?: string;
-  bookNote: string;
+  bookNote: React.ReactNode;
   onEdit?: () => void;
   onDelete?: () => void;
 };
@@ -181,6 +182,7 @@ export function ListCard(props: ListCardProps) {
         recordNote,
         bookName,
         tags,
+        tagsNode,
         onDelete,
         onEdit,
       } = props;
@@ -208,7 +210,9 @@ export function ListCard(props: ListCardProps) {
               </p>
             ) : null}
 
-            {tags && tags.length > 0 ? (
+            {tagsNode ? (
+              <div className="flex flex-wrap gap-2">{tagsNode}</div>
+            ) : tags && tags.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {tags.map((t) => (
                   <Tag key={t} text={t} />

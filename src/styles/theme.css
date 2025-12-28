@@ -29,6 +29,10 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: #ff8c42;
+
+  /* Search highlight tokens (Figma: bg #fff085 + text #000) */
+  --search-highlight: #fff085;
+  --search-highlight-foreground: #000000;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);

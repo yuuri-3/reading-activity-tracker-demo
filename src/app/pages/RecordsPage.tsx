@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Clock, Plus } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { useApp } from "../context/AppContext";
@@ -21,6 +21,62 @@ import {
 } from "../components/ui/select";
 import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { NeumorphicSelectTrigger } from "../components/NeumorphicSelectTrigger";
+import type { Book, BookMemo, History } from "../types";
+import { Tag } from "../components/Tag";
+
+type RecordsSegment = "all" | "reading" | "book";
+
+type SearchItem =
+  | {
+      kind: "record";
+      key: string;
+      timestamp: string;
+      history: History;
+      matchedMemo: boolean;
+      matchedTags: boolean;
+    }
+  | {
+      kind: "bookMemo";
+      key: string;
+      timestamp: string;
+      book: Book;
+      memo: BookMemo;
+    };
+
+function toDayKey(date: Date) {
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(
+    date.getDate()
+  )}`;
+}
+
+function highlightText(text: string, query: string): ReactNode {
+  const q = query.trim();
+  if (!text || !q) return text;
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = q.toLowerCase();
+  const parts: Array<ReactNode> = [];
+  let start = 0;
+  while (start < text.length) {
+    const idx = lowerText.indexOf(lowerQuery, start);
+    if (idx === -1) break;
+    if (idx > start) parts.push(text.slice(start, idx));
+    parts.push(
+      <mark
+        key={`${idx}-${q}`}
+        className="bg-[var(--search-highlight)] text-[var(--search-highlight-foreground)] rounded-[2px] px-0.5"
+      >
+        {text.slice(idx, idx + q.length)}
+      </mark>
+    );
+    start = idx + q.length;
+  }
+
+  if (parts.length === 0) return text;
+  if (start < text.length) parts.push(text.slice(start));
+  return <>{parts}</>;
+}
 
 function toLocalDateTimeInputValue(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -41,6 +97,10 @@ export function RecordsPage() {
     getBook,
   } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSegment, setSelectedSegment] = useState<RecordsSegment>("all");
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const isSearchActive = normalizedQuery.length > 0;
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
@@ -204,49 +264,85 @@ export function RecordsPage() {
     }
   };
 
-  const filteredHistories = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return histories;
+  const handleSearchQueryChange = (value: string) => {
+    setSearchQuery(value);
+    if (!value.trim()) {
+      setSelectedSegment("all");
+    }
+  };
 
-    return histories.filter((history) => {
-      const book = history.bookId ? getBook(history.bookId) : null;
-      return (
-        (history.memo ?? "").toLowerCase().includes(query) ||
-        (book && book.title.toLowerCase().includes(query))
-      );
-    });
-  }, [histories, searchQuery, getBook]);
+  const recordSearchItems = useMemo(() => {
+    if (!isSearchActive) return [] as SearchItem[];
 
-  const monthlyTotalSeconds = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    return histories.reduce((total, h) => {
-      const end = new Date(h.endTime);
-      if (Number.isNaN(end.getTime())) return total;
-      return end.getFullYear() === year && end.getMonth() === month
-        ? total + h.duration
-        : total;
-    }, 0);
-  }, [histories]);
+    return histories
+      .map((history) => {
+        const memoText = (history.memo ?? "").toLowerCase();
+        const tags = history.tags ?? [];
+        const matchedMemo = memoText.includes(normalizedQuery);
+        const matchedTags = tags.some((t) =>
+          t.trim().toLowerCase().includes(normalizedQuery)
+        );
+
+        if (!matchedMemo && !matchedTags) return null;
+
+        return {
+          kind: "record" as const,
+          key: `record:${history.id}`,
+          timestamp: history.endTime,
+          history,
+          matchedMemo,
+          matchedTags,
+        };
+      })
+      .filter(Boolean) as SearchItem[];
+  }, [histories, isSearchActive, normalizedQuery]);
+
+  const bookMemoSearchItems = useMemo(() => {
+    if (!isSearchActive) return [] as SearchItem[];
+
+    const items: SearchItem[] = [];
+    for (const book of books) {
+      for (const memo of book.memos ?? []) {
+        if ((memo.text ?? "").toLowerCase().includes(normalizedQuery)) {
+          items.push({
+            kind: "bookMemo",
+            key: `bookMemo:${book.id}:${memo.id}`,
+            timestamp: memo.createdAt,
+            book,
+            memo,
+          });
+        }
+      }
+    }
+    return items;
+  }, [books, isSearchActive, normalizedQuery]);
+
+  const segmentedControlItems = useMemo(() => {
+    if (!isSearchActive) return undefined;
+
+    const recordCount = recordSearchItems.length;
+    const bookCount = bookMemoSearchItems.length;
+    const allCount = recordCount + bookCount;
+
+    return [
+      { value: "all", text: "すべて", amount: allCount },
+      { value: "reading", text: "記録メモ", amount: recordCount },
+      { value: "book", text: "書籍メモ", amount: bookCount },
+    ];
+  }, [bookMemoSearchItems, isSearchActive, recordSearchItems]);
 
   const groupedHistories = useMemo(() => {
-    const pad2 = (n: number) => String(n).padStart(2, "0");
-
     const groups = new Map<
       string,
       { date: Date; dateLabel: string; totalSeconds: number; ids: string[] }
     >();
 
-    for (const h of filteredHistories) {
+    for (const h of histories) {
       const end = new Date(h.endTime);
       if (Number.isNaN(end.getTime())) continue;
 
-      const y = end.getFullYear();
-      const m = end.getMonth() + 1;
-      const d = end.getDate();
-      const key = `${y}-${pad2(m)}-${pad2(d)}`;
-      const date = new Date(y, m - 1, d);
+      const key = toDayKey(end);
+      const date = new Date(end.getFullYear(), end.getMonth(), end.getDate());
       const dateLabel = new Intl.DateTimeFormat("ja-JP", {
         year: "numeric",
         month: "2-digit",
@@ -267,7 +363,7 @@ export function RecordsPage() {
       }
     }
 
-    const itemsById = new Map(filteredHistories.map((h) => [h.id, h] as const));
+    const itemsById = new Map(histories.map((h) => [h.id, h] as const));
 
     return Array.from(groups.values())
       .sort((a, b) => b.date.getTime() - a.date.getTime())
@@ -278,16 +374,74 @@ export function RecordsPage() {
           .sort(
             (a, b) =>
               new Date(b!.endTime).getTime() - new Date(a!.endTime).getTime()
-          ) as typeof filteredHistories;
+          ) as History[];
         return { ...g, items };
       });
-  }, [filteredHistories]);
+  }, [histories]);
 
-  const formatHoursMinutes = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}:${String(minutes).padStart(2, "0")}`;
-  };
+  const groupedSearchItems = useMemo(() => {
+    if (!isSearchActive)
+      return [] as Array<{
+        date: Date;
+        dateLabel: string;
+        totalSeconds: number;
+        items: SearchItem[];
+      }>;
+
+    const baseItems =
+      selectedSegment === "reading"
+        ? recordSearchItems
+        : selectedSegment === "book"
+        ? bookMemoSearchItems
+        : [...recordSearchItems, ...bookMemoSearchItems];
+
+    const groups = new Map<
+      string,
+      {
+        date: Date;
+        dateLabel: string;
+        totalSeconds: number;
+        items: SearchItem[];
+      }
+    >();
+
+    for (const item of baseItems) {
+      const t = new Date(item.timestamp);
+      if (Number.isNaN(t.getTime())) continue;
+      const key = toDayKey(t);
+      const date = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+      const dateLabel = new Intl.DateTimeFormat("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(date);
+
+      const existing = groups.get(key);
+      if (existing) {
+        existing.items.push(item);
+        if (item.kind === "record") {
+          existing.totalSeconds += item.history.duration;
+        }
+      } else {
+        groups.set(key, {
+          date,
+          dateLabel,
+          totalSeconds: item.kind === "record" ? item.history.duration : 0,
+          items: [item],
+        });
+      }
+    }
+
+    return Array.from(groups.values())
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .map((g) => ({
+        ...g,
+        items: g.items.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        ),
+      }));
+  }, [bookMemoSearchItems, isSearchActive, recordSearchItems, selectedSegment]);
 
   const addRecordButton = (
     <PrimaryButton
@@ -315,14 +469,19 @@ export function RecordsPage() {
             }
             action={addRecordButton}
             searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
+            onSearchQueryChange={handleSearchQueryChange}
             searchPlaceholder="キーワードで検索"
-            showSegmentedControl={false}
+            showSegmentedControl={isSearchActive}
+            segmentedControlItems={segmentedControlItems}
+            segmentedControlValue={selectedSegment}
+            onSegmentedControlValueChange={(value) =>
+              setSelectedSegment(value as RecordsSegment)
+            }
           />
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-28">
-          {histories.length === 0 ? (
+          {!isSearchActive && histories.length === 0 ? (
             <div className="min-h-full flex items-start justify-center">
               <ListEmptyView
                 icon={<IconRecord size={48} color="var(--muted-foreground)" />}
@@ -336,7 +495,15 @@ export function RecordsPage() {
                 action={addRecordButton}
               />
             </div>
-          ) : filteredHistories.length === 0 ? (
+          ) : isSearchActive && groupedSearchItems.length === 0 ? (
+            <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground">
+                該当する項目が見つかりません
+              </p>
+            </div>
+          ) : !isSearchActive &&
+            histories.length > 0 &&
+            groupedHistories.length === 0 ? (
             <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
               <p className="text-muted-foreground">
                 該当する記録が見つかりません
@@ -344,54 +511,130 @@ export function RecordsPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="size-4" />
-                  <p className="text-sm">今月の合計時間</p>
-                </div>
-                <p className="text-2xl font-bold leading-8 tabular-nums text-foreground">
-                  {formatHoursMinutes(monthlyTotalSeconds)}
-                </p>
-              </div>
-
               <div className="flex flex-col gap-10">
-                {groupedHistories.map((group) => (
-                  <section
-                    key={group.dateLabel}
-                    className="flex flex-col gap-5"
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground tabular-nums">
-                        <span>{group.dateLabel}</span>
-                        <span>:</span>
-                        <span>{formatDurationHm(group.totalSeconds)}</span>
-                      </div>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
+                {isSearchActive
+                  ? groupedSearchItems.map((group) => (
+                      <section
+                        key={group.dateLabel}
+                        className="flex flex-col gap-5"
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground tabular-nums">
+                            <span>{group.dateLabel}</span>
+                            {group.totalSeconds > 0 ? (
+                              <>
+                                <span>:</span>
+                                <span>
+                                  {formatDurationHm(group.totalSeconds)}
+                                </span>
+                              </>
+                            ) : null}
+                          </div>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
 
-                    <div className="flex flex-col gap-5">
-                      {group.items.map((history) => {
-                        const book = history.bookId
-                          ? getBook(history.bookId)
-                          : null;
+                        <div className="flex flex-col gap-5">
+                          {group.items.map((item) => {
+                            if (item.kind === "bookMemo") {
+                              return (
+                                <ListCard
+                                  key={item.key}
+                                  type="BookNote"
+                                  createdAt={item.memo.createdAt}
+                                  bookName={item.book.title}
+                                  bookNote={highlightText(
+                                    item.memo.text,
+                                    searchQuery
+                                  )}
+                                />
+                              );
+                            }
 
-                        return (
-                          <ListCard
-                            key={history.id}
-                            type="Record"
-                            durationSeconds={history.duration}
-                            dateTime={history.endTime}
-                            recordNote={history.memo}
-                            bookName={book?.title}
-                            tags={history.tags}
-                            onEdit={() => handleOpenEditDialog(history.id)}
-                            onDelete={() => void handleDelete(history.id)}
-                          />
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
+                            const history = item.history;
+                            const book = history.bookId
+                              ? getBook(history.bookId)
+                              : null;
+
+                            const recordNoteNode = item.matchedMemo
+                              ? highlightText(history.memo ?? "", searchQuery)
+                              : history.memo;
+
+                            const tagsNode = (history.tags ?? []).length
+                              ? (history.tags ?? []).map((t) => {
+                                  const tagMatched = t
+                                    .trim()
+                                    .toLowerCase()
+                                    .includes(normalizedQuery);
+                                  return (
+                                    <Tag key={t}>
+                                      {tagMatched
+                                        ? highlightText(t, searchQuery)
+                                        : t}
+                                    </Tag>
+                                  );
+                                })
+                              : undefined;
+
+                            return (
+                              <ListCard
+                                key={item.key}
+                                type="Record"
+                                durationSeconds={history.duration}
+                                dateTime={history.endTime}
+                                recordNote={recordNoteNode}
+                                bookName={book?.title}
+                                tagsNode={tagsNode}
+                                onEdit={() => handleOpenEditDialog(history.id)}
+                                onDelete={() => void handleDelete(history.id)}
+                              />
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))
+                  : groupedHistories.map((group) => (
+                      <section
+                        key={group.dateLabel}
+                        className="flex flex-col gap-5"
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground tabular-nums">
+                            <span>{group.dateLabel}</span>
+                            {group.totalSeconds > 0 ? (
+                              <>
+                                <span>:</span>
+                                <span>
+                                  {formatDurationHm(group.totalSeconds)}
+                                </span>
+                              </>
+                            ) : null}
+                          </div>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+
+                        <div className="flex flex-col gap-5">
+                          {group.items.map((history) => {
+                            const book = history.bookId
+                              ? getBook(history.bookId)
+                              : null;
+
+                            return (
+                              <ListCard
+                                key={history.id}
+                                type="Record"
+                                durationSeconds={history.duration}
+                                dateTime={history.endTime}
+                                recordNote={history.memo}
+                                bookName={book?.title}
+                                tags={history.tags}
+                                onEdit={() => handleOpenEditDialog(history.id)}
+                                onDelete={() => void handleDelete(history.id)}
+                              />
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
               </div>
             </div>
           )}
