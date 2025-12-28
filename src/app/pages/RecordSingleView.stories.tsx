@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { RecordsPage } from "./RecordsPage";
+import { RecordSingleView } from "./RecordSingleView";
 import { MockAppProvider } from "../stories/MockAppProvider";
 import {
   createDemoBooks,
@@ -9,8 +9,8 @@ import {
 } from "../stories/demoData";
 
 export default {
-  title: "Pages/RecordsPage",
-  component: RecordsPage,
+  title: "Pages/RecordSingleView",
+  component: RecordSingleView,
   parameters: {
     layout: "fullscreen",
   },
@@ -23,9 +23,9 @@ export default {
       </div>
     ),
   ],
-} satisfies Meta<typeof RecordsPage>;
+} satisfies Meta<typeof RecordSingleView>;
 
-type Story = StoryObj<typeof RecordsPage>;
+type Story = StoryObj<typeof RecordSingleView>;
 
 function createDefaultRecordsStoryData() {
   const books = createDemoBooks({ variant: "rich" });
@@ -109,7 +109,7 @@ export const Default: Story = {
 
     return (
       <MockAppProvider initialBooks={books} initialHistories={histories}>
-        <RecordsPage />
+        <RecordSingleView />
       </MockAppProvider>
     );
   },
@@ -118,7 +118,7 @@ export const Default: Story = {
 export const Empty: Story = {
   render: () => (
     <MockAppProvider initialBooks={createDemoBooks()} initialHistories={[]}>
-      <RecordsPage />
+      <RecordSingleView />
     </MockAppProvider>
   ),
 };
@@ -129,7 +129,7 @@ export const Filtered: Story = {
 
     return (
       <MockAppProvider initialBooks={books} initialHistories={histories}>
-        <RecordsPage />
+        <RecordSingleView />
       </MockAppProvider>
     );
   },

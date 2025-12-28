@@ -85,7 +85,7 @@ function toLocalDateTimeInputValue(date: Date) {
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export function RecordsPage() {
+export function RecordSingleView() {
   const {
     histories,
     books,

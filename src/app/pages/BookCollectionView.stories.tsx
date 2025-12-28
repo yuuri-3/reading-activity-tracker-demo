@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { BooksPage } from "./BooksPage";
+import { BookCollectionView } from "./BookCollectionView";
 import { MockAppProvider } from "../stories/MockAppProvider";
 import { createDemoBooks, createDemoHistories } from "../stories/demoData";
 
 export default {
-  title: "Pages/BooksPage",
-  component: BooksPage,
+  title: "Pages/BookCollectionView",
+  component: BookCollectionView,
   parameters: {
     layout: "fullscreen",
   },
@@ -19,9 +19,9 @@ export default {
       </div>
     ),
   ],
-} satisfies Meta<typeof BooksPage>;
+} satisfies Meta<typeof BookCollectionView>;
 
-type Story = StoryObj<typeof BooksPage>;
+type Story = StoryObj<typeof BookCollectionView>;
 
 export const Default: Story = {
   render: () => (
@@ -29,7 +29,7 @@ export const Default: Story = {
       initialBooks={createDemoBooks({ variant: "rich" })}
       initialHistories={createDemoHistories({ variant: "recent" })}
     >
-      <BooksPage />
+      <BookCollectionView />
     </MockAppProvider>
   ),
 };
@@ -37,7 +37,7 @@ export const Default: Story = {
 export const Empty: Story = {
   render: () => (
     <MockAppProvider initialBooks={[]} initialHistories={[]}>
-      <BooksPage />
+      <BookCollectionView />
     </MockAppProvider>
   ),
 };

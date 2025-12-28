@@ -3,8 +3,8 @@ import { AuthGate } from "./auth/AuthGate";
 import { AuthProvider } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
 import { TimerPage } from "./pages/TimerPage";
-import { BooksPage } from "./pages/BooksPage";
-import { RecordsPage } from "./pages/RecordsPage";
+import { BookCollectionView } from "./pages/BookCollectionView";
+import { RecordSingleView } from "./pages/RecordSingleView";
 import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/Toast";
 
@@ -17,8 +17,8 @@ function AppContent() {
       <main className="flex-1 overflow-hidden">
         <div className="max-w-2xl mx-auto h-full">
           {currentPage === "home" && <TimerPage />}
-          {currentPage === "books" && <BooksPage />}
-          {currentPage === "histories" && <RecordsPage />}
+          {currentPage === "books" && <BookCollectionView />}
+          {currentPage === "histories" && <RecordSingleView />}
         </div>
       </main>
 
