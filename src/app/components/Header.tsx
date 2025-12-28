@@ -8,6 +8,10 @@ import { PrimaryButton } from "./PrimaryButton";
 import { BookListSearchField } from "./book-list/BookListSearchField";
 import { IconBookshelf } from "./icons/IconBookshelf";
 import { Input } from "./ui/input";
+import {
+  SegmentedControl,
+  type SegmentedControlItem,
+} from "./SegmentedControl";
 
 export type HeaderProps = {
   /** Figma: pageTitle */
@@ -18,6 +22,15 @@ export type HeaderProps = {
   icon?: React.ReactNode | null;
   /** Figma: nested instance (right action slot) */
   action?: React.ReactNode | null;
+
+  /** Figma: show/hide SegmentedControl */
+  showSegmentedControl?: boolean;
+  /** Optional override for SegmentedControl items */
+  segmentedControlItems?: SegmentedControlItem[];
+  /** Optional controlled value for SegmentedControl */
+  segmentedControlValue?: string;
+  /** Optional change handler for SegmentedControl */
+  onSegmentedControlValueChange?: (value: string) => void;
 
   /** SearchField controlled props */
   searchQuery: string;
@@ -30,6 +43,10 @@ export function Header({
   buttonLabel = "書籍登録",
   icon,
   action,
+  showSegmentedControl = true,
+  segmentedControlItems,
+  segmentedControlValue,
+  onSegmentedControlValueChange,
   searchQuery,
   onSearchQueryChange,
   searchPlaceholder = "書籍を検索",
@@ -37,6 +54,37 @@ export function Header({
   const { addBook } = useApp();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [bookTitle, setBookTitle] = React.useState("");
+
+  const effectiveSegmentedItems = React.useMemo<SegmentedControlItem[]>(
+    () =>
+      segmentedControlItems ?? [
+        { value: "all", text: "すべて" },
+        { value: "reading", text: "記録メモ" },
+        { value: "book", text: "書籍メモ" },
+      ],
+    [segmentedControlItems]
+  );
+
+  const isSegmentedControlled =
+    segmentedControlValue !== undefined &&
+    onSegmentedControlValueChange !== undefined;
+
+  const [uncontrolledSegmentedValue, setUncontrolledSegmentedValue] =
+    React.useState(() => effectiveSegmentedItems[0]?.value ?? "all");
+
+  const currentSegmentedValue = isSegmentedControlled
+    ? segmentedControlValue
+    : uncontrolledSegmentedValue;
+
+  const handleSegmentedValueChange = (nextValue: string) => {
+    if (isSegmentedControlled) {
+      onSegmentedControlValueChange(nextValue);
+      return;
+    }
+
+    setUncontrolledSegmentedValue(nextValue);
+    onSegmentedControlValueChange?.(nextValue);
+  };
 
   const handleSubmitBook = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,11 +158,22 @@ export function Header({
         )}
       </div>
 
-      <BookListSearchField
-        value={searchQuery}
-        onChange={onSearchQueryChange}
-        placeholder={searchPlaceholder}
-      />
+      <div className="flex flex-col gap-4">
+        <BookListSearchField
+          value={searchQuery}
+          onChange={onSearchQueryChange}
+          placeholder={searchPlaceholder}
+        />
+
+        {showSegmentedControl && (
+          <SegmentedControl
+            className="w-full"
+            items={effectiveSegmentedItems}
+            value={currentSegmentedValue}
+            onValueChange={handleSegmentedValueChange}
+          />
+        )}
+      </div>
     </div>
   );
 }

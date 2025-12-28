@@ -57,6 +57,7 @@ export function BooksPage() {
         <Header
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
+          showSegmentedControl={false}
         />
       </div>
 

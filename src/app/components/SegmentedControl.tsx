@@ -44,9 +44,9 @@ export function SegmentedControl({
         value={itemValue}
         disabled={disabled || itemDisabled}
         className={cn(
-          "inline-flex items-center justify-center gap-1 px-5 py-2 rounded-xl text-sm leading-none text-foreground transition-[background-color,color,box-shadow]",
+          "inline-flex flex-1 min-w-0 items-center justify-center gap-1 px-5 py-2 rounded-xl text-sm leading-none text-foreground transition-[background-color,color,box-shadow]",
           "font-normal",
-          "data-[state=on]:bg-card data-[state=on]:shadow-xs data-[state=on]:font-semibold",
+          "data-[state=on]:bg-card data-[state=on]:font-semibold",
           "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
           "disabled:opacity-50 disabled:pointer-events-none"
         )}
