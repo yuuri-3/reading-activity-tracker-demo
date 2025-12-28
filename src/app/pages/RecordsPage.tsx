@@ -295,7 +295,8 @@ export function RecordsPage() {
                 placeholder="例）P.10まで読んだ"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                rows={3}
+                rows={1}
+                className="h-11 text-sm leading-5"
                 disabled={isSaving}
               />
             }
@@ -329,7 +330,8 @@ export function RecordsPage() {
                 placeholder="例）第2章に具体的な例が多い"
                 value={bookMemo}
                 onChange={(e) => setBookMemo(e.target.value)}
-                rows={3}
+                rows={1}
+                className="h-11 text-sm leading-5"
                 disabled={isSaving}
               />
             }
