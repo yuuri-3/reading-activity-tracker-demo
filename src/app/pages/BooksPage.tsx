@@ -50,7 +50,7 @@ export function BooksPage() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             {filteredBooks.map((book) => {
               const totalDuration = getTotalDurationByBook(book.id);
               const histories = getHistoriesByBook(book.id);
