@@ -1,9 +1,9 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { Clock, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { useApp } from "../context/AppContext";
-import { formatDurationHm } from "../utils/format";
+import { formatDurationHms } from "../utils/format";
 import { Header } from "../components/Header";
 import { IconRecord } from "../components/icons/IconRecord";
 import { ListCard } from "../components/ListCard";
@@ -82,7 +82,9 @@ function toLocalDateTimeInputValue(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
     date.getDate()
-  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+    date.getSeconds()
+  )}`;
 }
 
 export function RecordSingleView() {
@@ -381,6 +383,19 @@ export function RecordSingleView() {
       });
   }, [records]);
 
+  const monthlyTotalSeconds = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+
+    return records.reduce((sum, r) => {
+      const end = new Date(r.endTime);
+      if (Number.isNaN(end.getTime())) return sum;
+      if (end.getFullYear() !== y || end.getMonth() !== m) return sum;
+      return sum + r.duration;
+    }, 0);
+  }, [records]);
+
   const groupedSearchItems = useMemo(() => {
     if (!isSearchActive)
       return [] as Array<{
@@ -483,6 +498,18 @@ export function RecordSingleView() {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-28">
+          {!isSearchActive ? (
+            <div className="pb-6">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="size-4" />
+                <p className="text-sm">今月の合計時間</p>
+              </div>
+              <p className="mt-1 text-[28px] leading-8 font-medium tabular-nums text-foreground">
+                {formatDurationHms(monthlyTotalSeconds)}
+              </p>
+            </div>
+          ) : null}
+
           {!isSearchActive && records.length === 0 ? (
             <div className="min-h-full flex items-start justify-center">
               <ListEmptyView
@@ -527,7 +554,7 @@ export function RecordSingleView() {
                               <>
                                 <span>:</span>
                                 <span>
-                                  {formatDurationHm(group.totalSeconds)}
+                                  {formatDurationHms(group.totalSeconds)}
                                 </span>
                               </>
                             ) : null}
@@ -606,7 +633,7 @@ export function RecordSingleView() {
                               <>
                                 <span>:</span>
                                 <span>
-                                  {formatDurationHm(group.totalSeconds)}
+                                  {formatDurationHms(group.totalSeconds)}
                                 </span>
                               </>
                             ) : null}
@@ -675,6 +702,7 @@ export function RecordSingleView() {
               <NeumorphicInput
                 id="startAt"
                 type="datetime-local"
+                step={1}
                 value={startAt}
                 onChange={(e) => setStartAt(e.target.value)}
                 disabled={isSaving}
@@ -689,6 +717,7 @@ export function RecordSingleView() {
               <NeumorphicInput
                 id="endAt"
                 type="datetime-local"
+                step={1}
                 value={endAt}
                 onChange={(e) => setEndAt(e.target.value)}
                 disabled={isSaving}

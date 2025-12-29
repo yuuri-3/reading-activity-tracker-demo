@@ -3,7 +3,7 @@ import { Calendar, Clock, FileText } from "lucide-react";
 
 import { cn } from "./ui/utils";
 import { Tag } from "./Tag";
-import { formatDateTime, formatDurationHm } from "../utils/format";
+import { formatDateTime, formatDurationHms } from "../utils/format";
 
 type Shadow = "md" | "sm";
 
@@ -163,7 +163,7 @@ export function ListCard(props: ListCardProps) {
                 <div className="flex items-center gap-1">
                   <Clock className="size-4" />
                   <p className="text-[13px] leading-5 tabular-nums">
-                    {formatDurationHm(totalDurationSeconds)}
+                    {formatDurationHms(totalDurationSeconds)}
                   </p>
                 </div>
               </div>
@@ -191,9 +191,9 @@ export function ListCard(props: ListCardProps) {
         <ListCardFrame shadow={shadow} className={cn("w-full", className)}>
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-3 text-[13px] leading-5 text-muted-foreground">
                 <p className="tabular-nums">
-                  {formatDurationHm(durationSeconds)}
+                  {formatDurationHms(durationSeconds)}
                 </p>
                 <p className="tabular-nums">{formatDateTime(dateTime)}</p>
               </div>

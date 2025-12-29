@@ -59,6 +59,29 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   ) as Partial<T>;
 }
 
+function normalizeDurationSeconds(data: {
+  duration?: unknown;
+  startTime?: unknown;
+  endTime?: unknown;
+}): number {
+  const startTime = typeof data.startTime === "string" ? data.startTime : "";
+  const endTime = typeof data.endTime === "string" ? data.endTime : "";
+
+  if (startTime && endTime) {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+      const diffSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+      if (diffSeconds > 0) return diffSeconds;
+    }
+  }
+
+  const n =
+    typeof data.duration === "number" ? data.duration : Number(data.duration);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.floor(n));
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
@@ -118,7 +141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return {
             id: d.id,
             bookId: data.bookId,
-            duration: data.duration,
+            duration: normalizeDurationSeconds(data),
             memo: data.memo,
             tags: data.tags ?? [],
             startTime: data.startTime,
@@ -198,7 +221,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!db || !uid) return;
     const now = new Date().toISOString();
     await addDoc(collection(db, "users", uid, "records"), {
-      ...stripUndefined(record as unknown as Record<string, unknown>),
+      ...stripUndefined({
+        ...(record as unknown as Record<string, unknown>),
+        duration:
+          typeof record.duration === "number"
+            ? Math.max(0, Math.floor(record.duration))
+            : record.duration,
+      }),
       createdAt: now,
     });
   };
@@ -206,7 +235,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateRecord = async (id: string, updates: Partial<ReadingRecord>) => {
     if (!db || !uid) return;
     const { id: _id, ...rest } = updates;
-    await updateDoc(doc(db, "users", uid, "records", id), stripUndefined(rest));
+    const nextRest: Partial<ReadingRecord> = {
+      ...rest,
+      ...(typeof rest.duration === "number"
+        ? { duration: Math.max(0, Math.floor(rest.duration)) }
+        : {}),
+    };
+    await updateDoc(
+      doc(db, "users", uid, "records", id),
+      stripUndefined(nextRest as unknown as Record<string, unknown>)
+    );
   };
 
   const deleteRecord = async (id: string) => {

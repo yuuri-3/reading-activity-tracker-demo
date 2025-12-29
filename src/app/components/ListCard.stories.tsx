@@ -26,14 +26,14 @@ export const Book: Story = {
     title: "これが書籍タイトルB（タイトルが長いときはこんな感じ）",
     lastActivityAt: new Date("2025-12-24T21:09:00.000Z").toISOString(),
     notesCount: 2,
-    totalDurationSeconds: 2 * 3600 + 32 * 60,
+    totalDurationSeconds: 2 * 3600 + 32 * 60 + 24,
   },
 };
 
 export const Record: Story = {
   args: {
     type: "Record",
-    durationSeconds: 2 * 3600 + 32 * 60,
+    durationSeconds: 2 * 3600 + 32 * 60 + 24,
     dateTime: new Date("2025-12-28T12:24:00.000Z").toISOString(),
     recordNote: "記録メモ",
     bookName: "書籍名（選択あれば）",

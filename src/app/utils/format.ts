@@ -1,7 +1,8 @@
 export function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
+  const s = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  const secs = Math.floor(s % 60);
 
   if (hours > 0) {
     return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
@@ -9,6 +10,36 @@ export function formatDuration(seconds: number): string {
       .padStart(2, "0")}`;
   }
   return `${minutes}:${secs.toString().padStart(2, "0")}`;
+}
+
+export function formatDurationHms(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+    2,
+    "0"
+  )}:${String(secs).padStart(2, "0")}`;
+}
+
+export function formatDurationHmsParts(seconds: number): {
+  hhmm: string;
+  ss: string;
+} {
+  const s = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+
+  return {
+    hhmm: `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+      2,
+      "0"
+    )}`,
+    ss: String(secs).padStart(2, "0"),
+  };
 }
 
 export function formatDurationHm(seconds: number): string {
@@ -52,5 +83,18 @@ export function formatDateTime(dateString: string): string {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+export function formatDateTimeWithSeconds(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   });
 }

@@ -10,7 +10,7 @@ import { PrimaryButton } from "../components/PrimaryButton";
 import { Dialog } from "../components/Dialog";
 import { FieldItem } from "../components/FieldItem";
 import { NeumorphicTextarea } from "../components/NeumorphicTextarea";
-import { formatDateTime, formatDurationHm } from "../utils/format";
+import { formatDateTime, formatDurationHms } from "../utils/format";
 import { toast } from "sonner";
 
 export type BookSingleViewProps = {
@@ -210,7 +210,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
               <div className="flex items-center gap-1">
                 <Clock className="size-4" />
                 <p className="text-[13px] leading-5 tabular-nums">
-                  {formatDurationHm(totalDuration)}
+                  {formatDurationHms(totalDuration)}
                 </p>
               </div>
             </div>
