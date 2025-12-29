@@ -178,105 +178,111 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden p-6">
-      <div className="shrink-0 flex flex-col gap-6">
-        <button
-          onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← 一覧に戻る
-        </button>
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      <div className="shrink-0">
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="flex flex-col gap-6">
+            <button
+              onClick={onBack}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← 一覧に戻る
+            </button>
 
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-medium tracking-[0.02em] text-foreground">
-            {book.title}
-          </h1>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Calendar className="size-4" />
-              <p className="text-[13px] leading-5 tabular-nums">
-                {formatDateTime(lastActivityAt)}
-              </p>
+            <div className="flex flex-col gap-1">
+              <h1 className="text-2xl font-medium tracking-[0.02em] text-foreground">
+                {book.title}
+              </h1>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Calendar className="size-4" />
+                  <p className="text-[13px] leading-5 tabular-nums">
+                    {formatDateTime(lastActivityAt)}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <FileText className="size-4" />
+                    <p className="text-[13px] leading-5 tabular-nums">
+                      {memos.length} notes
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <Clock className="size-4" />
+                    <p className="text-[13px] leading-5 tabular-nums">
+                      {formatDurationHms(totalDuration)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2.5 text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <FileText className="size-4" />
-                <p className="text-[13px] leading-5 tabular-nums">
-                  {memos.length} notes
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <Clock className="size-4" />
-                <p className="text-[13px] leading-5 tabular-nums">
-                  {formatDurationHms(totalDuration)}
-                </p>
-              </div>
-            </div>
+            <SegmentedControl
+              value={segment}
+              onValueChange={(v) => setSegment(v as any)}
+              className="w-full rounded-full"
+              items={[
+                { value: "all", text: "すべて", amount: allCount },
+                { value: "reading", text: "記録メモ", amount: records.length },
+                { value: "book", text: "書籍メモ", amount: memos.length },
+              ]}
+            />
           </div>
         </div>
-
-        <SegmentedControl
-          value={segment}
-          onValueChange={(v) => setSegment(v as any)}
-          className="w-full rounded-full"
-          items={[
-            { value: "all", text: "すべて", amount: allCount },
-            { value: "reading", text: "記録メモ", amount: records.length },
-            { value: "book", text: "書籍メモ", amount: memos.length },
-          ]}
-        />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pt-6 pb-28">
-        <div className="flex flex-col gap-4">
-          {feedItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              表示する項目がありません
-            </p>
-          ) : (
-            feedItems.map((item) => {
-              if (item.kind === "record") {
-                const r = item.record;
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-6 pt-6 pb-28">
+          <div className="flex flex-col gap-4">
+            {feedItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                表示する項目がありません
+              </p>
+            ) : (
+              feedItems.map((item) => {
+                if (item.kind === "record") {
+                  const r = item.record;
+                  return (
+                    <ListCard
+                      key={item.key}
+                      type="Record"
+                      durationSeconds={r.duration}
+                      dateTime={r.endTime}
+                      recordNote={r.memo}
+                      bookName={book.title}
+                      tags={r.tags}
+                      onDelete={() => handleDeleteRecord(r.id)}
+                      onEdit={() => handleOpenEditRecord(r.id)}
+                    />
+                  );
+                }
+
+                const m = item.memo;
                 return (
                   <ListCard
                     key={item.key}
-                    type="Record"
-                    durationSeconds={r.duration}
-                    dateTime={r.endTime}
-                    recordNote={r.memo}
+                    type="BookNote"
+                    createdAt={m.createdAt}
                     bookName={book.title}
-                    tags={r.tags}
-                    onDelete={() => handleDeleteRecord(r.id)}
-                    onEdit={() => handleOpenEditRecord(r.id)}
+                    bookNote={m.text}
+                    onDelete={() => handleDeleteBookMemo(m.id)}
+                    onEdit={() => handleOpenEditBookMemo(m.id)}
                   />
                 );
-              }
+              })
+            )}
+          </div>
 
-              const m = item.memo;
-              return (
-                <ListCard
-                  key={item.key}
-                  type="BookNote"
-                  createdAt={m.createdAt}
-                  bookName={book.title}
-                  bookNote={m.text}
-                  onDelete={() => handleDeleteBookMemo(m.id)}
-                  onEdit={() => handleOpenEditBookMemo(m.id)}
-                />
-              );
-            })
-          )}
-        </div>
-
-        <div className="pt-6">
-          <PrimaryButton
-            onClick={handleDeleteBook}
-            className="w-full justify-center text-destructive"
-          >
-            書籍を削除
-          </PrimaryButton>
+          <div className="pt-6">
+            <PrimaryButton
+              onClick={handleDeleteBook}
+              className="w-full justify-center text-destructive"
+            >
+              書籍を削除
+            </PrimaryButton>
+          </div>
         </div>
       </div>
 

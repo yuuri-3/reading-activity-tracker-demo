@@ -46,7 +46,7 @@ function AppContent() {
     <div className="size-full flex flex-col">
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
-        <div className="max-w-2xl mx-auto h-full">
+        <div className="h-full w-full">
           {currentPage === "home" && <TimerPage />}
           {currentPage === "books" && <BookCollectionView />}
           {currentPage === "records" && <RecordSingleView />}

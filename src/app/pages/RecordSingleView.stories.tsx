@@ -17,9 +17,7 @@ export default {
   decorators: [
     (Story) => (
       <div className="h-dvh w-full overflow-hidden">
-        <div className="max-w-2xl mx-auto h-full">
-          <Story />
-        </div>
+        <Story />
       </div>
     ),
   ],

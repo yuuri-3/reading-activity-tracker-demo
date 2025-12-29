@@ -478,198 +478,204 @@ export function RecordSingleView() {
     <>
       <div className="flex flex-col h-full overflow-hidden">
         <div className="shrink-0">
-          <Header
-            pageTitle="記録"
-            icon={
-              <IconRecord
-                className="shrink-0"
-                size={28}
-                color="var(--muted-foreground)"
-              />
-            }
-            action={addRecordButton}
-            searchQuery={searchQuery}
-            onSearchQueryChange={handleSearchQueryChange}
-            searchPlaceholder="キーワードで検索"
-            showSegmentedControl={isSearchActive}
-            segmentedControlItems={segmentedControlItems}
-            segmentedControlValue={selectedSegment}
-            onSegmentedControlValueChange={(value) =>
-              setSelectedSegment(value as RecordsSegment)
-            }
-          />
+          <div className="max-w-2xl mx-auto">
+            <Header
+              pageTitle="記録"
+              icon={
+                <IconRecord
+                  className="shrink-0"
+                  size={28}
+                  color="var(--muted-foreground)"
+                />
+              }
+              action={addRecordButton}
+              searchQuery={searchQuery}
+              onSearchQueryChange={handleSearchQueryChange}
+              searchPlaceholder="キーワードで検索"
+              showSegmentedControl={isSearchActive}
+              segmentedControlItems={segmentedControlItems}
+              segmentedControlValue={selectedSegment}
+              onSegmentedControlValueChange={(value) =>
+                setSelectedSegment(value as RecordsSegment)
+              }
+            />
+          </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-28">
-          {!isSearchActive ? (
-            <div className="pb-6">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="size-4" />
-                <p className="text-sm">今月の合計時間</p>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-6 pt-2 pb-28">
+            {!isSearchActive ? (
+              <div className="pb-6">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="size-4" />
+                  <p className="text-sm">今月の合計時間</p>
+                </div>
+                <p className="mt-1 text-[28px] leading-8 font-medium tabular-nums text-foreground">
+                  {formatDurationHms(monthlyTotalSeconds)}
+                </p>
               </div>
-              <p className="mt-1 text-[28px] leading-8 font-medium tabular-nums text-foreground">
-                {formatDurationHms(monthlyTotalSeconds)}
-              </p>
-            </div>
-          ) : null}
+            ) : null}
 
-          {!isSearchActive && records.length === 0 ? (
-            <div className="min-h-full flex items-start justify-center">
-              <ListEmptyView
-                icon={<IconRecord size={48} color="var(--muted-foreground)" />}
-                message="記録登録されていません"
-                submessage={
-                  <>
-                    <p className="mb-0">手動で追加するか</p>
-                    <p>計測画面で計測すると表示されます</p>
-                  </>
-                }
-                action={addRecordButton}
-              />
-            </div>
-          ) : isSearchActive && groupedSearchItems.length === 0 ? (
-            <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-muted-foreground">
-                該当する項目が見つかりません
-              </p>
-            </div>
-          ) : !isSearchActive &&
-            records.length > 0 &&
-            groupedRecords.length === 0 ? (
-            <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-muted-foreground">
-                該当する記録が見つかりません
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-10">
-                {isSearchActive
-                  ? groupedSearchItems.map((group) => (
-                      <section
-                        key={group.dateLabel}
-                        className="flex flex-col gap-5"
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground tabular-nums">
-                            <span>{group.dateLabel}</span>
-                            {group.totalSeconds > 0 ? (
-                              <>
-                                <span>:</span>
-                                <span>
-                                  {formatDurationHms(group.totalSeconds)}
-                                </span>
-                              </>
-                            ) : null}
+            {!isSearchActive && records.length === 0 ? (
+              <div className="min-h-full flex items-start justify-center">
+                <ListEmptyView
+                  icon={
+                    <IconRecord size={48} color="var(--muted-foreground)" />
+                  }
+                  message="記録登録されていません"
+                  submessage={
+                    <>
+                      <p className="mb-0">手動で追加するか</p>
+                      <p>計測画面で計測すると表示されます</p>
+                    </>
+                  }
+                  action={addRecordButton}
+                />
+              </div>
+            ) : isSearchActive && groupedSearchItems.length === 0 ? (
+              <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-muted-foreground">
+                  該当する項目が見つかりません
+                </p>
+              </div>
+            ) : !isSearchActive &&
+              records.length > 0 &&
+              groupedRecords.length === 0 ? (
+              <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-muted-foreground">
+                  該当する記録が見つかりません
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-10">
+                  {isSearchActive
+                    ? groupedSearchItems.map((group) => (
+                        <section
+                          key={group.dateLabel}
+                          className="flex flex-col gap-5"
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground tabular-nums">
+                              <span>{group.dateLabel}</span>
+                              {group.totalSeconds > 0 ? (
+                                <>
+                                  <span>:</span>
+                                  <span>
+                                    {formatDurationHms(group.totalSeconds)}
+                                  </span>
+                                </>
+                              ) : null}
+                            </div>
+                            <div className="flex-1 h-px bg-border" />
                           </div>
-                          <div className="flex-1 h-px bg-border" />
-                        </div>
 
-                        <div className="flex flex-col gap-5">
-                          {group.items.map((item) => {
-                            if (item.kind === "bookMemo") {
+                          <div className="flex flex-col gap-5">
+                            {group.items.map((item) => {
+                              if (item.kind === "bookMemo") {
+                                return (
+                                  <ListCard
+                                    key={item.key}
+                                    type="BookNote"
+                                    createdAt={item.memo.createdAt}
+                                    bookName={item.book.title}
+                                    bookNote={highlightText(
+                                      item.memo.text,
+                                      searchQuery
+                                    )}
+                                  />
+                                );
+                              }
+
+                              const record = item.record;
+                              const book = record.bookId
+                                ? getBook(record.bookId)
+                                : null;
+
+                              const recordNoteNode = item.matchedMemo
+                                ? highlightText(record.memo ?? "", searchQuery)
+                                : record.memo;
+
+                              const tagsNode = (record.tags ?? []).length
+                                ? (record.tags ?? []).map((t) => {
+                                    const tagMatched = t
+                                      .trim()
+                                      .toLowerCase()
+                                      .includes(normalizedQuery);
+                                    return (
+                                      <Tag key={t}>
+                                        {tagMatched
+                                          ? highlightText(t, searchQuery)
+                                          : t}
+                                      </Tag>
+                                    );
+                                  })
+                                : undefined;
+
                               return (
                                 <ListCard
                                   key={item.key}
-                                  type="BookNote"
-                                  createdAt={item.memo.createdAt}
-                                  bookName={item.book.title}
-                                  bookNote={highlightText(
-                                    item.memo.text,
-                                    searchQuery
-                                  )}
+                                  type="Record"
+                                  durationSeconds={record.duration}
+                                  dateTime={record.endTime}
+                                  recordNote={recordNoteNode}
+                                  bookName={book?.title}
+                                  tagsNode={tagsNode}
+                                  onEdit={() => handleOpenEditDialog(record.id)}
+                                  onDelete={() => void handleDelete(record.id)}
                                 />
                               );
-                            }
-
-                            const record = item.record;
-                            const book = record.bookId
-                              ? getBook(record.bookId)
-                              : null;
-
-                            const recordNoteNode = item.matchedMemo
-                              ? highlightText(record.memo ?? "", searchQuery)
-                              : record.memo;
-
-                            const tagsNode = (record.tags ?? []).length
-                              ? (record.tags ?? []).map((t) => {
-                                  const tagMatched = t
-                                    .trim()
-                                    .toLowerCase()
-                                    .includes(normalizedQuery);
-                                  return (
-                                    <Tag key={t}>
-                                      {tagMatched
-                                        ? highlightText(t, searchQuery)
-                                        : t}
-                                    </Tag>
-                                  );
-                                })
-                              : undefined;
-
-                            return (
-                              <ListCard
-                                key={item.key}
-                                type="Record"
-                                durationSeconds={record.duration}
-                                dateTime={record.endTime}
-                                recordNote={recordNoteNode}
-                                bookName={book?.title}
-                                tagsNode={tagsNode}
-                                onEdit={() => handleOpenEditDialog(record.id)}
-                                onDelete={() => void handleDelete(record.id)}
-                              />
-                            );
-                          })}
-                        </div>
-                      </section>
-                    ))
-                  : groupedRecords.map((group) => (
-                      <section
-                        key={group.dateLabel}
-                        className="flex flex-col gap-5"
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground tabular-nums">
-                            <span>{group.dateLabel}</span>
-                            {group.totalSeconds > 0 ? (
-                              <>
-                                <span>:</span>
-                                <span>
-                                  {formatDurationHms(group.totalSeconds)}
-                                </span>
-                              </>
-                            ) : null}
+                            })}
                           </div>
-                          <div className="flex-1 h-px bg-border" />
-                        </div>
+                        </section>
+                      ))
+                    : groupedRecords.map((group) => (
+                        <section
+                          key={group.dateLabel}
+                          className="flex flex-col gap-5"
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground tabular-nums">
+                              <span>{group.dateLabel}</span>
+                              {group.totalSeconds > 0 ? (
+                                <>
+                                  <span>:</span>
+                                  <span>
+                                    {formatDurationHms(group.totalSeconds)}
+                                  </span>
+                                </>
+                              ) : null}
+                            </div>
+                            <div className="flex-1 h-px bg-border" />
+                          </div>
 
-                        <div className="flex flex-col gap-5">
-                          {group.items.map((record) => {
-                            const book = record.bookId
-                              ? getBook(record.bookId)
-                              : null;
+                          <div className="flex flex-col gap-5">
+                            {group.items.map((record) => {
+                              const book = record.bookId
+                                ? getBook(record.bookId)
+                                : null;
 
-                            return (
-                              <ListCard
-                                key={record.id}
-                                type="Record"
-                                durationSeconds={record.duration}
-                                dateTime={record.endTime}
-                                recordNote={record.memo}
-                                bookName={book?.title}
-                                tags={record.tags}
-                                onEdit={() => handleOpenEditDialog(record.id)}
-                                onDelete={() => void handleDelete(record.id)}
-                              />
-                            );
-                          })}
-                        </div>
-                      </section>
-                    ))}
+                              return (
+                                <ListCard
+                                  key={record.id}
+                                  type="Record"
+                                  durationSeconds={record.duration}
+                                  dateTime={record.endTime}
+                                  recordNote={record.memo}
+                                  bookName={book?.title}
+                                  tags={record.tags}
+                                  onEdit={() => handleOpenEditDialog(record.id)}
+                                  onDelete={() => void handleDelete(record.id)}
+                                />
+                              );
+                            })}
+                          </div>
+                        </section>
+                      ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

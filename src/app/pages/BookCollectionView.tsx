@@ -66,125 +66,129 @@ export function BookCollectionView() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0">
-        <Header
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          showSegmentedControl={false}
-        />
+        <div className="max-w-2xl mx-auto">
+          <Header
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            showSegmentedControl={false}
+          />
+        </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-4 pb-28">
-        {books.length === 0 ? (
-          <div className="min-h-full flex items-start justify-center">
-            <ListEmptyView
-              message="書籍が登録されていません"
-              submessage="書籍の情報を登録してください"
-              action={
-                <Dialog
-                  open={isRegistBookDialogOpen}
-                  onOpenChange={setIsRegistBookDialogOpen}
-                  title="書籍を登録"
-                  description="読書時間を記録したい書籍を追加します"
-                  formPatternType="RegistBook"
-                  cancelLabel="キャンセル"
-                  confirmLabel="登録"
-                  confirmButtonType="submit"
-                  confirmForm="regist-book-form"
-                  onCancel={() => setIsRegistBookDialogOpen(false)}
-                  trigger={
-                    <PrimaryButton
-                      className="px-3 py-2 text-sm"
-                      icon={<Plus className="size-4" />}
-                    >
-                      書籍登録
-                    </PrimaryButton>
-                  }
-                >
-                  <form id="regist-book-form" onSubmit={handleSubmitBook}>
-                    <FieldItem
-                      className="w-full"
-                      labelProps={{
-                        text: "書籍タイトル",
-                        showOptionalLabel: false,
-                      }}
-                      instance={
-                        <Input
-                          id="title"
-                          value={bookTitle}
-                          onChange={(e) => setBookTitle(e.target.value)}
-                          placeholder="書籍名を入力"
-                          required
-                          className="h-auto min-h-[44px] rounded-[6px] px-4 py-3 text-sm leading-5"
-                        />
-                      }
-                    />
-                  </form>
-                </Dialog>
-              }
-            />
-          </div>
-        ) : filteredBooks.length === 0 ? (
-          <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
-            <BookOpen className="size-12 mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              該当する書籍が見つかりません
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-5">
-            {filteredBooks.map((book) => {
-              const totalDuration = getTotalDurationByBook(book.id);
-              const records = getRecordsByBook(book.id);
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-6 pt-4 pb-28">
+          {books.length === 0 ? (
+            <div className="min-h-full flex items-start justify-center">
+              <ListEmptyView
+                message="書籍が登録されていません"
+                submessage="書籍の情報を登録してください"
+                action={
+                  <Dialog
+                    open={isRegistBookDialogOpen}
+                    onOpenChange={setIsRegistBookDialogOpen}
+                    title="書籍を登録"
+                    description="読書時間を記録したい書籍を追加します"
+                    formPatternType="RegistBook"
+                    cancelLabel="キャンセル"
+                    confirmLabel="登録"
+                    confirmButtonType="submit"
+                    confirmForm="regist-book-form"
+                    onCancel={() => setIsRegistBookDialogOpen(false)}
+                    trigger={
+                      <PrimaryButton
+                        className="px-3 py-2 text-sm"
+                        icon={<Plus className="size-4" />}
+                      >
+                        書籍登録
+                      </PrimaryButton>
+                    }
+                  >
+                    <form id="regist-book-form" onSubmit={handleSubmitBook}>
+                      <FieldItem
+                        className="w-full"
+                        labelProps={{
+                          text: "書籍タイトル",
+                          showOptionalLabel: false,
+                        }}
+                        instance={
+                          <Input
+                            id="title"
+                            value={bookTitle}
+                            onChange={(e) => setBookTitle(e.target.value)}
+                            placeholder="書籍名を入力"
+                            required
+                            className="h-auto min-h-[44px] rounded-[6px] px-4 py-3 text-sm leading-5"
+                          />
+                        }
+                      />
+                    </form>
+                  </Dialog>
+                }
+              />
+            </div>
+          ) : filteredBooks.length === 0 ? (
+            <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
+              <BookOpen className="size-12 mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">
+                該当する書籍が見つかりません
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-5">
+              {filteredBooks.map((book) => {
+                const totalDuration = getTotalDurationByBook(book.id);
+                const records = getRecordsByBook(book.id);
 
-              const lastRecordEnd = records.reduce<string | null>(
-                (latest, record) => {
-                  const t = record.endTime;
-                  if (!latest) return t;
-                  return new Date(t).getTime() > new Date(latest).getTime()
-                    ? t
-                    : latest;
-                },
-                null
-              );
-
-              const lastMemoAt = (book.memos ?? []).reduce<string | null>(
-                (latest, memo) => {
-                  const t = memo.createdAt;
-                  if (!latest) return t;
-                  return new Date(t).getTime() > new Date(latest).getTime()
-                    ? t
-                    : latest;
-                },
-                null
-              );
-
-              const lastActivityAt = (() => {
-                const candidates = [
-                  book.createdAt,
-                  lastMemoAt,
-                  lastRecordEnd,
-                ].filter(Boolean) as string[];
-                return candidates.reduce((latest, t) =>
-                  new Date(t).getTime() > new Date(latest).getTime()
-                    ? t
-                    : latest
+                const lastRecordEnd = records.reduce<string | null>(
+                  (latest, record) => {
+                    const t = record.endTime;
+                    if (!latest) return t;
+                    return new Date(t).getTime() > new Date(latest).getTime()
+                      ? t
+                      : latest;
+                  },
+                  null
                 );
-              })();
 
-              return (
-                <ListCard
-                  key={book.id}
-                  type="Book"
-                  title={book.title}
-                  lastActivityAt={lastActivityAt}
-                  notesCount={book.memos?.length ?? 0}
-                  totalDurationSeconds={totalDuration}
-                  onClick={() => setSelectedBookId(book.id)}
-                />
-              );
-            })}
-          </div>
-        )}
+                const lastMemoAt = (book.memos ?? []).reduce<string | null>(
+                  (latest, memo) => {
+                    const t = memo.createdAt;
+                    if (!latest) return t;
+                    return new Date(t).getTime() > new Date(latest).getTime()
+                      ? t
+                      : latest;
+                  },
+                  null
+                );
+
+                const lastActivityAt = (() => {
+                  const candidates = [
+                    book.createdAt,
+                    lastMemoAt,
+                    lastRecordEnd,
+                  ].filter(Boolean) as string[];
+                  return candidates.reduce((latest, t) =>
+                    new Date(t).getTime() > new Date(latest).getTime()
+                      ? t
+                      : latest
+                  );
+                })();
+
+                return (
+                  <ListCard
+                    key={book.id}
+                    type="Book"
+                    title={book.title}
+                    lastActivityAt={lastActivityAt}
+                    notesCount={book.memos?.length ?? 0}
+                    totalDurationSeconds={totalDuration}
+                    onClick={() => setSelectedBookId(book.id)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
