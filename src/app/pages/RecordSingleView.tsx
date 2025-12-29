@@ -243,25 +243,27 @@ export function RecordSingleView() {
 
   const handleDelete = async (recordId: string) => {
     const deletedRecord = records.find((r) => r.id === recordId);
-    try {
-      await deleteRecord(recordId);
-      toast.success("記録を削除しました", {
-        action: deletedRecord
-          ? {
-              label: "Undo",
-              onClick: () => {
-                void restoreRecord(deletedRecord).catch((err) => {
-                  console.error(err);
-                  toast.error("記録の復元に失敗しました");
-                });
-              },
-            }
-          : undefined,
-      });
-    } catch (err) {
+
+    // Firestore write acknowledgements can be delayed on poor networks.
+    // Show the Undo toast immediately, and only show an error if the delete fails.
+    toast.success("記録を削除しました", {
+      action: deletedRecord
+        ? {
+            label: "Undo",
+            onClick: () => {
+              void restoreRecord(deletedRecord).catch((err) => {
+                console.error(err);
+                toast.error("記録の復元に失敗しました");
+              });
+            },
+          }
+        : undefined,
+    });
+
+    void deleteRecord(recordId).catch((err) => {
       console.error(err);
       toast.error("記録の削除に失敗しました");
-    }
+    });
   };
 
   const handleSearchQueryChange = (value: string) => {

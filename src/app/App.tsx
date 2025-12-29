@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AuthGate } from "./auth/AuthGate";
 import { AuthProvider } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
@@ -9,7 +9,28 @@ import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/Toast";
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<Page>("home");
+  const storageKey = "reading-activity-tracker.currentPage";
+
+  const initialPage = useMemo<Page>(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      return raw === "home" || raw === "books" || raw === "records"
+        ? (raw as Page)
+        : "home";
+    } catch {
+      return "home";
+    }
+  }, []);
+
+  const [currentPage, setCurrentPage] = useState<Page>(initialPage);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, currentPage);
+    } catch {
+      // ignore (storage may be unavailable)
+    }
+  }, [currentPage]);
 
   return (
     <div className="size-full flex flex-col">

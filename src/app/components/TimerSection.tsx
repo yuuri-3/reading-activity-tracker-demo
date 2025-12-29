@@ -58,36 +58,36 @@ export function TimerSection({
     const bookMemoSnapshot = bookMemo;
     const tagsSnapshot = tags;
 
-    try {
-      const now = new Date();
-      const startTime = new Date(now.getTime() - duration * 1000).toISOString();
+    const now = new Date();
+    const startTime = new Date(now.getTime() - duration * 1000).toISOString();
 
-      // Unlock UI immediately after stopping, so the user can start the next
-      // measurement even if the network save is slow.
-      resetTimer();
-      onClearInputs?.();
-      setIsStopping(false);
+    // Unlock UI immediately after stopping, so the user can start the next
+    // measurement even if the network save is slow.
+    resetTimer();
+    onClearInputs?.();
+    setIsStopping(false);
 
-      await addRecord({
-        duration,
-        memo: memoSnapshot,
-        startTime,
-        endTime: now.toISOString(),
-        ...(selectedBookIdSnapshot ? { bookId: selectedBookIdSnapshot } : {}),
-        ...(tagsSnapshot.length ? { tags: tagsSnapshot } : {}),
-      });
+    // Firestore write acknowledgements can be delayed on poor networks.
+    // Show success immediately, and only show an error if the write fails.
+    toast.success("計測結果を保存しました");
 
-      if (bookMemoSnapshot.trim() && selectedBookIdSnapshot) {
-        addBookMemo(selectedBookIdSnapshot, bookMemoSnapshot.trim());
-      }
-      toast.success("計測結果を保存しました");
-    } catch (err) {
+    void addRecord({
+      duration,
+      memo: memoSnapshot,
+      startTime,
+      endTime: now.toISOString(),
+      ...(selectedBookIdSnapshot ? { bookId: selectedBookIdSnapshot } : {}),
+      ...(tagsSnapshot.length ? { tags: tagsSnapshot } : {}),
+    }).catch((err) => {
       console.error(err);
       toast.error("計測結果の保存に失敗しました");
-    } finally {
-      setIsStopping(false);
-      stopInFlightRef.current = false;
+    });
+
+    if (bookMemoSnapshot.trim() && selectedBookIdSnapshot) {
+      addBookMemo(selectedBookIdSnapshot, bookMemoSnapshot.trim());
     }
+
+    stopInFlightRef.current = false;
   };
 
   const handleStart = () => {
