@@ -3,7 +3,7 @@ import { Check, X } from "lucide-react";
 
 import { cn } from "./ui/utils";
 import { Badge } from "./ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Popover, PopoverAnchor, PopoverContent } from "./ui/popover";
 import { NeumorphicInput } from "./NeumorphicInput";
 
 function normalizeTag(raw: string) {
@@ -39,7 +39,7 @@ export function TagMultiSelectInput({
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const ignoreNextEnterRef = useRef(false);
-  const triggerPointerDownRef = useRef(false);
+  const anchorRef = useRef<HTMLDivElement | null>(null);
 
   const latestValueRef = useRef<string[]>(value);
   useEffect(() => {
@@ -105,79 +105,72 @@ export function TagMultiSelectInput({
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <Popover
-        open={open}
-        onOpenChange={(nextOpen) => {
-          // PopoverTriggerはクリックで開閉トグルする。
-          // タグ入力中に入力欄をクリックしただけで閉じるのはUXが悪いので抑止する。
-          if (!nextOpen && triggerPointerDownRef.current) {
-            triggerPointerDownRef.current = false;
-            return;
-          }
-          triggerPointerDownRef.current = false;
-          setOpen(nextOpen);
-        }}
-      >
-        <PopoverTrigger asChild>
-          <NeumorphicInput
-            id={id}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder={placeholder}
-            disabled={disabled}
-            autoComplete="off"
-            onPointerDownCapture={() => {
-              triggerPointerDownRef.current = true;
-            }}
-            onFocus={() => setOpen(true)}
-            onCompositionStart={() => {
-              setIsComposing(true);
-            }}
-            onCompositionEnd={() => {
-              setIsComposing(false);
-              // IME確定のEnterと「追加」のEnterを分離するため、確定直後のEnterは無視
-              ignoreNextEnterRef.current = true;
-              window.setTimeout(() => {
-                ignoreNextEnterRef.current = false;
-              }, 0);
-              setOpen(true);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setOpen(false);
-                return;
-              }
-
-              if (e.key === "Enter") {
-                const native = e.nativeEvent as unknown as {
-                  isComposing?: boolean;
-                };
-
-                // IME変換確定のEnterでは追加しない
-                if (
-                  ignoreNextEnterRef.current ||
-                  isComposing ||
-                  native.isComposing
-                ) {
-                  setOpen(true);
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverAnchor asChild>
+          <div ref={anchorRef} className="w-full">
+            <NeumorphicInput
+              id={id}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder={placeholder}
+              disabled={disabled}
+              autoComplete="off"
+              onFocus={() => setOpen(true)}
+              onCompositionStart={() => {
+                setIsComposing(true);
+              }}
+              onCompositionEnd={() => {
+                setIsComposing(false);
+                // IME確定のEnterと「追加」のEnterを分離するため、確定直後のEnterは無視
+                ignoreNextEnterRef.current = true;
+                window.setTimeout(() => {
+                  ignoreNextEnterRef.current = false;
+                }, 0);
+                setOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setOpen(false);
                   return;
                 }
 
-                e.preventDefault();
-                const text = normalizeTag(inputValue);
-                if (!text) return;
-                addTag(text);
-                setInputValue("");
-                setOpen(true);
-              }
-            }}
-          />
-        </PopoverTrigger>
+                if (e.key === "Enter") {
+                  const native = e.nativeEvent as unknown as {
+                    isComposing?: boolean;
+                  };
+
+                  // IME変換確定のEnterでは追加しない
+                  if (
+                    ignoreNextEnterRef.current ||
+                    isComposing ||
+                    native.isComposing
+                  ) {
+                    setOpen(true);
+                    return;
+                  }
+
+                  e.preventDefault();
+                  const text = normalizeTag(inputValue);
+                  if (!text) return;
+                  addTag(text);
+                  setInputValue("");
+                  setOpen(true);
+                }
+              }}
+            />
+          </div>
+        </PopoverAnchor>
 
         <PopoverContent
           align="start"
           className="w-[--radix-popover-trigger-width] p-1"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={(e) => {
+            const target = e.target as Node | null;
+            if (target && anchorRef.current?.contains(target)) {
+              e.preventDefault();
+            }
+          }}
         >
           <div className="max-h-60 overflow-y-auto">
             {canCreate && (

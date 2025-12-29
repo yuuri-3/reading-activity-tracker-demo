@@ -120,7 +120,7 @@ export function TimerPage() {
                   value={values.tags}
                   onChange={(tags) => setValues((prev) => ({ ...prev, tags }))}
                   options={tagOptions}
-                  placeholder="タグを入力してEnterで追加（日本語確定後はもう一度Enter）"
+                  placeholder="タグを選択もしくは追加してください"
                 />
               }
             />
