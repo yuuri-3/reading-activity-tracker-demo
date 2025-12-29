@@ -32,7 +32,7 @@ function isMissingInitialStateError(err: unknown): boolean {
   return err instanceof Error && /missing initial state/i.test(err.message);
 }
 
-const REDIRECT_FLAG_KEY = "reading_activity_tracker_redirect_in_progress";
+const REDIRECT_FLAG_KEY = "yomzoy_redirect_in_progress";
 
 function setRedirectFlag(value: boolean) {
   try {

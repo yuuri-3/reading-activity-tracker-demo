@@ -1,4 +1,4 @@
-# Reading Activity Tracker Demo — 作業ログ（会話ベース）
+# Yomzoy — 作業ログ（会話ベース）
 
 作成日: 2025-12-21
 

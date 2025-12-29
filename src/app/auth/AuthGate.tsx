@@ -1,7 +1,7 @@
 import { Button } from "../components/ui/button";
 import { useAuth } from "./AuthContext";
 
-const REDIRECT_FLAG_KEY = "reading_activity_tracker_redirect_in_progress";
+const REDIRECT_FLAG_KEY = "yomzoy_redirect_in_progress";
 
 function isRedirectInProgress(): boolean {
   try {
