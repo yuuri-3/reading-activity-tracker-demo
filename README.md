@@ -23,7 +23,7 @@ Run `npm run build-storybook` to build a static Storybook.
 
 ## Firebase Hosting（本番ホスティング）
 
-GitHub Pages から Firebase Hosting に移行して、リポジトリを Private 化してもデプロイできる構成です。
+本番ホスティングは Firebase Hosting を使います。
 
 ### 1) Firebase プロジェクトを用意
 
@@ -47,11 +47,7 @@ GitHub Pages から Firebase Hosting に移行して、リポジトリを Privat
 
 必要な GitHub 設定:
 
-- Actions Variables: `VITE_FIREBASE_*`（既存の Pages 用と同じで OK）
+- Actions Variables: `VITE_FIREBASE_*`
 - Actions Secrets: `FIREBASE_SERVICE_ACCOUNT`
 
 `FIREBASE_SERVICE_ACCOUNT` は Firebase プロジェクトのサービスアカウント JSON をそのまま貼り付けます。
-
-### 4) GitHub Pages を止める
-
-GitHub Pages は使用しません。
