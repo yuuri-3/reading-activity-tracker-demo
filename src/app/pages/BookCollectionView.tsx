@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { BookOpen, Plus } from "lucide-react";
 
@@ -18,9 +18,21 @@ import { BookSingleView } from "./BookSingleView";
 export function BookCollectionView() {
   const { books, getTotalDurationByBook, getRecordsByBook, addBook } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [isRegistBookDialogOpen, setIsRegistBookDialogOpen] = useState(false);
   const [bookTitle, setBookTitle] = useState("");
+
+  const selectedBook = useMemo(() => {
+    if (!selectedBookId) return null;
+    return books.find((b) => b.id === selectedBookId) ?? null;
+  }, [books, selectedBookId]);
+
+  useEffect(() => {
+    // If the selected book was deleted or is no longer available, go back.
+    if (selectedBookId && !selectedBook) {
+      setSelectedBookId(null);
+    }
+  }, [selectedBookId, selectedBook]);
 
   const handleSubmitBook = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +58,7 @@ export function BookCollectionView() {
     return (
       <BookSingleView
         book={selectedBook}
-        onBack={() => setSelectedBook(null)}
+        onBack={() => setSelectedBookId(null)}
       />
     );
   }
@@ -167,7 +179,7 @@ export function BookCollectionView() {
                   lastActivityAt={lastActivityAt}
                   notesCount={book.memos?.length ?? 0}
                   totalDurationSeconds={totalDuration}
-                  onClick={() => setSelectedBook(book)}
+                  onClick={() => setSelectedBookId(book.id)}
                 />
               );
             })}
