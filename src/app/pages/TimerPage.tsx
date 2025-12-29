@@ -8,7 +8,10 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectNoneItem,
   SelectValue,
+  fromSelectValue,
+  toSelectValue,
 } from "../components/ui/select";
 import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { useApp } from "../context/AppContext";
@@ -76,15 +79,19 @@ export function TimerPage() {
               labelProps={{ text: "書籍" }}
               instance={
                 <Select
-                  value={values.selectedBookId}
-                  onValueChange={(selectedBookId) =>
-                    setValues((prev) => ({ ...prev, selectedBookId }))
+                  value={toSelectValue(values.selectedBookId)}
+                  onValueChange={(next) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      selectedBookId: fromSelectValue(next),
+                    }))
                   }
                 >
                   <NeumorphicSelectTrigger id="book">
                     <SelectValue placeholder="選択なし" />
                   </NeumorphicSelectTrigger>
                   <SelectContent>
+                    <SelectNoneItem />
                     {books.map((book) => (
                       <SelectItem key={book.id} value={book.id}>
                         {book.title}

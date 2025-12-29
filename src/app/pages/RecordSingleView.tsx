@@ -17,7 +17,10 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectNoneItem,
   SelectValue,
+  fromSelectValue,
+  toSelectValue,
 } from "../components/ui/select";
 import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { NeumorphicSelectTrigger } from "../components/NeumorphicSelectTrigger";
@@ -745,11 +748,17 @@ export function RecordSingleView() {
             className="w-full"
             labelProps={{ text: "書籍", showOptionalLabel: true }}
             instance={
-              <Select value={selectedBookId} onValueChange={setSelectedBookId}>
+              <Select
+                value={toSelectValue(selectedBookId)}
+                onValueChange={(next) =>
+                  setSelectedBookId(fromSelectValue(next))
+                }
+              >
                 <NeumorphicSelectTrigger id="book">
                   <SelectValue placeholder="選択なし" />
                 </NeumorphicSelectTrigger>
                 <SelectContent>
+                  <SelectNoneItem />
                   {books.map((book) => (
                     <SelectItem key={book.id} value={book.id}>
                       {book.title}
