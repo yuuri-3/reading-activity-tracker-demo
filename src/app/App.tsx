@@ -9,28 +9,38 @@ import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/Toast";
 
 function AppContent() {
-  const storageKey = "reading-activity-tracker.currentPage";
-
   const initialPage = useMemo<Page>(() => {
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      return raw === "home" || raw === "books" || raw === "records"
-        ? (raw as Page)
-        : "home";
-    } catch {
-      return "home";
-    }
+    const raw = (typeof window !== "undefined" ? window.location.hash : "")
+      .replace(/^#/, "")
+      .trim();
+    return raw === "home" || raw === "books" || raw === "records"
+      ? (raw as Page)
+      : "home";
   }, []);
 
   const [currentPage, setCurrentPage] = useState<Page>(initialPage);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(storageKey, currentPage);
-    } catch {
-      // ignore (storage may be unavailable)
+    if (typeof window === "undefined") return;
+    const nextHash = `#${currentPage}`;
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash;
     }
   }, [currentPage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onHashChange = () => {
+      const raw = window.location.hash.replace(/^#/, "").trim();
+      if (raw === "home" || raw === "books" || raw === "records") {
+        setCurrentPage(raw as Page);
+      }
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+    };
+  }, []);
 
   return (
     <div className="size-full flex flex-col">

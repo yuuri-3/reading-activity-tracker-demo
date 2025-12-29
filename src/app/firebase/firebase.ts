@@ -2,13 +2,7 @@
 
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, type Auth } from "firebase/auth";
-import {
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-  type Firestore,
-} from "firebase/firestore";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 type FirebaseConfig = {
   apiKey: string;
@@ -66,19 +60,10 @@ export function getFirebaseAuth(): Auth {
 
 export function getFirestoreDb(): Firestore {
   if (!cachedDb) {
-    const app = getFirebaseApp();
-
-    // Enable persistent cache so that slow/offline writes (e.g. mobile networks)
-    // survive page reloads. Fallback to in-memory cache when unavailable.
-    try {
-      cachedDb = initializeFirestore(app, {
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager(),
-        }),
-      });
-    } catch {
-      cachedDb = getFirestore(app);
-    }
+    // DB一本化（IndexedDB 永続キャッシュは使わない）
+    // 以前のローカルキャッシュに残ったデータがFirestore上に無いのに
+    // 表示されるケースを避ける。
+    cachedDb = getFirestore(getFirebaseApp());
   }
   return cachedDb;
 }
