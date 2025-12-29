@@ -2,7 +2,13 @@
 
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from "firebase/firestore";
 
 type FirebaseConfig = {
   apiKey: string;
@@ -60,7 +66,19 @@ export function getFirebaseAuth(): Auth {
 
 export function getFirestoreDb(): Firestore {
   if (!cachedDb) {
-    cachedDb = getFirestore(getFirebaseApp());
+    const app = getFirebaseApp();
+
+    // Enable persistent cache so that slow/offline writes (e.g. mobile networks)
+    // survive page reloads. Fallback to in-memory cache when unavailable.
+    try {
+      cachedDb = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      });
+    } catch {
+      cachedDb = getFirestore(app);
+    }
   }
   return cachedDb;
 }
