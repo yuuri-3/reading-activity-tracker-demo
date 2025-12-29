@@ -57,7 +57,7 @@ export function TimerPage() {
           <div className="flex w-full flex-col gap-6">
             <FieldItem
               className="w-full"
-              labelProps={{ text: "メモ" }}
+              labelProps={{ text: "記録メモ" }}
               instance={
                 <NeumorphicTextarea
                   id="memo"
