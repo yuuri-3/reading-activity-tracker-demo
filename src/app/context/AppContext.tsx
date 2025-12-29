@@ -2,7 +2,9 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -53,6 +55,88 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
+type PersistedTimerStateV1 = {
+  v: 1;
+  isRunning: boolean;
+  startTime: number | null;
+  pausedTime: number;
+};
+
+const TIMER_STORAGE_VERSION = 1 as const;
+
+function getTimerStorageKey(uid: string | undefined) {
+  return `yomzoy:timerState:v${TIMER_STORAGE_VERSION}:${uid ?? "anon"}`;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function loadPersistedTimerState(storageKey: string): TimerState | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedTimerStateV1>;
+    if (parsed.v !== TIMER_STORAGE_VERSION) return null;
+    if (typeof parsed.isRunning !== "boolean") return null;
+
+    const startTime = parsed.startTime ?? null;
+    const pausedTime = isFiniteNumber(parsed.pausedTime)
+      ? Math.max(0, parsed.pausedTime)
+      : 0;
+
+    const hasValidStartTime = isFiniteNumber(startTime) && startTime > 0;
+
+    if (parsed.isRunning && hasValidStartTime) {
+      const elapsedTime = pausedTime + (Date.now() - startTime) / 1000;
+      return {
+        isRunning: true,
+        startTime,
+        pausedTime,
+        elapsedTime: Math.max(0, elapsedTime),
+      };
+    }
+
+    // Paused/idle state.
+    return {
+      isRunning: false,
+      startTime: null,
+      pausedTime,
+      elapsedTime: pausedTime,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedTimerState(storageKey: string, timerState: TimerState) {
+  if (typeof window === "undefined") return;
+
+  const isDefault =
+    !timerState.isRunning &&
+    timerState.startTime === null &&
+    timerState.pausedTime === 0;
+
+  try {
+    if (isDefault) {
+      window.localStorage.removeItem(storageKey);
+      return;
+    }
+
+    const payload: PersistedTimerStateV1 = {
+      v: TIMER_STORAGE_VERSION,
+      isRunning: timerState.isRunning,
+      startTime: timerState.isRunning ? timerState.startTime : null,
+      pausedTime: Math.max(0, timerState.pausedTime),
+    };
+    window.localStorage.setItem(storageKey, JSON.stringify(payload));
+  } catch {
+    // ignore (e.g. storage full / disabled)
+  }
+}
+
 function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return Object.fromEntries(
     Object.entries(obj).filter(([, value]) => value !== undefined)
@@ -93,6 +177,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     elapsedTime: 0,
     pausedTime: 0,
   });
+
+  const timerStorageKey = useMemo(
+    () => getTimerStorageKey(user?.uid),
+    [user?.uid]
+  );
+  const timerHydratingKeyRef = useRef<string | null>(null);
 
   const uid = user?.uid;
 
@@ -157,6 +247,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubRecords();
     };
   }, [db, uid]);
+
+  // Restore timer state from localStorage so reload doesn't reset measurement.
+  // Use layout effect to avoid a "reset to 0" paint before hydration.
+  useLayoutEffect(() => {
+    timerHydratingKeyRef.current = timerStorageKey;
+    const restored = loadPersistedTimerState(timerStorageKey);
+    if (restored) {
+      setTimerState(restored);
+    } else {
+      setTimerState({
+        isRunning: false,
+        startTime: null,
+        elapsedTime: 0,
+        pausedTime: 0,
+      });
+    }
+  }, [timerStorageKey]);
+
+  // Persist minimal timer fields (start/pause/reset only; not every tick).
+  useEffect(() => {
+    // If key changes, this effect might run for an intermediate render; ignore.
+    if (timerHydratingKeyRef.current !== timerStorageKey) return;
+    savePersistedTimerState(timerStorageKey, timerState);
+  }, [
+    timerStorageKey,
+    timerState.isRunning,
+    timerState.startTime,
+    timerState.pausedTime,
+  ]);
 
   // Timer interval
   useEffect(() => {
@@ -285,6 +404,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTimerState((prev) => ({
       ...prev,
       isRunning: false,
+      startTime: null,
       pausedTime: prev.elapsedTime,
     }));
   };
