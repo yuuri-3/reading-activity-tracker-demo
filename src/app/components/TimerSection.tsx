@@ -31,6 +31,7 @@ export function TimerSection({
   } = useApp();
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
+  const stopInFlightRef = useRef(false);
   const startTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -43,44 +44,49 @@ export function TimerSection({
   }, []);
 
   const handleStop = async () => {
-    if (isStopping) return;
+    if (stopInFlightRef.current) return;
     const duration = Math.floor(timerState.elapsedTime);
     if (duration <= 0) return;
 
+    stopInFlightRef.current = true;
     setIsStopping(true);
     pauseTimer();
 
-    const watchdogId = window.setTimeout(() => {
-      setIsStopping(false);
-      toast.error("計測結果の保存に失敗しました");
-    }, 8000);
+    // Snapshot inputs before any UI updates (e.g. clearing form fields).
+    const memoSnapshot = memo;
+    const selectedBookIdSnapshot = selectedBookId;
+    const bookMemoSnapshot = bookMemo;
+    const tagsSnapshot = tags;
 
     try {
       const now = new Date();
       const startTime = new Date(now.getTime() - duration * 1000).toISOString();
 
-      await addRecord({
-        duration,
-        memo,
-        startTime,
-        endTime: now.toISOString(),
-        ...(selectedBookId ? { bookId: selectedBookId } : {}),
-        ...(tags.length ? { tags } : {}),
-      });
-
-      if (bookMemo.trim() && selectedBookId) {
-        addBookMemo(selectedBookId, bookMemo.trim());
-      }
-
+      // Unlock UI immediately after stopping, so the user can start the next
+      // measurement even if the network save is slow.
       resetTimer();
       onClearInputs?.();
+      setIsStopping(false);
+
+      await addRecord({
+        duration,
+        memo: memoSnapshot,
+        startTime,
+        endTime: now.toISOString(),
+        ...(selectedBookIdSnapshot ? { bookId: selectedBookIdSnapshot } : {}),
+        ...(tagsSnapshot.length ? { tags: tagsSnapshot } : {}),
+      });
+
+      if (bookMemoSnapshot.trim() && selectedBookIdSnapshot) {
+        addBookMemo(selectedBookIdSnapshot, bookMemoSnapshot.trim());
+      }
       toast.success("計測結果を保存しました");
     } catch (err) {
       console.error(err);
       toast.error("計測結果の保存に失敗しました");
     } finally {
-      window.clearTimeout(watchdogId);
       setIsStopping(false);
+      stopInFlightRef.current = false;
     }
   };
 
