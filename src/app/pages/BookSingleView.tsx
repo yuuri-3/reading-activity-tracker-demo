@@ -11,6 +11,7 @@ import { Dialog } from "../components/Dialog";
 import { FieldItem } from "../components/FieldItem";
 import { NeumorphicTextarea } from "../components/NeumorphicTextarea";
 import { formatDateTime, formatDurationHm } from "../utils/format";
+import { toast } from "sonner";
 
 export type BookSingleViewProps = {
   book: Book;
@@ -110,9 +111,28 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   };
 
   const handleDeleteBookMemo = (memoId: string) => {
-    if (!confirm("この書籍メモを削除しますか？")) return;
-    void updateBook(book.id, {
-      memos: (book.memos ?? []).filter((m) => m.id !== memoId),
+    const prevMemos = book.memos ?? [];
+    const deletedMemo = prevMemos.find((m) => m.id === memoId);
+    if (!deletedMemo) return;
+
+    const nextMemos = prevMemos.filter((m) => m.id !== memoId);
+
+    // Show Undo toast immediately (Firestore ack can be slow on mobile networks).
+    toast.success("書籍メモを削除しました", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          void updateBook(book.id, { memos: prevMemos }).catch((err) => {
+            console.error(err);
+            toast.error("書籍メモの復元に失敗しました");
+          });
+        },
+      },
+    });
+
+    void updateBook(book.id, { memos: nextMemos }).catch((err) => {
+      console.error(err);
+      toast.error("書籍メモの削除に失敗しました");
     });
   };
 
