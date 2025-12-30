@@ -74,7 +74,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     const recordItems = records.map((r) => ({
       key: `record:${r.id}`,
       kind: "record" as const,
-      time: r.endTime || r.createdAt,
+      time: r.startTime || r.createdAt,
       record: r,
     }));
     const memoItems = memos.map((m) => ({
@@ -249,7 +249,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                       key={item.key}
                       type="Record"
                       durationSeconds={r.duration}
-                      dateTime={r.endTime}
+                      dateTime={r.startTime}
                       recordNote={r.memo}
                       bookName={book.title}
                       tags={r.tags}
