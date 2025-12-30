@@ -163,8 +163,11 @@ export function TagMultiSelectInput({
 
         <PopoverContent
           align="start"
-          className="w-[--radix-popover-trigger-width] p-1"
+          className="w-[--radix-popover-trigger-width] max-h-[min(var(--radix-popover-content-available-height),15rem)] overflow-y-auto overscroll-contain touch-pan-y p-1"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onWheelCapture={(e) => {
+            e.stopPropagation();
+          }}
           onInteractOutside={(e) => {
             const target = e.target as Node | null;
             if (target && anchorRef.current?.contains(target)) {
@@ -172,7 +175,7 @@ export function TagMultiSelectInput({
             }
           }}
         >
-          <div className="max-h-60 overflow-y-auto">
+          <div>
             {canCreate && (
               <button
                 type="button"

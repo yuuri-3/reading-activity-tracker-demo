@@ -736,7 +736,7 @@ export function RecordSingleView() {
 
           <FieldItem
             className="w-full"
-            labelProps={{ text: "メモ", showOptionalLabel: true }}
+            labelProps={{ text: "記録メモ", showOptionalLabel: true }}
             instance={
               <NeumorphicTextarea
                 id="memo"
@@ -800,7 +800,7 @@ export function RecordSingleView() {
                 value={tags}
                 onChange={setTags}
                 options={tagOptions}
-                placeholder="タグを入力してEnterで追加（日本語確定後はもう一度Enter）"
+                placeholder="タグを選択または追加してください"
                 disabled={isSaving}
               />
             }
