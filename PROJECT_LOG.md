@@ -176,7 +176,7 @@ PC では OK でも、スマホ確認で別の問題が出た。
 （詰まり: `missing initial state`）
 
 - **気づいたきっかけ/操作**: スマホで Google ログインを進め、Google 側で ID/PW 入力後に戻ろうとした。
-- **挙動**: `firebaseapp.com` の画面で「Unable to process request due to missing initial state...」が表示される。
+- **挙動**: （旧: `firebaseapp.com` / `web.app`）の画面で「Unable to process request due to missing initial state...」が表示される。
 - **原因候補**: iOS / アプリ内ブラウザ等で redirect/popup の状態引き継ぎ（storage）が不安定。
 - **解決（方針）**: popup/redirect の戦略を調整し、永続化の明示やループ防止フラグ等を入れて安定化。
 
