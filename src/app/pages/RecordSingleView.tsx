@@ -617,7 +617,7 @@ export function RecordSingleView() {
                                   key={item.key}
                                   type="Record"
                                   durationSeconds={record.duration}
-                                  dateTime={record.endTime}
+                                  dateTime={record.startTime}
                                   recordNote={recordNoteNode}
                                   bookName={book?.title}
                                   tagsNode={tagsNode}
@@ -660,7 +660,7 @@ export function RecordSingleView() {
                                   key={record.id}
                                   type="Record"
                                   durationSeconds={record.duration}
-                                  dateTime={record.endTime}
+                                  dateTime={record.startTime}
                                   recordNote={record.memo}
                                   bookName={book?.title}
                                   tags={record.tags}
