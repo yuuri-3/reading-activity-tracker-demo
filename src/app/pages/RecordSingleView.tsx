@@ -301,7 +301,7 @@ export function RecordSingleView() {
         return {
           kind: "record" as const,
           key: `record:${record.id}`,
-          timestamp: record.endTime,
+          timestamp: record.startTime,
           record,
           matchedMemo,
           matchedTags,
@@ -351,11 +351,15 @@ export function RecordSingleView() {
     >();
 
     for (const h of records) {
-      const end = new Date(h.endTime);
-      if (Number.isNaN(end.getTime())) continue;
+      const start = new Date(h.startTime);
+      if (Number.isNaN(start.getTime())) continue;
 
-      const key = toDayKey(end);
-      const date = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      const key = toDayKey(start);
+      const date = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate()
+      );
       const dateLabel = new Intl.DateTimeFormat("ja-JP", {
         year: "numeric",
         month: "2-digit",
@@ -386,7 +390,8 @@ export function RecordSingleView() {
           .filter(Boolean)
           .sort(
             (a, b) =>
-              new Date(b!.endTime).getTime() - new Date(a!.endTime).getTime()
+              new Date(b!.startTime).getTime() -
+              new Date(a!.startTime).getTime()
           ) as ReadingRecord[];
         return { ...g, items };
       });
@@ -398,9 +403,9 @@ export function RecordSingleView() {
     const m = now.getMonth();
 
     return records.reduce((sum, r) => {
-      const end = new Date(r.endTime);
-      if (Number.isNaN(end.getTime())) return sum;
-      if (end.getFullYear() !== y || end.getMonth() !== m) return sum;
+      const start = new Date(r.startTime);
+      if (Number.isNaN(start.getTime())) return sum;
+      if (start.getFullYear() !== y || start.getMonth() !== m) return sum;
       return sum + r.duration;
     }, 0);
   }, [records]);
