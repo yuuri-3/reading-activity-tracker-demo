@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Clock, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,6 +26,7 @@ import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { NeumorphicSelectTrigger } from "../components/NeumorphicSelectTrigger";
 import type { Book, BookMemo, ReadingRecord } from "../types";
 import { Tag } from "../components/Tag";
+import { useElementScrollRestoration } from "../utils/useElementScrollRestoration";
 
 type RecordsSegment = "all" | "reading" | "book";
 
@@ -121,6 +122,9 @@ export function RecordSingleView() {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  useElementScrollRestoration(scrollContainerRef, "records");
 
   const tagOptions = useMemo(() => {
     const unique = new Map<string, string>();
@@ -504,7 +508,10 @@ export function RecordSingleView() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 min-h-0 overflow-y-auto"
+        >
           <div className="max-w-2xl mx-auto px-6 pt-2 pb-28">
             {!isSearchActive ? (
               <div className="pb-6">
