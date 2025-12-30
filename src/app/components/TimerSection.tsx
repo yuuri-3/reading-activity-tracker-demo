@@ -117,7 +117,7 @@ export function TimerSection({
         {(() => {
           const { hhmm, ss } = formatDurationHmsParts(timerState.elapsedTime);
           return (
-            <div className="flex items-baseline gap-2 pl-8 tabular-nums font-['Sometype_Mono'] font-medium leading-none text-foreground">
+            <div className="flex items-baseline gap-2 pl-[42px] tabular-nums font-['Sometype_Mono'] font-medium leading-none text-[#5e84a6]">
               <span className="text-[72px]">{hhmm}</span>
               <span className="text-[32px]">{ss}</span>
             </div>
