@@ -11,6 +11,7 @@ import React, {
 import {
   addDoc,
   collection,
+  deleteField,
   deleteDoc,
   doc,
   onSnapshot,
@@ -354,15 +355,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateRecord = async (id: string, updates: Partial<ReadingRecord>) => {
     if (!db || !uid) return;
     const { id: _id, ...rest } = updates;
-    const nextRest: Partial<ReadingRecord> = {
+    const nextRest: Record<string, unknown> = {
       ...rest,
       ...(typeof rest.duration === "number"
         ? { duration: Math.max(0, Math.floor(rest.duration)) }
         : {}),
+      ...(typeof rest.bookId === "string" && rest.bookId === ""
+        ? { bookId: deleteField() }
+        : {}),
     };
     await updateDoc(
       doc(db, "users", uid, "records", id),
-      stripUndefined(nextRest as unknown as Record<string, unknown>)
+      stripUndefined(nextRest)
     );
   };
 

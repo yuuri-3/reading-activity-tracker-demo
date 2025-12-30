@@ -218,8 +218,10 @@ export function RecordSingleView() {
           memo,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
-          ...(selectedBookId ? { bookId: selectedBookId } : {}),
-          ...(tags.length ? { tags } : {}),
+          // 編集時は、解除(空文字)も反映させるため常に送る
+          bookId: selectedBookId,
+          // 編集時は、タグを全て外した場合(空配列)も反映させるため常に送る
+          tags,
         });
       } else {
         await addRecord({
