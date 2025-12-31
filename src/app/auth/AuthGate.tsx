@@ -1,5 +1,5 @@
-import { Button } from "../components/ui/button";
 import { useAuth } from "./AuthContext";
+import { GoogleSignInButton } from "./components/GoogleSignInButton";
 
 const REDIRECT_FLAG_KEY = "yomzoy_redirect_in_progress";
 
@@ -49,14 +49,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          <Button
+          <GoogleSignInButton
             onClick={() => {
               void signInWithGoogle();
             }}
             disabled={redirecting}
-          >
-            Googleでログイン
-          </Button>
+          />
 
           <p className="text-xs text-muted-foreground">
             ポップアップがブロックされる場合は、ブラウザ設定をご確認ください。
