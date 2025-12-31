@@ -20,10 +20,10 @@ const NeumorphicInput = React.forwardRef<
       data-slot="neumorphic-input"
       className={cn(
         // Matches Figma field styling (e.g. SelectTrigger)
-        "h-11 rounded-[6px] bg-[var(--background-solid)] px-4 py-3 text-sm leading-5",
+        // Keep font-size >= 16px to prevent iOS auto-zoom on focus.
+        "h-11 rounded-[6px] bg-[var(--background-solid)] px-4 py-3 text-base leading-5",
         // iPhone Chrome/Safari can ignore styling on date/time inputs unless appearance is reset.
-        // Also keep font-size >= 16px to prevent iOS auto-zoom on focus.
-        isDateTimeLike && "appearance-none text-base",
+        isDateTimeLike && "appearance-none",
         className
       )}
       {...props}

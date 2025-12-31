@@ -17,7 +17,7 @@ export function NeumorphicSelectTrigger({
       size={size}
       className={cn(
         // Matches Figma node 8:1020 (Select)
-        "rounded-[6px] bg-[var(--background-solid)] px-4 py-3 text-sm font-normal leading-5 *:data-[slot=select-value]:font-normal",
+        "rounded-[6px] bg-[var(--background-solid)] px-4 py-3 text-base font-normal leading-5 *:data-[slot=select-value]:font-normal",
         "gap-4",
         "data-[size=default]:h-11",
         className

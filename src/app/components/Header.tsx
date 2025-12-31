@@ -182,7 +182,7 @@ function HeaderDefault({
                     onChange={(e) => setBookTitle(e.target.value)}
                     placeholder="書籍名を入力"
                     required
-                    className="h-auto min-h-[44px] rounded-[6px] px-4 py-3 text-sm leading-5"
+                    className="h-auto min-h-[44px] rounded-[6px] px-4 py-3 text-base leading-5"
                   />
                 }
               />

@@ -766,7 +766,7 @@ export function RecordSingleView() {
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
                 rows={1}
-                className="h-11 text-sm leading-5"
+                className="h-11 text-base leading-5"
                 disabled={isSaving}
               />
             }
@@ -807,7 +807,7 @@ export function RecordSingleView() {
                 value={bookMemo}
                 onChange={(e) => setBookMemo(e.target.value)}
                 rows={1}
-                className="h-11 text-sm leading-5"
+                className="h-11 text-base leading-5"
                 disabled={isSaving}
               />
             }
