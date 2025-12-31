@@ -4,8 +4,20 @@ import { IconLamp } from "../components/icons/IconLamp";
 import { IconLogout } from "../components/icons/IconLogout";
 import { IconSparkle } from "../components/icons/IconSparkle";
 import { LogoYomzoy } from "../components/icons/LogoYomzoy";
+import { useAuth } from "../auth/AuthContext";
 
 export function SanctumPage() {
+  const { user, signOut } = useAuth();
+
+  const email = user?.email ?? "";
+  const displayName = user?.displayName ?? "";
+  const photoURL = user?.photoURL ?? "";
+
+  const fallbackInitial = (() => {
+    const src = (displayName || email).trim();
+    return src ? src[0].toUpperCase() : "?";
+  })();
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0">
@@ -34,11 +46,20 @@ export function SanctumPage() {
               <div className="rounded-[12px] p-4 bg-[var(--background-solid)] [box-shadow:var(--shadow-neumorphism-sm)]">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-base">
-                      S
+                    <div className="size-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-base overflow-hidden">
+                      {photoURL ? (
+                        <img
+                          src={photoURL}
+                          alt={displayName || email || "ユーザー"}
+                          className="h-full w-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        fallbackInitial
+                      )}
                     </div>
                     <p className="text-base leading-6 text-foreground">
-                      sample@gmail.com
+                      {email || ""}
                     </p>
                   </div>
 
@@ -47,6 +68,9 @@ export function SanctumPage() {
                   <button
                     type="button"
                     className="mx-auto flex items-center gap-1.5 px-2 py-1 text-sm text-foreground"
+                    onClick={() => {
+                      void signOut();
+                    }}
                   >
                     <IconLogout size={24} />
                     ログアウト
