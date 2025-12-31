@@ -203,4 +203,31 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
+
+  /*
+   * Unify date/time inputs across devices.
+   * Desktop browsers (notably Chromium) render a native calendar/clock icon
+   * for date/time-like inputs, while iOS often doesn't. Hide the indicator so
+   * the design stays consistent (no icon).
+   */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+  }
+
+  input[type="date"]::-webkit-inner-spin-button,
+  input[type="time"]::-webkit-inner-spin-button,
+  input[type="datetime-local"]::-webkit-inner-spin-button {
+    display: none;
+    -webkit-appearance: none;
+  }
 }
