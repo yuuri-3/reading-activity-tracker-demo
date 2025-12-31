@@ -1,9 +1,10 @@
 import { TabBarItem } from "./TabBarItem";
 import { IconBookshelf } from "./icons/IconBookshelf";
+import { IconLamp } from "./icons/IconLamp";
 import { IconRecord } from "./icons/IconRecord";
 import { IconTimer } from "./icons/IconTimer";
 
-export type Page = "home" | "books" | "records";
+export type Page = "home" | "books" | "records" | "sanctum";
 
 export type TabBarProps = {
   currentPage: Page;
@@ -33,6 +34,13 @@ export function TabBar({ currentPage, onChange }: TabBarProps) {
           isActive={currentPage === "records"}
           onClick={() => onChange("records")}
           icon={<IconRecord size={24} color="currentColor" />}
+        />
+
+        <TabBarItem
+          label="書斎"
+          isActive={currentPage === "sanctum"}
+          onClick={() => onChange("sanctum")}
+          icon={<IconLamp size={24} color="currentColor" />}
         />
       </div>
 

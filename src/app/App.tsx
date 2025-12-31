@@ -5,6 +5,7 @@ import { AppProvider } from "./context/AppContext";
 import { TimerPage } from "./pages/TimerPage";
 import { BookCollectionView } from "./pages/BookCollectionView";
 import { RecordSingleView } from "./pages/RecordSingleView";
+import { SanctumPage } from "./pages/SanctumPage";
 import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/Toast";
 
@@ -13,7 +14,10 @@ function AppContent() {
     const raw = (typeof window !== "undefined" ? window.location.hash : "")
       .replace(/^#/, "")
       .trim();
-    return raw === "home" || raw === "books" || raw === "records"
+    return raw === "home" ||
+      raw === "books" ||
+      raw === "records" ||
+      raw === "sanctum"
       ? (raw as Page)
       : "home";
   }, []);
@@ -32,7 +36,12 @@ function AppContent() {
     if (typeof window === "undefined") return;
     const onHashChange = () => {
       const raw = window.location.hash.replace(/^#/, "").trim();
-      if (raw === "home" || raw === "books" || raw === "records") {
+      if (
+        raw === "home" ||
+        raw === "books" ||
+        raw === "records" ||
+        raw === "sanctum"
+      ) {
         setCurrentPage(raw as Page);
       }
     };
@@ -50,6 +59,7 @@ function AppContent() {
           {currentPage === "home" && <TimerPage />}
           {currentPage === "books" && <BookCollectionView />}
           {currentPage === "records" && <RecordSingleView />}
+          {currentPage === "sanctum" && <SanctumPage />}
         </div>
       </main>
 

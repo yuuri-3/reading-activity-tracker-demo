@@ -13,15 +13,19 @@ import {
   type SegmentedControlItem,
 } from "./SegmentedControl";
 
-export type HeaderProps = {
+type HeaderSharedProps = {
   /** Figma: pageTitle */
   pageTitle?: string;
-  /** Figma: action label */
-  buttonLabel?: string;
   /** Figma: nested instance (left icon slot) */
   icon?: React.ReactNode | null;
   /** Figma: nested instance (right action slot) */
   action?: React.ReactNode | null;
+};
+
+type HeaderDefaultProps = HeaderSharedProps & {
+  variant?: "default";
+  /** Figma: action label */
+  buttonLabel?: string;
 
   /** Figma: show/hide SegmentedControl */
   showSegmentedControl?: boolean;
@@ -38,7 +42,36 @@ export type HeaderProps = {
   searchPlaceholder?: string;
 };
 
-export function Header({
+type HeaderSimpleProps = HeaderSharedProps & {
+  variant: "simple";
+};
+
+export type HeaderProps = HeaderDefaultProps | HeaderSimpleProps;
+
+function HeaderSimple({ pageTitle = "本棚", icon, action }: HeaderSimpleProps) {
+  return (
+    <div className="flex flex-col gap-6 px-6 pt-8 pb-4">
+      <div className="flex items-center justify-between h-9">
+        <div className="flex items-center gap-1">
+          <span className="shrink-0 text-muted-foreground">
+            {icon === undefined ? (
+              <IconBookshelf size={28} color="currentColor" />
+            ) : (
+              icon
+            )}
+          </span>
+          <h1 className="text-2xl leading-[1.3] tracking-[0.08em]">
+            {pageTitle}
+          </h1>
+        </div>
+
+        {action ?? null}
+      </div>
+    </div>
+  );
+}
+
+function HeaderDefault({
   pageTitle = "本棚",
   buttonLabel = "書籍登録",
   icon,
@@ -50,7 +83,7 @@ export function Header({
   searchQuery,
   onSearchQueryChange,
   searchPlaceholder = "書籍を検索",
-}: HeaderProps) {
+}: HeaderDefaultProps) {
   const { addBook } = useApp();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [bookTitle, setBookTitle] = React.useState("");
@@ -112,7 +145,9 @@ export function Header({
           ) : (
             icon
           )}
-          <h1 className="text-2xl tracking-[0.08em]">{pageTitle}</h1>
+          <h1 className="text-2xl leading-[1.3] tracking-[0.08em]">
+            {pageTitle}
+          </h1>
         </div>
 
         {action === undefined ? (
@@ -176,4 +211,12 @@ export function Header({
       </div>
     </div>
   );
+}
+
+export function Header(props: HeaderProps) {
+  if (props.variant === "simple") {
+    return <HeaderSimple {...props} />;
+  }
+
+  return <HeaderDefault {...props} />;
 }
