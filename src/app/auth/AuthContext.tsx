@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import {
   browserLocalPersistence,
+  deleteUser,
   getRedirectResult,
   onAuthStateChanged,
   setPersistence,
@@ -16,7 +17,44 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { getFirebaseAuth, getGoogleProvider } from "../firebase/firebase";
+import {
+  collection,
+  getDocs,
+  writeBatch,
+  doc as firestoreDoc,
+  deleteDoc,
+} from "firebase/firestore";
+import {
+  getFirebaseAuth,
+  getFirestoreDb,
+  getGoogleProvider,
+} from "../firebase/firebase";
+
+async function deleteCollectionDocs(
+  db: ReturnType<typeof getFirestoreDb>,
+  path: string[]
+) {
+  const snap = await getDocs(collection(db, ...path));
+  if (snap.empty) return;
+
+  // Firestore batch limit is 500 operations. Keep margin.
+  let batch = writeBatch(db);
+  let opCount = 0;
+
+  for (const d of snap.docs) {
+    batch.delete(d.ref);
+    opCount += 1;
+    if (opCount >= 450) {
+      await batch.commit();
+      batch = writeBatch(db);
+      opCount = 0;
+    }
+  }
+
+  if (opCount > 0) {
+    await batch.commit();
+  }
+}
 
 function isLikelyMobile(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -70,6 +108,7 @@ type AuthContextValue = {
   error: string | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -208,6 +247,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setError(
             err instanceof Error ? err.message : "ログアウトに失敗しました"
           );
+        }
+      },
+
+      deleteAccount: async () => {
+        setError(null);
+
+        try {
+          const auth = getFirebaseAuth();
+          const currentUser = auth.currentUser;
+          if (!currentUser) {
+            throw new Error("ログイン状態が確認できませんでした");
+          }
+
+          const uid = currentUser.uid;
+          const db = getFirestoreDb();
+
+          // Delete Firestore user data first (so permissions still allow access).
+          await deleteCollectionDocs(db, ["users", uid, "records"]);
+          await deleteCollectionDocs(db, ["users", uid, "books"]);
+
+          // Optional: delete user document (may not exist).
+          try {
+            await deleteDoc(firestoreDoc(db, "users", uid));
+          } catch {
+            // ignore
+          }
+
+          await deleteUser(currentUser);
+        } catch (err) {
+          setError(
+            err instanceof Error ? err.message : "アカウント削除に失敗しました"
+          );
+          throw err;
         }
       },
     };

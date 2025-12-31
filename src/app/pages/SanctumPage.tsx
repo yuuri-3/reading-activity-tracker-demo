@@ -1,13 +1,18 @@
 import { Header } from "../components/Header";
+import { Dialog } from "../components/Dialog";
 import { IconDelete } from "../components/icons/IconDelete";
 import { IconLamp } from "../components/icons/IconLamp";
 import { IconLogout } from "../components/icons/IconLogout";
 import { IconSparkle } from "../components/icons/IconSparkle";
 import { LogoYomzoy } from "../components/icons/LogoYomzoy";
 import { useAuth } from "../auth/AuthContext";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export function SanctumPage() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const email = user?.email ?? "";
   const displayName = user?.displayName ?? "";
@@ -95,13 +100,73 @@ export function SanctumPage() {
               </div>
             </section>
 
-            <button
-              type="button"
-              className="flex items-center gap-1.5 py-3 text-sm text-destructive"
+            <Dialog
+              open={isDeleteDialogOpen}
+              onOpenChange={(open) => {
+                if (isDeleting) return;
+                setIsDeleteDialogOpen(open);
+              }}
+              title="アカウントを削除"
+              description="この操作は取り消せません。書籍・記録などのデータも削除されます。"
+              formPatternType="AddRecord"
+              cancelLabel="キャンセル"
+              confirmLabel={isDeleting ? "削除中…" : "削除する"}
+              disableEscapeClose={isDeleting}
+              disableOutsideClose={isDeleting}
+              onCancel={() => setIsDeleteDialogOpen(false)}
+              onConfirm={() => {
+                if (isDeleting) return;
+
+                void (async () => {
+                  setIsDeleting(true);
+                  try {
+                    await deleteAccount();
+                    toast.success("アカウントを削除しました");
+                    setIsDeleteDialogOpen(false);
+                  } catch (err) {
+                    const code = (err as { code?: unknown })?.code;
+                    if (code === "auth/requires-recent-login") {
+                      toast.error(
+                        "安全のため再ログインが必要です。再ログインしてください。"
+                      );
+                      try {
+                        await signOut();
+                      } catch {
+                        // ignore
+                      }
+                      setIsDeleteDialogOpen(false);
+                    } else {
+                      toast.error("アカウント削除に失敗しました");
+                    }
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                })();
+              }}
+              cancelButtonProps={{ disabled: isDeleting }}
+              confirmButtonProps={{
+                disabled: isDeleting,
+                className: "text-destructive",
+              }}
+              trigger={
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 py-3 text-sm text-destructive"
+                >
+                  <IconDelete size={24} />
+                  アカウントを削除
+                </button>
+              }
             >
-              <IconDelete size={24} />
-              アカウントを削除
-            </button>
+              <div className="flex flex-col gap-2 text-sm leading-6 text-foreground">
+                <p>
+                  削除すると、同じアカウントでログインしてもデータを復元できません。
+                </p>
+                <p className="text-muted-foreground">
+                  ※削除に失敗する場合は、いったんログアウト→再ログイン後にお試しください。
+                </p>
+              </div>
+            </Dialog>
           </div>
         </div>
       </div>
