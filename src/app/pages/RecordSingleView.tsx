@@ -91,6 +91,15 @@ function toLocalDateTimeInputValue(date: Date) {
   )}`;
 }
 
+function getDefaultAddRecordDateTimeValues(openedAt: Date = new Date()) {
+  const end = openedAt;
+  const start = new Date(end.getTime() - 30 * 60 * 1000);
+  return {
+    startAt: toLocalDateTimeInputValue(start),
+    endAt: toLocalDateTimeInputValue(end),
+  };
+}
+
 export function RecordSingleView() {
   const {
     records,
@@ -114,11 +123,11 @@ export function RecordSingleView() {
   const [memo, setMemo] = useState("");
   const [bookMemo, setBookMemo] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [startAt, setStartAt] = useState(() =>
-    toLocalDateTimeInputValue(new Date(Date.now() - 30 * 60 * 1000))
+  const [startAt, setStartAt] = useState(
+    () => getDefaultAddRecordDateTimeValues().startAt
   );
-  const [endAt, setEndAt] = useState(() =>
-    toLocalDateTimeInputValue(new Date())
+  const [endAt, setEndAt] = useState(
+    () => getDefaultAddRecordDateTimeValues().endAt
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -155,15 +164,14 @@ export function RecordSingleView() {
   }, [startAt, endAt]);
 
   const resetAddForm = () => {
+    const defaults = getDefaultAddRecordDateTimeValues();
     setEditingRecordId(null);
     setSelectedBookId("");
     setMemo("");
     setBookMemo("");
     setTags([]);
-    setStartAt(
-      toLocalDateTimeInputValue(new Date(Date.now() - 30 * 60 * 1000))
-    );
-    setEndAt(toLocalDateTimeInputValue(new Date()));
+    setStartAt(defaults.startAt);
+    setEndAt(defaults.endAt);
     setSaveError(null);
     setIsSaving(false);
   };

@@ -88,6 +88,16 @@ export function Dialog({
       <DialogContent
         hideClose
         className={cn("sm:max-w-[360px]", contentClassName)}
+        onOpenAutoFocus={
+          formPatternType === "AddRecord"
+            ? (e) => {
+                // Prevent focusing the first input on open.
+                // On some devices/browsers, focusing a datetime-local input
+                // immediately opens the native date/time picker.
+                e.preventDefault();
+              }
+            : undefined
+        }
         onEscapeKeyDown={
           disableEscapeClose ? (e) => e.preventDefault() : undefined
         }
