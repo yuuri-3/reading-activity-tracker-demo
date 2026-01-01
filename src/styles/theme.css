@@ -150,6 +150,9 @@
     @apply text-foreground;
     background: linear-gradient(to bottom, #e8edf2 0%, #dde3ea 100%);
     min-height: 100vh;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: cover;
   }
 
   /**

@@ -495,37 +495,30 @@ export function RecordSingleView() {
 
   return (
     <>
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="shrink-0">
-          <div className="max-w-2xl mx-auto">
-            <Header
-              pageTitle="記録"
-              icon={
-                <IconRecord
-                  className="shrink-0"
-                  size={28}
-                  color="var(--muted-foreground)"
-                />
-              }
-              action={addRecordButton}
-              searchQuery={searchQuery}
-              onSearchQueryChange={handleSearchQueryChange}
-              searchPlaceholder="キーワードで検索"
-              showSegmentedControl={isSearchActive}
-              segmentedControlItems={segmentedControlItems}
-              segmentedControlValue={selectedSegment}
-              onSegmentedControlValueChange={(value) =>
-                setSelectedSegment(value as RecordsSegment)
-              }
-            />
-          </div>
-        </div>
+      <div className="w-full">
+        <div ref={scrollContainerRef} className="max-w-2xl mx-auto">
+          <Header
+            pageTitle="記録"
+            icon={
+              <IconRecord
+                className="shrink-0"
+                size={28}
+                color="var(--muted-foreground)"
+              />
+            }
+            action={addRecordButton}
+            searchQuery={searchQuery}
+            onSearchQueryChange={handleSearchQueryChange}
+            searchPlaceholder="キーワードで検索"
+            showSegmentedControl={isSearchActive}
+            segmentedControlItems={segmentedControlItems}
+            segmentedControlValue={selectedSegment}
+            onSegmentedControlValueChange={(value) =>
+              setSelectedSegment(value as RecordsSegment)
+            }
+          />
 
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 min-h-0 overflow-y-auto"
-        >
-          <div className="max-w-2xl mx-auto px-6 pt-2 pb-28">
+          <div className="px-6 pt-2 pb-28">
             {!isSearchActive ? (
               <div className="pb-6">
                 <div className="flex items-center gap-2 text-muted-foreground">

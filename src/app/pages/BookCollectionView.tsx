@@ -64,19 +64,15 @@ export function BookCollectionView() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="shrink-0">
-        <div className="max-w-2xl mx-auto">
-          <Header
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            showSegmentedControl={false}
-          />
-        </div>
-      </div>
+    <div className="w-full">
+      <div className="max-w-2xl mx-auto">
+        <Header
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          showSegmentedControl={false}
+        />
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 pt-4 pb-28">
+        <div className="px-6 pt-4 pb-28">
           {books.length === 0 ? (
             <div className="min-h-full flex items-start justify-center">
               <ListEmptyView

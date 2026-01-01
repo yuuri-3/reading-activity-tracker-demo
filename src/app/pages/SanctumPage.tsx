@@ -24,24 +24,20 @@ export function SanctumPage() {
   })();
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="shrink-0">
-        <div className="max-w-2xl mx-auto">
-          <Header
-            variant="simple"
-            pageTitle="書斎"
-            icon={<IconLamp size={28} />}
-            action={
-              <div className="h-9 w-[97px] overflow-hidden">
-                <LogoYomzoy className="h-full w-full" />
-              </div>
-            }
-          />
-        </div>
-      </div>
+    <div className="w-full">
+      <div className="max-w-2xl mx-auto">
+        <Header
+          variant="simple"
+          pageTitle="書斎"
+          icon={<IconLamp size={28} />}
+          action={
+            <div className="h-9 w-[97px] overflow-hidden">
+              <LogoYomzoy className="h-full w-full" />
+            </div>
+          }
+        />
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 pt-5 pb-28">
+        <div className="px-6 pt-5 pb-28">
           <div className="flex flex-col gap-8">
             <section className="flex flex-col gap-4">
               <p className="text-sm leading-5 text-muted-foreground">

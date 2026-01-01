@@ -50,7 +50,7 @@ export type HeaderProps = HeaderDefaultProps | HeaderSimpleProps;
 
 function HeaderSimple({ pageTitle = "本棚", icon, action }: HeaderSimpleProps) {
   return (
-    <div className="flex flex-col gap-6 px-6 pt-8 pb-4">
+    <div className="sticky top-0 z-30 flex flex-col gap-6 px-6 pt-8 pb-4 backdrop-blur-lg bg-[rgba(232,237,242,0.9)] supports-[backdrop-filter]:bg-[rgba(232,237,242,0.75)]">
       <div className="flex items-center justify-between h-9">
         <div className="flex items-center gap-1">
           <span className="shrink-0 text-muted-foreground">
@@ -133,7 +133,7 @@ function HeaderDefault({
   };
 
   return (
-    <div className="flex flex-col gap-6 px-6 pt-8 pb-4 min-h-[152px]">
+    <div className="sticky top-0 z-30 flex flex-col gap-6 px-6 pt-8 pb-4 min-h-[152px] backdrop-blur-lg bg-[rgba(232,237,242,0.9)] supports-[backdrop-filter]:bg-[rgba(232,237,242,0.75)]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           {icon === undefined ? (

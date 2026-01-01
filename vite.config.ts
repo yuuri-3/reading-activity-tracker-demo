@@ -14,6 +14,9 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
     ],
+    preview: {
+      allowedHosts: ["preview.yomzoy.com"],
+    },
     resolve: {
       alias: {
         // Alias @ to the src directory
