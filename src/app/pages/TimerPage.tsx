@@ -15,13 +15,10 @@ import {
 } from "../components/ui/select";
 import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { useApp } from "../context/AppContext";
-import { useVisualViewportHeight } from "../utils/useVisualViewportHeight";
 
 export function TimerPage() {
   const { books, records } = useApp();
-  const viewportHeight = useVisualViewportHeight();
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const prevHeightRef = useRef(viewportHeight);
   const [values, setValues] = useState({
     memo: "",
     selectedBookId: "",
@@ -43,24 +40,21 @@ export function TimerPage() {
   }, [records]);
 
   useEffect(() => {
-    const prev = prevHeightRef.current;
-    // Heuristic: if the visual viewport height increases notably, the keyboard likely closed.
-    if (viewportHeight > prev + 80) {
-      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    }
-    prevHeightRef.current = viewportHeight;
-  }, [viewportHeight]);
-
-  useEffect(() => {
     const scrollEl = scrollRef.current;
     if (!scrollEl) return;
 
     const handleFocusIn = (event: FocusEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target || !scrollEl.contains(target)) return;
-      // Defer to allow the keyboard animation to start, then center the input area.
+      // Defer to allow the keyboard animation to start, then center if clipped.
       requestAnimationFrame(() => {
-        target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        const targetRect = target.getBoundingClientRect();
+        const containerRect = scrollEl.getBoundingClientRect();
+        const isAbove = targetRect.top < containerRect.top + 8;
+        const isBelow = targetRect.bottom > containerRect.bottom - 120;
+        if (isAbove || isBelow) {
+          target.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
       });
     };
 
@@ -72,11 +66,18 @@ export function TimerPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-y-auto" ref={scrollRef}>
+      <div
+        className="flex-1 min-h-0 overflow-y-auto"
+        ref={scrollRef}
+        style={{
+          WebkitOverflowScrolling: "touch",
+          scrollPaddingBottom: "10rem",
+        }}
+      >
         <div
           className="max-w-2xl mx-auto px-6 pt-12 pb-28"
           style={{
-            paddingBottom: "calc(7rem + env(safe-area-inset-bottom, 0px))",
+            paddingBottom: "calc(10rem + env(safe-area-inset-bottom, 0px))",
           }}
         >
           <div className="flex flex-col gap-5">
