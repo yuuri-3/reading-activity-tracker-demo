@@ -8,8 +8,10 @@ import { RecordSingleView } from "./pages/RecordSingleView";
 import { SanctumPage } from "./pages/SanctumPage";
 import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/Toast";
+import { useVisualViewportHeight } from "./utils/useVisualViewportHeight";
 
 function AppContent() {
+  const visualHeight = useVisualViewportHeight();
   const initialPage = useMemo<Page>(() => {
     const raw = (typeof window !== "undefined" ? window.location.hash : "")
       .replace(/^#/, "")
@@ -52,7 +54,10 @@ function AppContent() {
   }, []);
 
   return (
-    <div className="relative h-dvh w-full min-h-0 overflow-hidden flex flex-col">
+    <div
+      className="relative h-dvh w-full min-h-0 overflow-hidden flex flex-col"
+      style={visualHeight ? { height: `${visualHeight}px` } : undefined}
+    >
       {/* Main Content */}
       <main className="flex-1 min-h-0 overflow-hidden">
         <div className="h-full w-full min-h-0">
