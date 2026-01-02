@@ -34,19 +34,50 @@ function DialogContent({
   className,
   children,
   hideClose = false,
+  style,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   hideClose?: boolean;
 }) {
+  const [keyboardOffset, setKeyboardOffset] = React.useState(0);
+
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const handleViewportChange = () => {
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardOffset(offset);
+    };
+
+    handleViewportChange();
+    vv.addEventListener("resize", handleViewportChange);
+    vv.addEventListener("scroll", handleViewportChange);
+
+    return () => {
+      vv.removeEventListener("resize", handleViewportChange);
+      vv.removeEventListener("scroll", handleViewportChange);
+    };
+  }, []);
+
+  const mergedStyle = React.useMemo(
+    () => ({
+      ...(style ?? {}),
+      "--kb-offset": `${keyboardOffset}px`,
+    }),
+    [style, keyboardOffset]
+  );
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-[var(--background-solid)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-48px)] translate-x-[-50%] translate-y-[-50%] gap-7 rounded-[var(--radius)] border-0 p-6 duration-200 sm:max-w-lg [box-shadow:var(--shadow-dialog)]",
+          "bg-[var(--background-solid)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),12px)+24px)] top-auto z-50 grid w-auto max-w-[calc(100%-24px)] translate-x-0 translate-y-[calc(var(--kb-offset,0px)*-1)] gap-7 rounded-[var(--radius)] border-0 p-6 duration-200 max-h-[90dvh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),16px)] sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:w-full sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[var(--radius)] sm:pb-6 [box-shadow:var(--shadow-dialog)]",
           className
         )}
+        style={mergedStyle}
         {...props}
       >
         {children}
