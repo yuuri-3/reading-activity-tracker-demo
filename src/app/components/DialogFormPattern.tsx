@@ -19,7 +19,7 @@ export function DialogFormPattern({
       data-type={type}
       className={cn(
         "flex w-full flex-col items-stretch",
-        type === "AddRecord" ? "gap-4" : "gap-0",
+        type === "AddRecord" ? "gap-4 pb-6" : "gap-0",
         className
       )}
       {...props}

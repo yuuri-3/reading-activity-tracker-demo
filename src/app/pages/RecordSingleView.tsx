@@ -135,9 +135,9 @@ function MobileAddRecordScreen({
       style={{ background: "var(--background)" }}
     >
       <div className="absolute inset-0">
-        <div className="absolute left-0 right-0 top-0 bg-[#e8edf2] px-[24px] py-[40px]" />
+        <div className="absolute left-0 right-0 top-0 z-0 bg-[#e8edf2] px-[24px] py-[40px]" />
 
-        <header className="absolute left-0 right-0 top-0 bg-transparent px-[24px] py-[40px]">
+        <header className="absolute left-0 right-0 top-0 z-20 px-[24px] py-[40px] backdrop-blur-lg bg-[rgba(232,237,242,0.9)] supports-[backdrop-filter]:bg-[rgba(232,237,242,0.75)]">
           <div className="flex flex-col gap-[8px] items-center relative shrink-0 text-center text-nowrap w-full">
             <p className="font-semibold leading-[18px] text-[18px] text-foreground">
               {title}
@@ -150,11 +150,11 @@ function MobileAddRecordScreen({
           </div>
         </header>
 
-        <div className="absolute inset-0 px-[24px] pt-[128px] pb-[104px] overflow-y-auto overflow-x-hidden">
+        <div className="absolute inset-0 z-10 px-[24px] pt-[128px] pb-[104px] overflow-y-auto overflow-x-hidden">
           <DialogFormPattern type="AddRecord">{children}</DialogFormPattern>
         </div>
 
-        <footer className="absolute bottom-0 left-0 right-0 bg-[var(--surface-footer)] px-[24px] pt-[28px] pb-[40px]">
+        <footer className="absolute bottom-0 left-0 right-0 z-30 bg-[var(--surface-footer)] px-[24px] pt-[28px] pb-[40px]">
           <div className="flex gap-[16px] items-start w-full h-[36px]">
             <PrimaryButton
               type="button"
