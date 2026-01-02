@@ -1,5 +1,5 @@
 import { useAuth } from "./AuthContext";
-import { GoogleSignInButton } from "./components/GoogleSignInButton";
+import { SignInScreen } from "./components/SignInScreen";
 
 const REDIRECT_FLAG_KEY = "yomzoy_redirect_in_progress";
 
@@ -28,39 +28,14 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className="size-full flex items-center justify-center p-6">
-        <div className="w-full max-w-sm flex flex-col gap-4">
-          <div>
-            <h1 className="mb-2">ログイン</h1>
-            <p className="text-sm text-muted-foreground">
-              続けるにはGoogleでログインしてください
-            </p>
-          </div>
-
-          {error && (
-            <div className="text-sm text-destructive whitespace-pre-wrap">
-              {error}
-            </div>
-          )}
-
-          {redirecting && (
-            <div className="text-sm text-muted-foreground">
-              ログイン処理中です。画面が戻るまでお待ちください…
-            </div>
-          )}
-
-          <GoogleSignInButton
-            onClick={() => {
-              void signInWithGoogle();
-            }}
-            disabled={redirecting}
-          />
-
-          <p className="text-xs text-muted-foreground">
-            ポップアップがブロックされる場合は、ブラウザ設定をご確認ください。
-          </p>
-        </div>
-      </div>
+      <SignInScreen
+        onSignInWithGoogle={() => {
+          void signInWithGoogle();
+        }}
+        disabled={redirecting}
+        error={error}
+        redirecting={redirecting}
+      />
     );
   }
 
