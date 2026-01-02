@@ -1,0 +1,4 @@
+// この設定はワークスペース固有のもの
+{
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true
+}

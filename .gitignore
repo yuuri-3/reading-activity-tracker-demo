@@ -29,6 +29,8 @@ pnpm-debug.log*
 
 # editor
 .vscode/
+!.vscode/
+!.vscode/settings.json
 
 # misc
 coverage/
