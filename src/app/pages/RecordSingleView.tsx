@@ -22,11 +22,13 @@ import {
   fromSelectValue,
   toSelectValue,
 } from "../components/ui/select";
+import { useIsMobile } from "../components/ui/use-mobile";
 import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { NeumorphicSelectTrigger } from "../components/NeumorphicSelectTrigger";
 import type { Book, BookMemo, ReadingRecord } from "../types";
 import { Tag } from "../components/Tag";
 import { useElementScrollRestoration } from "../utils/useElementScrollRestoration";
+import { DialogFormPattern } from "../components/DialogFormPattern";
 
 type RecordsSegment = "all" | "reading" | "book";
 
@@ -100,7 +102,92 @@ function getDefaultAddRecordDateTimeValues(openedAt: Date = new Date()) {
   };
 }
 
-export function RecordSingleView() {
+type MobileAddRecordScreenProps = {
+  open: boolean;
+  title: ReactNode;
+  description?: ReactNode;
+  cancelLabel: ReactNode;
+  confirmLabel: ReactNode;
+  onCancel: () => void;
+  onConfirm: () => void;
+  cancelDisabled?: boolean;
+  confirmDisabled?: boolean;
+  children: ReactNode;
+};
+
+function MobileAddRecordScreen({
+  open,
+  title,
+  description,
+  cancelLabel,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+  cancelDisabled,
+  confirmDisabled,
+  children,
+}: MobileAddRecordScreenProps) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50"
+      style={{ background: "var(--background)" }}
+    >
+      <div className="absolute inset-0">
+        <div className="absolute left-0 right-0 top-0 bg-[#e8edf2] px-[24px] py-[40px]" />
+
+        <header className="absolute left-0 right-0 top-0 bg-transparent px-[24px] py-[40px]">
+          <div className="flex flex-col gap-[8px] items-center relative shrink-0 text-center text-nowrap w-full">
+            <p className="font-semibold leading-[18px] text-[18px] text-foreground">
+              {title}
+            </p>
+            {description ? (
+              <p className="font-normal leading-[20px] text-[14px] text-muted-foreground">
+                {description}
+              </p>
+            ) : null}
+          </div>
+        </header>
+
+        <div className="absolute inset-0 px-[24px] pt-[128px] pb-[104px] overflow-y-auto overflow-x-hidden">
+          <DialogFormPattern type="AddRecord">{children}</DialogFormPattern>
+        </div>
+
+        <footer className="absolute bottom-0 left-0 right-0 bg-[var(--surface-footer)] px-[24px] pt-[28px] pb-[40px]">
+          <div className="flex gap-[16px] items-start w-full h-[36px]">
+            <PrimaryButton
+              type="button"
+              onClick={onCancel}
+              className="basis-0 grow h-[36px] px-[16px] py-[8px] text-[14px] leading-[1.3] font-medium tracking-normal"
+              disabled={cancelDisabled}
+            >
+              {cancelLabel}
+            </PrimaryButton>
+            <PrimaryButton
+              type="button"
+              onClick={onConfirm}
+              className="basis-0 grow h-[36px] px-[16px] py-[8px] text-[14px] leading-[1.3] font-medium tracking-normal"
+              disabled={confirmDisabled}
+            >
+              {confirmLabel}
+            </PrimaryButton>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+export type RecordSingleViewProps = {
+  subPage?: "add" | null;
+  onSubPageChange?: (next: "add" | null) => void;
+};
+
+export function RecordSingleView({
+  subPage = null,
+  onSubPageChange,
+}: RecordSingleViewProps) {
   const {
     records,
     books,
@@ -131,6 +218,7 @@ export function RecordSingleView() {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   useElementScrollRestoration(scrollContainerRef, "records");
@@ -178,6 +266,10 @@ export function RecordSingleView() {
 
   const handleOpenAddDialog = () => {
     resetAddForm();
+    if (isMobile) {
+      onSubPageChange?.("add");
+      return;
+    }
     setIsAddDialogOpen(true);
   };
 
@@ -201,11 +293,19 @@ export function RecordSingleView() {
       setEndAt(toLocalDateTimeInputValue(end));
     }
 
+    if (isMobile) {
+      onSubPageChange?.("add");
+      return;
+    }
     setIsAddDialogOpen(true);
   };
 
   const handleCancelAdd = () => {
     resetAddForm();
+    if (isMobile) {
+      onSubPageChange?.(null);
+      return;
+    }
     setIsAddDialogOpen(false);
   };
 
@@ -251,7 +351,11 @@ export function RecordSingleView() {
       }
 
       resetAddForm();
-      setIsAddDialogOpen(false);
+      if (isMobile) {
+        onSubPageChange?.(null);
+      } else {
+        setIsAddDialogOpen(false);
+      }
     } catch (err) {
       setSaveError(
         err instanceof Error ? err.message : "記録の追加に失敗しました"
@@ -493,6 +597,140 @@ export function RecordSingleView() {
     </PrimaryButton>
   );
 
+  const isAddScreenOpen = isMobile ? subPage === "add" : isAddDialogOpen;
+
+  if (isMobile && isAddScreenOpen) {
+    return (
+      <MobileAddRecordScreen
+        open
+        title={editingRecordId ? "記録を編集" : "記録を追加"}
+        description={
+          editingRecordId
+            ? "記録の内容を編集できます"
+            : "手動で記録を追加できます"
+        }
+        cancelLabel={editingRecordId ? "変更せず戻る" : "追加せず戻る"}
+        confirmLabel={editingRecordId ? "保存" : "追加"}
+        onCancel={handleCancelAdd}
+        onConfirm={() => {
+          void handleConfirmAdd();
+        }}
+        cancelDisabled={isSaving}
+        confirmDisabled={isSaving || durationSeconds <= 0}
+      >
+        <div className="flex flex-col gap-4">
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "開始日時", showOptionalLabel: false }}
+            instance={
+              <NeumorphicInput
+                id="startAt"
+                type="datetime-local"
+                step={1}
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                disabled={isSaving}
+              />
+            }
+          />
+
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "終了日時", showOptionalLabel: false }}
+            instance={
+              <NeumorphicInput
+                id="endAt"
+                type="datetime-local"
+                step={1}
+                value={endAt}
+                onChange={(e) => setEndAt(e.target.value)}
+                disabled={isSaving}
+              />
+            }
+          />
+
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "記録メモ", showOptionalLabel: true }}
+            instance={
+              <NeumorphicTextarea
+                id="memo"
+                placeholder="例）P.10まで読んだ"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                rows={1}
+                className="h-11 text-base leading-5"
+                disabled={isSaving}
+              />
+            }
+          />
+
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "書籍", showOptionalLabel: true }}
+            instance={
+              <Select
+                value={toSelectValue(selectedBookId)}
+                onValueChange={(next) =>
+                  setSelectedBookId(fromSelectValue(next))
+                }
+              >
+                <NeumorphicSelectTrigger id="book">
+                  <SelectValue placeholder="選択なし" />
+                </NeumorphicSelectTrigger>
+                <SelectContent>
+                  <SelectNoneItem />
+                  {books.map((book) => (
+                    <SelectItem key={book.id} value={book.id}>
+                      {book.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            }
+          />
+
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "書籍に関するメモ", showOptionalLabel: true }}
+            instance={
+              <NeumorphicTextarea
+                id="bookMemo"
+                placeholder="例）第2章に具体的な例が多い"
+                value={bookMemo}
+                onChange={(e) => setBookMemo(e.target.value)}
+                rows={1}
+                className="h-11 text-base leading-5"
+                disabled={isSaving}
+              />
+            }
+          />
+
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "タグ", showOptionalLabel: true }}
+            instance={
+              <TagMultiSelectInput
+                id="tags"
+                value={tags}
+                onChange={setTags}
+                options={tagOptions}
+                placeholder="タグを選択または追加してください"
+                disabled={isSaving}
+              />
+            }
+          />
+
+          {saveError && (
+            <div className="text-sm text-destructive whitespace-pre-wrap">
+              {saveError}
+            </div>
+          )}
+        </div>
+      </MobileAddRecordScreen>
+    );
+  }
+
   return (
     <>
       <div className="w-full">
@@ -709,7 +947,7 @@ export function RecordSingleView() {
             : "手動で記録を追加できます"
         }
         formPatternType="AddRecord"
-        cancelLabel="キャンセル"
+        cancelLabel={editingRecordId ? "変更せず戻る" : "追加せず戻る"}
         confirmLabel={editingRecordId ? "保存" : "追加"}
         onCancel={handleCancelAdd}
         onConfirm={() => {

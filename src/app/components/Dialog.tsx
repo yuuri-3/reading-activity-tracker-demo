@@ -51,6 +51,9 @@ export type DialogProps = {
   /** Styling hooks */
   contentClassName?: string;
 
+  /** Make the dialog occupy the full viewport on mobile */
+  fullScreenOnMobile?: boolean;
+
   cancelButtonProps?: Omit<
     PrimaryButtonProps,
     "children" | "type" | "onClick" | "form"
@@ -78,6 +81,7 @@ export function Dialog({
   disableEscapeClose,
   disableOutsideClose,
   contentClassName,
+  fullScreenOnMobile = false,
   cancelButtonProps,
   confirmButtonProps,
 }: DialogProps) {
@@ -87,6 +91,7 @@ export function Dialog({
 
       <DialogContent
         hideClose
+        mobileFullScreen={fullScreenOnMobile}
         className={cn("sm:max-w-[360px]", contentClassName)}
         onOpenAutoFocus={
           formPatternType === "AddRecord"

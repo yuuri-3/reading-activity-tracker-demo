@@ -36,6 +36,7 @@ export function TimerSection({
   const [isStopping, setIsStopping] = useState(false);
   const stopInFlightRef = useRef(false);
   const startTimeoutRef = useRef<number | null>(null);
+  const measurementStartMsRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
@@ -45,6 +46,40 @@ export function TimerSection({
       }
     };
   }, []);
+
+  useEffect(() => {
+    // Reset cached start time when timer is fully reset.
+    if (
+      !timerState.isRunning &&
+      timerState.startTime === null &&
+      timerState.elapsedTime === 0 &&
+      timerState.pausedTime === 0
+    ) {
+      measurementStartMsRef.current = null;
+    }
+  }, [
+    timerState.elapsedTime,
+    timerState.isRunning,
+    timerState.pausedTime,
+    timerState.startTime,
+  ]);
+
+  useEffect(() => {
+    // Capture the first "measurement started" timestamp once per run.
+    // Keep it stable across pause/resume so the caption doesn't drift.
+    if (measurementStartMsRef.current !== null) return;
+    if (!timerState.isRunning && timerState.elapsedTime <= 0) return;
+    measurementStartMsRef.current = Date.now() - timerState.elapsedTime * 1000;
+  }, [timerState.elapsedTime, timerState.isRunning]);
+
+  const getStartTimeText = () => {
+    if (timerState.elapsedTime <= 0) return "";
+    const startMs = measurementStartMsRef.current;
+    if (startMs == null) return "";
+    return `${formatDateTimeWithSeconds(
+      new Date(startMs).toISOString()
+    )}から計測開始`;
+  };
 
   const handleStop = async () => {
     if (stopInFlightRef.current) return;
@@ -62,11 +97,14 @@ export function TimerSection({
     const tagsSnapshot = tags;
 
     const now = new Date();
-    const startTime = new Date(now.getTime() - duration * 1000).toISOString();
+    const computedStartMs =
+      measurementStartMsRef.current ?? now.getTime() - duration * 1000;
+    const startTime = new Date(computedStartMs).toISOString();
 
     // Unlock UI immediately after stopping, so the user can start the next
     // measurement even if the network save is slow.
     resetTimer();
+    measurementStartMsRef.current = null;
     onClearInputs?.();
     setIsStopping(false);
 
@@ -103,34 +141,46 @@ export function TimerSection({
     }, 120);
   };
 
-  const getStartTimeText = () => {
-    if (timerState.elapsedTime === 0) return "";
-    const startTime = new Date(Date.now() - timerState.elapsedTime * 1000);
-    return `${formatDateTimeWithSeconds(startTime.toISOString())}から計測開始`;
-  };
-
   const isRunningUi = timerState.isRunning || isStopping;
+  const showDetailedTimer = isRunningUi || timerState.elapsedTime > 0;
 
   return (
-    <div className="mx-auto w-full max-w-[345px] p-6 flex flex-col items-center gap-7">
-      <div className="flex flex-col items-center gap-3">
-        {(() => {
-          const { hhmm, ss } = formatDurationHmsParts(timerState.elapsedTime);
-          return (
-            <div className="flex items-baseline gap-2 pl-[42px] tabular-nums font-['Sometype_Mono'] font-medium leading-none text-[#5e84a6]">
-              <span className="text-[72px]">{hhmm}</span>
-              <span className="text-[32px]">{ss}</span>
-            </div>
-          );
-        })()}
-        <div className="flex h-5 items-center justify-center">
-          {timerState.elapsedTime > 0 ? (
-            <p className="text-center text-[14px] leading-5 text-muted-foreground">
+    <div
+      className={`mx-auto w-full max-w-[345px] p-6 flex flex-col items-center ${
+        showDetailedTimer ? "gap-[28px]" : "gap-[40px]"
+      }`}
+    >
+      {showDetailedTimer ? (
+        <div className="flex flex-col items-center gap-4">
+          {(() => {
+            const { hhmm, ss } = formatDurationHmsParts(timerState.elapsedTime);
+
+            return (
+              <div className="flex flex-col items-center gap-1 tabular-nums font-['Sometype_Mono'] font-medium leading-none text-[#5e84a6]">
+                <p className="text-[80px]">{hhmm}</p>
+                <p className="text-[32px]">{ss}</p>
+              </div>
+            );
+          })()}
+
+          <div className="flex h-5 items-center justify-center">
+            <p className="text-center text-[14px] leading-5 text-muted-foreground tracking-[-0.1504px]">
               {getStartTimeText()}
             </p>
-          ) : null}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col items-center">
+          {(() => {
+            const { hhmm } = formatDurationHmsParts(timerState.elapsedTime);
+            return (
+              <p className="tabular-nums font-['Sometype_Mono'] font-medium leading-none text-[80px] text-[#5e84a6]">
+                {hhmm}
+              </p>
+            );
+          })()}
+        </div>
+      )}
 
       <div className="relative flex w-full justify-center">
         <AnimatePresence mode="wait">

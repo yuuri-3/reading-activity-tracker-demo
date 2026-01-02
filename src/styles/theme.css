@@ -6,6 +6,8 @@
     BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     "Apple Color Emoji", "Segoe UI Emoji";
   --background: linear-gradient(to bottom, #e8edf2 0%, #dde3ea 100%);
+  /* Surfaces (from Figma) */
+  --surface-footer: #dfe5eb;
   --background-solid: #e0e5ec;
   --foreground: #5a6372;
   --card: #e0e5ec;
@@ -65,6 +67,7 @@
 
 .dark {
   --background: oklch(0.145 0 0);
+  --surface-footer: var(--card);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);
