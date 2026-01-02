@@ -4,6 +4,7 @@ import { Calendar, Clock, FileText } from "lucide-react";
 import { cn } from "./ui/utils";
 import { Tag } from "./Tag";
 import { formatDateTime, formatDurationHms } from "../utils/format";
+import { linkifyReactNode } from "../utils/linkify";
 
 type Shadow = "md" | "sm";
 
@@ -187,6 +188,8 @@ export function ListCard(props: ListCardProps) {
         onEdit,
       } = props;
 
+      const recordNoteNode = recordNote ? linkifyReactNode(recordNote) : null;
+
       return (
         <ListCardFrame shadow={shadow} className={cn("w-full", className)}>
           <div className="flex flex-col gap-2">
@@ -200,8 +203,8 @@ export function ListCard(props: ListCardProps) {
               <Actions onDelete={onDelete} onEdit={onEdit} />
             </div>
 
-            {recordNote ? (
-              <p className="text-sm whitespace-pre-wrap">{recordNote}</p>
+            {recordNoteNode ? (
+              <p className="text-sm whitespace-pre-wrap">{recordNoteNode}</p>
             ) : null}
 
             {bookName ? (
@@ -235,6 +238,8 @@ export function ListCard(props: ListCardProps) {
         onEdit,
       } = props;
 
+      const bookNoteNode = linkifyReactNode(bookNote);
+
       return (
         <ListCardFrame shadow={shadow} className={cn("w-full", className)}>
           <div className="flex flex-col gap-2">
@@ -251,7 +256,7 @@ export function ListCard(props: ListCardProps) {
               </p>
             ) : null}
 
-            <p className="text-sm whitespace-pre-wrap">{bookNote}</p>
+            <p className="text-sm whitespace-pre-wrap">{bookNoteNode}</p>
           </div>
         </ListCardFrame>
       );
