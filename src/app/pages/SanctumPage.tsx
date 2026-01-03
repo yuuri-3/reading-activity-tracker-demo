@@ -4,6 +4,8 @@ import { IconDelete } from "../components/icons/IconDelete";
 import { IconLamp } from "../components/icons/IconLamp";
 import { IconLogout } from "../components/icons/IconLogout";
 import { IconSparkle } from "../components/icons/IconSparkle";
+import { IconTag } from "../components/icons/IconTag";
+import { IconForward } from "../components/icons/IconForward";
 import { LogoYomzoy } from "../components/icons/LogoYomzoy";
 import { useAuth } from "../auth/AuthContext";
 import { useState } from "react";
@@ -78,6 +80,26 @@ export function SanctumPage() {
                   </button>
                 </div>
               </div>
+            </section>
+
+            <section className="flex flex-col gap-4">
+              <p className="text-sm leading-5 text-muted-foreground">機能</p>
+
+              <a
+                href="#sanctum/tags"
+                className="rounded-[12px] px-4 py-4 bg-[var(--background-solid)] [box-shadow:var(--shadow-neumorphism-sm)]"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <IconTag size={20} className="text-muted-foreground" />
+                    <p className="text-base leading-6 text-foreground">
+                      タグ管理
+                    </p>
+                  </div>
+
+                  <IconForward size={20} className="text-muted-foreground" />
+                </div>
+              </a>
             </section>
 
             <section className="flex flex-col gap-4">

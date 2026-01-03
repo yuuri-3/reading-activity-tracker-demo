@@ -79,7 +79,7 @@ function DialogContent({
           "bg-[var(--background-solid)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid gap-7 translate-x-0 translate-y-[calc(var(--kb-offset,0px)*-1)] duration-200 [box-shadow:var(--shadow-dialog)]",
           mobileFullScreen
             ? "inset-0 w-full max-w-none h-[100dvh] max-h-[100dvh] overflow-y-auto rounded-none p-6 pt-[max(env(safe-area-inset-top),20px)] pb-[max(env(safe-area-inset-bottom),20px)] sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:w-full sm:max-w-lg sm:h-auto sm:max-h-[90dvh] sm:rounded-[var(--radius)] sm:p-6 sm:translate-x-[-50%] sm:translate-y-[-50%]"
-            : "inset-x-3 bottom-[calc(max(env(safe-area-inset-bottom),12px)+24px)] top-auto w-auto max-w-[calc(100%-24px)] gap-7 rounded-[var(--radius)] border-0 p-6 max-h-[90dvh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),16px)] sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:w-full sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[var(--radius)] sm:pb-6",
+            : "inset-x-3 bottom-[max(env(safe-area-inset-bottom),12px)] top-auto w-auto max-w-[calc(100%-24px)] gap-7 rounded-[var(--radius)] border-0 p-6 max-h-[90dvh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),16px)] sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:w-full sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[var(--radius)] sm:pb-6",
           className
         )}
         style={mergedStyle}

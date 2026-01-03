@@ -21,7 +21,7 @@ const preview: Preview = {
         null,
         React.createElement(
           MockAppProvider,
-          { initialBooks: [], initialHistories: [] },
+          { initialBooks: [], initialRecords: [] },
           React.createElement(Story)
         ),
         React.createElement(Toast)

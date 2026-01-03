@@ -123,7 +123,7 @@ export function Dialog({
           </DialogFormPattern>
         </div>
 
-        <div className="sticky bottom-0 left-0 right-0 z-10 flex gap-4 bg-[var(--background-solid)] pt-1 pb-[max(env(safe-area-inset-bottom),4px)]">
+        <div className="sticky bottom-0 left-0 right-0 z-10 flex gap-4 bg-[var(--background-solid)] pb-[max(env(safe-area-inset-bottom),4px)]">
           <PrimaryButton
             type="button"
             onClick={onCancel}

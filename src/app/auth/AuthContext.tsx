@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
 import {
   browserLocalPersistence,
@@ -112,6 +113,40 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+export type MockAuthProviderProps = {
+  children: ReactNode;
+  user?: User | null;
+  loading?: boolean;
+  error?: string | null;
+  signInWithGoogle?: () => Promise<void>;
+  signOut?: () => Promise<void>;
+  deleteAccount?: () => Promise<void>;
+};
+
+// Storybook 等で Firebase を初期化せずに useAuth を動かすための Provider。
+export function MockAuthProvider({
+  children,
+  user = null,
+  loading = false,
+  error = null,
+  signInWithGoogle,
+  signOut,
+  deleteAccount,
+}: MockAuthProviderProps) {
+  const value = useMemo<AuthContextValue>(() => {
+    return {
+      user,
+      loading,
+      error,
+      signInWithGoogle: signInWithGoogle ?? (async () => {}),
+      signOut: signOut ?? (async () => {}),
+      deleteAccount: deleteAccount ?? (async () => {}),
+    };
+  }, [deleteAccount, error, loading, signInWithGoogle, signOut, user]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
