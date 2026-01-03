@@ -258,7 +258,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           )
             ? (
                 (data as unknown as { tagIds?: unknown }).tagIds as unknown[]
-              ).filter((v): v is string => typeof v === "string" && v.length > 0)
+              ).filter(
+                (v): v is string => typeof v === "string" && v.length > 0
+              )
             : undefined;
 
           return {
@@ -458,7 +460,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Record operations
   const addRecord = async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
-    if (!db || !uid) return;
+    if (!db || !uid) {
+      throw new Error(
+        "ログイン情報の取得中です。少し待ってからもう一度お試しください"
+      );
+    }
     const now = new Date().toISOString();
     await addDoc(collection(db, "users", uid, "records"), {
       ...stripUndefined({
@@ -473,7 +479,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateRecord = async (id: string, updates: Partial<ReadingRecord>) => {
-    if (!db || !uid) return;
+    if (!db || !uid) {
+      throw new Error(
+        "ログイン情報の取得中です。少し待ってからもう一度お試しください"
+      );
+    }
     const { id: _id, ...rest } = updates;
     const nextRest: Record<string, unknown> = {
       ...rest,

@@ -167,7 +167,7 @@ function MobileAddRecordScreen({
             </PrimaryButton>
             <PrimaryButton
               type="button"
-              icon={<IconAdd size={16} />}
+              onClick={onConfirm}
               className="basis-0 grow h-[36px] px-[16px] py-[8px] text-[14px] leading-[1.3] font-medium tracking-normal"
               disabled={confirmDisabled}
             >
