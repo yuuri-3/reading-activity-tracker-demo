@@ -17,7 +17,7 @@ export function TagListItem({
   return (
     <div
       data-slot="tag-list-item"
-      className="w-[345px] rounded-[12px] bg-[var(--background-solid)] p-4 [box-shadow:var(--shadow-neumorphism-sm)]"
+      className="rounded-[12px] bg-[var(--background-solid)] p-4 [box-shadow:var(--shadow-neumorphism-sm)]"
     >
       <div className="flex w-full items-start gap-3">
         <div className="min-w-0 flex-1">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { BookOpen, Plus } from "lucide-react";
+import { BookOpen } from "lucide-react";
 
 import { useApp } from "../context/AppContext";
 import type { Book } from "../types";
@@ -12,7 +12,7 @@ import { Dialog } from "../components/Dialog";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { FieldItem } from "../components/FieldItem";
 import { Input } from "../components/ui/input";
-
+import { IconAdd } from "../components/icons/IconAdd";
 import { BookSingleView } from "./BookSingleView";
 
 export function BookCollectionView() {
@@ -93,7 +93,7 @@ export function BookCollectionView() {
                     trigger={
                       <PrimaryButton
                         className="px-3 py-2 text-sm"
-                        icon={<Plus className="size-4" />}
+                        icon={<IconAdd size={16} />}
                       >
                         書籍登録
                       </PrimaryButton>

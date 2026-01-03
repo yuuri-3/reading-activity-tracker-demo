@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Plus } from "lucide-react";
 
 import { useApp } from "../context/AppContext";
 import { Dialog } from "./Dialog";
@@ -7,6 +6,7 @@ import { FieldItem } from "./FieldItem";
 import { PrimaryButton } from "./PrimaryButton";
 import { BookListSearchField } from "./book-list/BookListSearchField";
 import { IconBookshelf } from "./icons/IconBookshelf";
+import { IconAdd } from "./icons/IconAdd";
 import { Input } from "./ui/input";
 import {
   SegmentedControl,
@@ -165,7 +165,7 @@ function HeaderDefault({
             trigger={
               <PrimaryButton
                 className="px-3 py-2 text-sm"
-                icon={<Plus className="size-4" />}
+                icon={<IconAdd size={16} />}
               >
                 {buttonLabel}
               </PrimaryButton>

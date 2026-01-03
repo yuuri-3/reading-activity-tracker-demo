@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { Clock, Plus } from "lucide-react";
+import { Clock } from "lucide-react";
 import { toast } from "sonner";
 
 import { useApp } from "../context/AppContext";
@@ -9,6 +9,7 @@ import { IconRecord } from "../components/icons/IconRecord";
 import { ListCard } from "../components/ListCard";
 import { ListEmptyView } from "../components/ListEmptyView";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { IconAdd } from "../components/icons/IconAdd";
 import { Dialog } from "../components/Dialog";
 import { FieldItem } from "../components/FieldItem";
 import { NeumorphicInput } from "../components/NeumorphicInput";
@@ -166,7 +167,7 @@ function MobileAddRecordScreen({
             </PrimaryButton>
             <PrimaryButton
               type="button"
-              onClick={onConfirm}
+              icon={<IconAdd size={16} />}
               className="basis-0 grow h-[36px] px-[16px] py-[8px] text-[14px] leading-[1.3] font-medium tracking-normal"
               disabled={confirmDisabled}
             >
@@ -589,7 +590,7 @@ export function RecordSingleView({
   const addRecordButton = (
     <PrimaryButton
       className="px-3 py-2 text-sm"
-      icon={<Plus className="size-4" />}
+      icon={<IconAdd size={16} />}
       type="button"
       onClick={handleOpenAddDialog}
     >

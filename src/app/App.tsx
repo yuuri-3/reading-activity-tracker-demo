@@ -6,10 +6,12 @@ import { TimerPage } from "./pages/TimerPage";
 import { BookCollectionView } from "./pages/BookCollectionView";
 import { RecordSingleView } from "./pages/RecordSingleView";
 import { SanctumPage } from "./pages/SanctumPage";
+import { TagManagementPage } from "./pages/TagManagementPage";
 import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/Toast";
 
 type RecordsSubPage = "add" | null;
+type SanctumSubPage = "tags" | null;
 
 function AppContent() {
   const initialRoute = useMemo(() => {
@@ -29,7 +31,10 @@ function AppContent() {
     const recordsSubPage: RecordsSubPage =
       page === "records" && subRaw === "add" ? "add" : null;
 
-    return { page, recordsSubPage };
+    const sanctumSubPage: SanctumSubPage =
+      page === "sanctum" && subRaw === "tags" ? "tags" : null;
+
+    return { page, recordsSubPage, sanctumSubPage };
   }, []);
 
   const [currentPage, setCurrentPage] = useState<Page>(initialRoute.page);
@@ -37,16 +42,22 @@ function AppContent() {
     initialRoute.recordsSubPage
   );
 
+  const [sanctumSubPage, setSanctumSubPage] = useState<SanctumSubPage>(
+    initialRoute.sanctumSubPage
+  );
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const nextHash =
       currentPage === "records" && recordsSubPage
         ? `#records/${recordsSubPage}`
+        : currentPage === "sanctum" && sanctumSubPage
+        ? `#sanctum/${sanctumSubPage}`
         : `#${currentPage}`;
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash;
     }
-  }, [currentPage, recordsSubPage]);
+  }, [currentPage, recordsSubPage, sanctumSubPage]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -65,6 +76,9 @@ function AppContent() {
         setRecordsSubPage(
           nextPage === "records" && subRaw === "add" ? "add" : null
         );
+        setSanctumSubPage(
+          nextPage === "sanctum" && subRaw === "tags" ? "tags" : null
+        );
       }
     };
     window.addEventListener("hashchange", onHashChange);
@@ -76,11 +90,13 @@ function AppContent() {
   const handleChangePage = (next: Page) => {
     setCurrentPage(next);
     setRecordsSubPage(null);
+    setSanctumSubPage(null);
   };
 
   const handleChangeRecordsSubPage = (next: RecordsSubPage) => {
     setCurrentPage("records");
     setRecordsSubPage(next);
+    setSanctumSubPage(null);
   };
 
   return (
@@ -96,7 +112,12 @@ function AppContent() {
               onSubPageChange={handleChangeRecordsSubPage}
             />
           )}
-          {currentPage === "sanctum" && <SanctumPage />}
+          {currentPage === "sanctum" &&
+            (sanctumSubPage === "tags" ? (
+              <TagManagementPage />
+            ) : (
+              <SanctumPage />
+            ))}
         </div>
       </main>
 
