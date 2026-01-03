@@ -22,6 +22,8 @@
   --muted-foreground: #9ba3b0;
   --accent: #e0e5ec;
   --accent-foreground: #5a6372;
+  /* TagListItem badge (from Figma #5d83a4) */
+  --taglistitem-badge: #5d83a4;
   --destructive: #ff6b6b;
   --destructive-foreground: #ffffff;
   --border: rgba(0, 0, 0, 0.08);
