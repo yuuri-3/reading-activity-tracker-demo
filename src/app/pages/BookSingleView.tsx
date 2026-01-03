@@ -259,11 +259,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                       ));
                     }
 
-                    const legacy = r.tags ?? [];
-                    if (legacy.length === 0) return undefined;
-                    return legacy.map((t, idx) => (
-                      <TagChip key={`legacy:${idx}:${t}`}>{t}</TagChip>
-                    ));
+                    return undefined;
                   })();
 
                   return (

@@ -236,37 +236,9 @@ export function RecordSingleView({
     return new Map(allTags.map((t) => [t.id, t] as const));
   }, [allTags]);
 
-  const tagIdByTextKey = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const t of allTags) {
-      const key = t.text.trim().toLocaleLowerCase();
-      if (!key) continue;
-      if (!map.has(key)) map.set(key, t.id);
-    }
-    return map;
-  }, [allTags]);
-
   const getRecordTagItems = (record: ReadingRecord) => {
     const ids = record.tagIds ?? [];
-    if (ids.length > 0) {
-      return ids.map((id) => ({ key: id, text: tagsById.get(id)?.text ?? id }));
-    }
-
-    const legacy = record.tags ?? [];
-    return legacy
-      .map((raw, idx) => {
-        const text = raw.trim();
-        if (!text) return null;
-        return { key: `legacy:${idx}:${text}`, text };
-      })
-      .filter(
-        (
-          v
-        ): v is {
-          key: string;
-          text: string;
-        } => v != null
-      );
+    return ids.map((id) => ({ key: id, text: tagsById.get(id)?.text ?? id }));
   };
 
   const durationSeconds = useMemo(() => {
@@ -315,21 +287,7 @@ export function RecordSingleView({
     setSelectedBookId(record.bookId ?? "");
     setMemo(record.memo ?? "");
     setBookMemo("");
-    if (record.tagIds && record.tagIds.length > 0) {
-      setTagIds(record.tagIds);
-    } else {
-      const nextIds: string[] = [];
-      const seen = new Set<string>();
-      for (const raw of record.tags ?? []) {
-        const key = raw.trim().toLocaleLowerCase();
-        if (!key) continue;
-        const id = tagIdByTextKey.get(key);
-        if (!id || seen.has(id)) continue;
-        seen.add(id);
-        nextIds.push(id);
-      }
-      setTagIds(nextIds);
-    }
+    setTagIds(record.tagIds ?? []);
 
     const start = new Date(record.startTime);
     const end = new Date(record.endTime);

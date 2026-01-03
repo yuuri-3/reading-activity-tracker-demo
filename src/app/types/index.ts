@@ -19,8 +19,6 @@ export interface ReadingRecord {
   memo: string;
   /** Tag references (preferred). */
   tagIds?: string[];
-  /** Legacy tag labels attached to the record (backward compatibility). */
-  tags?: string[];
   startTime: string;
   endTime: string;
   createdAt: string;

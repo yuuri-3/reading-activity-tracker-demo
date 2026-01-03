@@ -19,9 +19,7 @@ import {
   query,
   setDoc,
   updateDoc,
-  writeBatch,
 } from "firebase/firestore";
-import { toast } from "sonner";
 import { Book, ReadingRecord, TimerState, BookMemo, Tag } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { getFirestoreDb } from "../firebase/firebase";
@@ -186,19 +184,11 @@ function normalizeTagText(text: string) {
   return text.trim();
 }
 
-function normalizeTagCompareKey(text: string) {
-  return normalizeTagText(text).toLocaleLowerCase();
-}
-
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [legacyTagsStatus, setLegacyTagsStatus] = useState<{
-    needsMigration: number;
-    needsCleanup: number;
-  } | null>(null);
   const [searchText, setSearchText] = useState("");
   const [timerState, setTimerState] = useState<TimerState>({
     isRunning: false,
@@ -220,20 +210,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return getFirestoreDb();
   }, [uid]);
 
-  const tagsHydratedRef = useRef(false);
-  const migrationInFlightRef = useRef(false);
-  const didNotifyMigrationRef = useRef(false);
-  const didNotifyMigrationCheckRef = useRef(false);
-
   // Subscribe to Firestore (single source of truth)
   useEffect(() => {
     if (!db || !uid) {
       setBooks([]);
       setRecords([]);
       setTags([]);
-      setLegacyTagsStatus(null);
-      tagsHydratedRef.current = false;
-      didNotifyMigrationCheckRef.current = false;
       return;
     }
 
@@ -268,64 +250,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubRecords = onSnapshot(recordsQuery, (snapshot) => {
-      let needsMigration = 0;
-      let needsCleanup = 0;
       setRecords(
         snapshot.docs.map((d) => {
-          const raw = d.data() as Record<string, unknown>;
-          const hasLegacyTagsField = Object.prototype.hasOwnProperty.call(
-            raw,
-            "tags"
-          );
-
-          const data = raw as unknown as Omit<ReadingRecord, "id">;
-
-          const nextTagIds = Array.isArray(
+          const data = d.data() as Omit<ReadingRecord, "id">;
+          const tagIds: string[] | undefined = Array.isArray(
             (data as unknown as { tagIds?: unknown }).tagIds
           )
             ? (
                 (data as unknown as { tagIds?: unknown }).tagIds as unknown[]
-              ).filter(
-                (v): v is string => typeof v === "string" && v.length > 0
-              )
+              ).filter((v): v is string => typeof v === "string" && v.length > 0)
             : undefined;
-
-          const nextLegacyTags = Array.isArray(
-            (data as unknown as { tags?: unknown }).tags
-          )
-            ? ((data as unknown as { tags?: unknown }).tags as unknown[])
-                .filter((v): v is string => typeof v === "string")
-                .map((t) => normalizeTagText(t))
-                .filter((t) => t.length > 0)
-            : undefined;
-
-          const hasTagIds = (nextTagIds ?? []).length > 0;
-          const hasLegacyValues = (nextLegacyTags ?? []).length > 0;
-
-          if (hasLegacyTagsField) {
-            if (hasLegacyValues && !hasTagIds) {
-              needsMigration += 1;
-            } else {
-              // tagsフィールドはあるが、実データ移行は不要（空 or tagIdsあり）。
-              needsCleanup += 1;
-            }
-          }
 
           return {
             id: d.id,
             bookId: data.bookId,
             duration: normalizeDurationSeconds(data),
             memo: data.memo,
-            tagIds: nextTagIds,
-            tags: nextLegacyTags,
+            tagIds,
             startTime: data.startTime,
             endTime: data.endTime,
             createdAt: data.createdAt,
           };
         })
       );
-
-      setLegacyTagsStatus({ needsMigration, needsCleanup });
     });
 
     const unsubTags = onSnapshot(tagsQuery, (snapshot) => {
@@ -353,7 +300,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           } satisfies Tag;
         })
       );
-      tagsHydratedRef.current = true;
     });
 
     return () => {
@@ -362,162 +308,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubTags();
     };
   }, [db, uid]);
-
-  // Show a one-time toast when legacy `records.tags` is fully gone.
-  useEffect(() => {
-    if (!db || !uid) return;
-    if (legacyTagsStatus === null) return;
-    if (didNotifyMigrationCheckRef.current) return;
-
-    didNotifyMigrationCheckRef.current = true;
-
-    if (
-      legacyTagsStatus.needsMigration === 0 &&
-      legacyTagsStatus.needsCleanup === 0
-    ) {
-      toast.success("タグ移行の確認: すべての記録がtagIdsで管理されています");
-      return;
-    }
-
-    if (
-      legacyTagsStatus.needsMigration === 0 &&
-      legacyTagsStatus.needsCleanup > 0
-    ) {
-      toast.success(
-        `タグ移行の確認: 移行は完了（legacyフィールド整理: ${legacyTagsStatus.needsCleanup}件）`
-      );
-      return;
-    }
-
-    toast.message(
-      `タグ移行の確認: 移行が必要な記録が${legacyTagsStatus.needsMigration}件あります`
-    );
-  }, [db, legacyTagsStatus, uid]);
-
-  // Migration: legacy records.tags(string[]) => records.tagIds(string[])
-  useEffect(() => {
-    if (!db || !uid) return;
-    if (!tagsHydratedRef.current) return;
-    if (migrationInFlightRef.current) return;
-
-    const legacyTargets = records.filter(
-      (r) => (!r.tagIds || r.tagIds.length === 0) && (r.tags ?? []).length > 0
-    );
-
-    // Cleanup-only targets:
-    // - tagIds があるのに legacy tags が残っている
-    // - legacy tags フィールドはあるが空（例: tags: []）
-    const cleanupTargets = records.filter((r) => {
-      if (r.tags === undefined) return false;
-      const needsMigration =
-        (!r.tagIds || r.tagIds.length === 0) && (r.tags ?? []).length > 0;
-      return !needsMigration;
-    });
-
-    if (legacyTargets.length === 0 && cleanupTargets.length === 0) return;
-
-    void (async () => {
-      migrationInFlightRef.current = true;
-      // Build name -> id index (prefer first found; duplicates allowed).
-      const byName = new Map<string, string>();
-      for (const t of tags) {
-        const key = normalizeTagCompareKey(t.text);
-        if (!key) continue;
-        if (!byName.has(key)) byName.set(key, t.id);
-      }
-
-      if (legacyTargets.length > 0) {
-        // Create missing tags for legacy labels.
-        const missingNames = new Map<string, string>();
-        for (const r of legacyTargets) {
-          for (const raw of r.tags ?? []) {
-            const text = normalizeTagText(raw);
-            if (!text) continue;
-            const k = normalizeTagCompareKey(text);
-            if (!k) continue;
-            if (byName.has(k)) continue;
-            if (missingNames.has(k)) continue;
-            missingNames.set(k, text);
-          }
-        }
-
-        for (const text of missingNames.values()) {
-          const now = new Date().toISOString();
-          const created = await addDoc(collection(db, "users", uid, "tags"), {
-            text,
-            description: "",
-            createdAt: now,
-          });
-          byName.set(normalizeTagCompareKey(text), created.id);
-        }
-      }
-
-      // Update records with resolved tagIds.
-      let batch = writeBatch(db);
-      let ops = 0;
-      let migratedRecords = 0;
-      let clearedLegacyTags = 0;
-      const commit = async () => {
-        if (ops === 0) return;
-        await batch.commit();
-        batch = writeBatch(db);
-        ops = 0;
-      };
-
-      for (const r of legacyTargets) {
-        const nextIds: string[] = [];
-        const seen = new Set<string>();
-        for (const raw of r.tags ?? []) {
-          const text = normalizeTagText(raw);
-          if (!text) continue;
-          const id = byName.get(normalizeTagCompareKey(text));
-          if (!id) continue;
-          if (seen.has(id)) continue;
-          seen.add(id);
-          nextIds.push(id);
-        }
-
-        if (nextIds.length === 0) continue;
-        batch.update(doc(db, "users", uid, "records", r.id), {
-          tagIds: nextIds,
-          // Remove legacy field after migration (finish the mixed state quickly).
-          tags: deleteField(),
-        });
-        ops += 1;
-        migratedRecords += 1;
-        clearedLegacyTags += 1;
-        if (ops >= 450) await commit();
-      }
-
-      for (const r of cleanupTargets) {
-        batch.update(doc(db, "users", uid, "records", r.id), {
-          tags: deleteField(),
-        });
-        ops += 1;
-        clearedLegacyTags += 1;
-        if (ops >= 450) await commit();
-      }
-
-      await commit();
-
-      if (
-        !didNotifyMigrationRef.current &&
-        (migratedRecords > 0 || clearedLegacyTags > 0)
-      ) {
-        didNotifyMigrationRef.current = true;
-        const cleanedOnly = Math.max(0, clearedLegacyTags - migratedRecords);
-        const parts: string[] = [];
-        if (migratedRecords > 0) parts.push(`移行: ${migratedRecords}件`);
-        if (cleanedOnly > 0) parts.push(`整理: ${cleanedOnly}件`);
-        const detail = parts.length ? `（${parts.join(" / ")}）` : "";
-        toast.success(`タグの移行が完了しました${detail}`);
-      }
-      migrationInFlightRef.current = false;
-    })().catch((err) => {
-      migrationInFlightRef.current = false;
-      console.error(err);
-    });
-  }, [db, records, tags, uid]);
 
   const createTag = async (tag: { text: string; description?: string }) => {
     if (!db || !uid) return null;
@@ -670,13 +460,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addRecord = async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
     if (!db || !uid) return;
     const now = new Date().toISOString();
-    const { tags: _legacyTags, ...rest } = record as unknown as Record<
-      string,
-      unknown
-    >;
     await addDoc(collection(db, "users", uid, "records"), {
       ...stripUndefined({
-        ...rest,
+        ...(record as unknown as Record<string, unknown>),
         duration:
           typeof record.duration === "number"
             ? Math.max(0, Math.floor(record.duration))
@@ -697,8 +483,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...(typeof rest.bookId === "string" && rest.bookId === ""
         ? { bookId: deleteField() }
         : {}),
-      // If caller uses tagIds (including empty array to clear), remove legacy tags.
-      ...("tagIds" in rest ? { tags: deleteField() } : {}),
     };
     await updateDoc(
       doc(db, "users", uid, "records", id),

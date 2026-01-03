@@ -23,10 +23,6 @@ type DisplayedTag = Tag & {
   showDescription: boolean;
 };
 
-function normalizeTagKey(text: string) {
-  return text.trim().toLocaleLowerCase();
-}
-
 export function TagManagementPage({ initialTags }: TagManagementPageProps) {
   const app = (() => {
     try {
@@ -50,34 +46,15 @@ export function TagManagementPage({ initialTags }: TagManagementPageProps) {
   const usageCountById = useMemo(() => {
     const map = new Map<string, number>();
 
-    // Legacy fallback: map tag label -> first tag id (duplicates allowed).
-    const idByTextKey = new Map<string, string>();
-    for (const t of storedTags) {
-      const k = normalizeTagKey(t.text);
-      if (!k) continue;
-      if (!idByTextKey.has(k)) idByTextKey.set(k, t.id);
-    }
-
     for (const r of records) {
       const ids = r.tagIds ?? [];
-      if (ids.length > 0) {
-        for (const id of ids) {
-          map.set(id, (map.get(id) ?? 0) + 1);
-        }
-        continue;
-      }
-
-      for (const raw of r.tags ?? []) {
-        const k = normalizeTagKey(raw);
-        if (!k) continue;
-        const id = idByTextKey.get(k);
-        if (!id) continue;
+      for (const id of ids) {
         map.set(id, (map.get(id) ?? 0) + 1);
       }
     }
 
     return map;
-  }, [records, storedTags]);
+  }, [records]);
 
   const displayedTags = useMemo<DisplayedTag[]>(() => {
     return tagsSource
