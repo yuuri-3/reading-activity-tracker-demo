@@ -195,9 +195,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [books, setBooks] = useState<Book[]>([]);
   const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [legacyTagsFieldCount, setLegacyTagsFieldCount] = useState<
-    number | null
-  >(null);
+  const [legacyTagsStatus, setLegacyTagsStatus] = useState<{
+    needsMigration: number;
+    needsCleanup: number;
+  } | null>(null);
   const [searchText, setSearchText] = useState("");
   const [timerState, setTimerState] = useState<TimerState>({
     isRunning: false,
@@ -230,7 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setBooks([]);
       setRecords([]);
       setTags([]);
-      setLegacyTagsFieldCount(null);
+      setLegacyTagsStatus(null);
       tagsHydratedRef.current = false;
       didNotifyMigrationCheckRef.current = false;
       return;
@@ -267,34 +268,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubRecords = onSnapshot(recordsQuery, (snapshot) => {
-      let nextLegacyTagsFieldCount = 0;
+      let needsMigration = 0;
+      let needsCleanup = 0;
       setRecords(
         snapshot.docs.map((d) => {
           const raw = d.data() as Record<string, unknown>;
-          if (Object.prototype.hasOwnProperty.call(raw, "tags")) {
-            nextLegacyTagsFieldCount += 1;
-          }
+          const hasLegacyTagsField = Object.prototype.hasOwnProperty.call(
+            raw,
+            "tags"
+          );
 
           const data = raw as unknown as Omit<ReadingRecord, "id">;
+
+          const nextTagIds = Array.isArray(
+            (data as unknown as { tagIds?: unknown }).tagIds
+          )
+            ? (
+                (data as unknown as { tagIds?: unknown }).tagIds as unknown[]
+              ).filter(
+                (v): v is string => typeof v === "string" && v.length > 0
+              )
+            : undefined;
+
+          const nextLegacyTags = Array.isArray(
+            (data as unknown as { tags?: unknown }).tags
+          )
+            ? ((data as unknown as { tags?: unknown }).tags as unknown[])
+                .filter((v): v is string => typeof v === "string")
+                .map((t) => normalizeTagText(t))
+                .filter((t) => t.length > 0)
+            : undefined;
+
+          const hasTagIds = (nextTagIds ?? []).length > 0;
+          const hasLegacyValues = (nextLegacyTags ?? []).length > 0;
+
+          if (hasLegacyTagsField) {
+            if (hasLegacyValues && !hasTagIds) {
+              needsMigration += 1;
+            } else {
+              // tagsフィールドはあるが、実データ移行は不要（空 or tagIdsあり）。
+              needsCleanup += 1;
+            }
+          }
+
           return {
             id: d.id,
             bookId: data.bookId,
             duration: normalizeDurationSeconds(data),
             memo: data.memo,
-            tagIds: Array.isArray(
-              (data as unknown as { tagIds?: unknown }).tagIds
-            )
-              ? (
-                  (data as unknown as { tagIds?: unknown }).tagIds as unknown[]
-                ).filter(
-                  (v): v is string => typeof v === "string" && v.length > 0
-                )
-              : undefined,
-            tags: Array.isArray((data as unknown as { tags?: unknown }).tags)
-              ? (
-                  (data as unknown as { tags?: unknown }).tags as unknown[]
-                ).filter((v): v is string => typeof v === "string")
-              : undefined,
+            tagIds: nextTagIds,
+            tags: nextLegacyTags,
             startTime: data.startTime,
             endTime: data.endTime,
             createdAt: data.createdAt,
@@ -302,7 +325,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
       );
 
-      setLegacyTagsFieldCount(nextLegacyTagsFieldCount);
+      setLegacyTagsStatus({ needsMigration, needsCleanup });
     });
 
     const unsubTags = onSnapshot(tagsQuery, (snapshot) => {
@@ -343,20 +366,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Show a one-time toast when legacy `records.tags` is fully gone.
   useEffect(() => {
     if (!db || !uid) return;
-    if (legacyTagsFieldCount === null) return;
+    if (legacyTagsStatus === null) return;
     if (didNotifyMigrationCheckRef.current) return;
 
     didNotifyMigrationCheckRef.current = true;
 
-    if (legacyTagsFieldCount === 0) {
+    if (
+      legacyTagsStatus.needsMigration === 0 &&
+      legacyTagsStatus.needsCleanup === 0
+    ) {
       toast.success("タグ移行の確認: すべての記録がtagIdsで管理されています");
       return;
     }
 
+    if (
+      legacyTagsStatus.needsMigration === 0 &&
+      legacyTagsStatus.needsCleanup > 0
+    ) {
+      toast.success(
+        `タグ移行の確認: 移行は完了（legacyフィールド整理: ${legacyTagsStatus.needsCleanup}件）`
+      );
+      return;
+    }
+
     toast.message(
-      `タグ移行の確認: legacy tags が残っている記録が${legacyTagsFieldCount}件あります`
+      `タグ移行の確認: 移行が必要な記録が${legacyTagsStatus.needsMigration}件あります`
     );
-  }, [db, legacyTagsFieldCount, uid]);
+  }, [db, legacyTagsStatus, uid]);
 
   // Migration: legacy records.tags(string[]) => records.tagIds(string[])
   useEffect(() => {
@@ -368,11 +404,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       (r) => (!r.tagIds || r.tagIds.length === 0) && (r.tags ?? []).length > 0
     );
 
-    const mixedTargets = records.filter(
-      (r) => (r.tagIds ?? []).length > 0 && (r.tags ?? []).length > 0
-    );
+    // Cleanup-only targets:
+    // - tagIds があるのに legacy tags が残っている
+    // - legacy tags フィールドはあるが空（例: tags: []）
+    const cleanupTargets = records.filter((r) => {
+      if (r.tags === undefined) return false;
+      const needsMigration =
+        (!r.tagIds || r.tagIds.length === 0) && (r.tags ?? []).length > 0;
+      return !needsMigration;
+    });
 
-    if (legacyTargets.length === 0 && mixedTargets.length === 0) return;
+    if (legacyTargets.length === 0 && cleanupTargets.length === 0) return;
 
     void (async () => {
       migrationInFlightRef.current = true;
@@ -447,7 +489,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (ops >= 450) await commit();
       }
 
-      for (const r of mixedTargets) {
+      for (const r of cleanupTargets) {
         batch.update(doc(db, "users", uid, "records", r.id), {
           tags: deleteField(),
         });
