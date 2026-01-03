@@ -343,15 +343,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Show a one-time toast when legacy `records.tags` is fully gone.
   useEffect(() => {
     if (!db || !uid) return;
-    if (!tagsHydratedRef.current) return;
-    if (migrationInFlightRef.current) return;
     if (legacyTagsFieldCount === null) return;
     if (didNotifyMigrationCheckRef.current) return;
 
+    didNotifyMigrationCheckRef.current = true;
+
     if (legacyTagsFieldCount === 0) {
-      didNotifyMigrationCheckRef.current = true;
       toast.success("タグ移行の確認: すべての記録がtagIdsで管理されています");
+      return;
     }
+
+    toast.message(
+      `タグ移行の確認: legacy tags が残っている記録が${legacyTagsFieldCount}件あります`
+    );
   }, [db, legacyTagsFieldCount, uid]);
 
   // Migration: legacy records.tags(string[]) => records.tagIds(string[])
