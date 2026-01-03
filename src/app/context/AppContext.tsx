@@ -195,6 +195,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [books, setBooks] = useState<Book[]>([]);
   const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [legacyTagsFieldCount, setLegacyTagsFieldCount] = useState<
+    number | null
+  >(null);
   const [searchText, setSearchText] = useState("");
   const [timerState, setTimerState] = useState<TimerState>({
     isRunning: false,
@@ -219,6 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const tagsHydratedRef = useRef(false);
   const migrationInFlightRef = useRef(false);
   const didNotifyMigrationRef = useRef(false);
+  const didNotifyMigrationCheckRef = useRef(false);
 
   // Subscribe to Firestore (single source of truth)
   useEffect(() => {
@@ -226,7 +230,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setBooks([]);
       setRecords([]);
       setTags([]);
+      setLegacyTagsFieldCount(null);
       tagsHydratedRef.current = false;
+      didNotifyMigrationCheckRef.current = false;
       return;
     }
 
@@ -261,9 +267,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubRecords = onSnapshot(recordsQuery, (snapshot) => {
+      let nextLegacyTagsFieldCount = 0;
       setRecords(
         snapshot.docs.map((d) => {
-          const data = d.data() as Omit<ReadingRecord, "id">;
+          const raw = d.data() as Record<string, unknown>;
+          if (Object.prototype.hasOwnProperty.call(raw, "tags")) {
+            nextLegacyTagsFieldCount += 1;
+          }
+
+          const data = raw as unknown as Omit<ReadingRecord, "id">;
           return {
             id: d.id,
             bookId: data.bookId,
@@ -289,6 +301,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           };
         })
       );
+
+      setLegacyTagsFieldCount(nextLegacyTagsFieldCount);
     });
 
     const unsubTags = onSnapshot(tagsQuery, (snapshot) => {
@@ -325,6 +339,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubTags();
     };
   }, [db, uid]);
+
+  // Show a one-time toast when legacy `records.tags` is fully gone.
+  useEffect(() => {
+    if (!db || !uid) return;
+    if (!tagsHydratedRef.current) return;
+    if (migrationInFlightRef.current) return;
+    if (legacyTagsFieldCount === null) return;
+    if (didNotifyMigrationCheckRef.current) return;
+
+    if (legacyTagsFieldCount === 0) {
+      didNotifyMigrationCheckRef.current = true;
+      toast.success("タグ移行の確認: すべての記録がtagIdsで管理されています");
+    }
+  }, [db, legacyTagsFieldCount, uid]);
 
   // Migration: legacy records.tags(string[]) => records.tagIds(string[])
   useEffect(() => {
