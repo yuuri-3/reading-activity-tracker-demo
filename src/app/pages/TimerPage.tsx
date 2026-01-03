@@ -17,26 +17,17 @@ import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 import { useApp } from "../context/AppContext";
 
 export function TimerPage() {
-  const { books, records } = useApp();
+  const { books, tags, createTag } = useApp();
   const [values, setValues] = useState({
     memo: "",
     selectedBookId: "",
     bookMemo: "",
-    tags: [] as string[],
+    tagIds: [] as string[],
   });
 
   const tagOptions = useMemo(() => {
-    const unique = new Map<string, string>();
-    for (const r of records) {
-      for (const t of r.tags ?? []) {
-        const trimmed = t.trim();
-        if (!trimmed) continue;
-        const key = trimmed.toLocaleLowerCase();
-        if (!unique.has(key)) unique.set(key, trimmed);
-      }
-    }
-    return Array.from(unique.values()).sort((a, b) => a.localeCompare(b, "ja"));
-  }, [records]);
+    return [...tags].sort((a, b) => a.text.localeCompare(b.text, "ja"));
+  }, [tags]);
 
   return (
     <div className="w-full">
@@ -46,13 +37,13 @@ export function TimerPage() {
             memo={values.memo}
             selectedBookId={values.selectedBookId}
             bookMemo={values.bookMemo}
-            tags={values.tags}
+            tagIds={values.tagIds}
             onClearInputs={() =>
               setValues({
                 memo: "",
                 selectedBookId: "",
                 bookMemo: "",
-                tags: [],
+                tagIds: [],
               })
             }
           />
@@ -127,9 +118,14 @@ export function TimerPage() {
               instance={
                 <TagMultiSelectInput
                   id="tags"
-                  value={values.tags}
-                  onChange={(tags) => setValues((prev) => ({ ...prev, tags }))}
+                  value={values.tagIds}
+                  onChange={(tagIds) =>
+                    setValues((prev) => ({ ...prev, tagIds }))
+                  }
                   options={tagOptions}
+                  onCreateOption={async (text) => {
+                    return await createTag({ text });
+                  }}
                   placeholder="タグを選択もしくは追加してください"
                 />
               }

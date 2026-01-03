@@ -5,22 +5,27 @@ import { cn } from "./ui/utils";
 import { Badge } from "./ui/badge";
 import { Popover, PopoverAnchor, PopoverContent } from "./ui/popover";
 import { NeumorphicInput } from "./NeumorphicInput";
+import type { Tag } from "../types";
 
-function normalizeTag(raw: string) {
+type TagOption = Pick<Tag, "id" | "text">;
+
+function normalizeTagText(raw: string) {
   return raw.trim();
 }
 
-function equalsTag(a: string, b: string) {
+function equalsTagText(a: string, b: string) {
   return (
-    normalizeTag(a).toLocaleLowerCase() === normalizeTag(b).toLocaleLowerCase()
+    normalizeTagText(a).toLocaleLowerCase() ===
+    normalizeTagText(b).toLocaleLowerCase()
   );
 }
 
 export type TagMultiSelectInputProps = {
   id?: string;
-  value: string[];
-  onChange: (next: string[]) => void;
-  options: string[];
+  value: string[]; // tagIds
+  onChange: (next: string[]) => void; // tagIds
+  options: TagOption[];
+  onCreateOption?: (text: string) => Promise<string | null> | string | null;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -31,6 +36,7 @@ export function TagMultiSelectInput({
   value,
   onChange,
   options,
+  onCreateOption,
   placeholder = "タグを入力してEnterで追加",
   disabled,
   className,
@@ -38,6 +44,7 @@ export function TagMultiSelectInput({
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const ignoreNextEnterRef = useRef(false);
   const anchorRef = useRef<HTMLDivElement | null>(null);
 
@@ -46,61 +53,90 @@ export function TagMultiSelectInput({
     latestValueRef.current = value;
   }, [value]);
 
+  const tagsById = useMemo(() => {
+    return new Map(options.map((t) => [t.id, t]));
+  }, [options]);
+
   const normalizedOptions = useMemo(() => {
-    const unique: string[] = [];
-    const merged = [...options, ...value];
-    for (const opt of merged) {
-      const t = normalizeTag(opt);
-      if (!t) continue;
-      if (unique.some((u) => equalsTag(u, t))) continue;
-      unique.push(t);
+    const unique: TagOption[] = [];
+    const seen = new Set<string>();
+    for (const opt of options) {
+      const text = normalizeTagText(opt.text);
+      if (!text) continue;
+      if (seen.has(opt.id)) continue;
+      seen.add(opt.id);
+      unique.push({ ...opt, text });
     }
     return unique;
-  }, [options, value]);
+  }, [options]);
 
-  const query = normalizeTag(inputValue);
+  const query = normalizeTagText(inputValue);
 
   const filteredOptions = useMemo(() => {
     if (!query) return normalizedOptions;
     const q = query.toLocaleLowerCase();
-    return normalizedOptions.filter((t) => t.toLocaleLowerCase().includes(q));
+    return normalizedOptions.filter((t) =>
+      t.text.toLocaleLowerCase().includes(q)
+    );
   }, [normalizedOptions, query]);
 
-  const canCreate =
-    !!query && !normalizedOptions.some((t) => equalsTag(t, query));
+  // Duplicates are allowed (we rely on stable IDs for reference).
+  // Still keep exact-match toggle behavior on Enter.
+  const canCreate = !!query && !!onCreateOption;
 
-  const isSelected = (tag: string) => value.some((v) => equalsTag(v, tag));
+  const isSelected = (tagId: string) => latestValueRef.current.includes(tagId);
 
-  const addTag = (raw: string) => {
-    const t = normalizeTag(raw);
-    if (!t) return;
+  const addTagId = (tagId: string) => {
+    if (!tagId) return;
     const current = latestValueRef.current;
-    if (current.some((v) => equalsTag(v, t))) return;
-    const next = [...current, t];
+    if (current.includes(tagId)) return;
+    const next = [...current, tagId];
     latestValueRef.current = next;
     onChange(next);
   };
 
-  const toggleTag = (tag: string) => {
+  const createTag = async (text: string) => {
+    if (!onCreateOption) return;
+    if (isCreating) return;
+    const t = normalizeTagText(text);
+    if (!t) return;
+
+    try {
+      setIsCreating(true);
+      const createdId = await onCreateOption(t);
+      if (!createdId) return;
+      addTagId(createdId);
+      setInputValue("");
+      setOpen(true);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const toggleTagId = (tagId: string) => {
     const current = latestValueRef.current;
-    if (current.some((v) => equalsTag(v, tag))) {
-      const next = current.filter((v) => !equalsTag(v, tag));
+    if (current.includes(tagId)) {
+      const next = current.filter((v) => v !== tagId);
       latestValueRef.current = next;
       onChange(next);
       setInputValue("");
       return;
     }
-    const next = [...current, tag];
+    const next = [...current, tagId];
     latestValueRef.current = next;
     onChange(next);
     setInputValue("");
   };
 
-  const removeTag = (tag: string) => {
+  const removeTag = (tagId: string) => {
     const current = latestValueRef.current;
-    const next = current.filter((v) => !equalsTag(v, tag));
+    const next = current.filter((v) => v !== tagId);
     latestValueRef.current = next;
     onChange(next);
+  };
+
+  const findExactMatch = (text: string) => {
+    return normalizedOptions.find((t) => equalsTagText(t.text, text)) ?? null;
   };
 
   return (
@@ -150,11 +186,21 @@ export function TagMultiSelectInput({
                   }
 
                   e.preventDefault();
-                  const text = normalizeTag(inputValue);
+                  const text = normalizeTagText(inputValue);
                   if (!text) return;
-                  addTag(text);
-                  setInputValue("");
-                  setOpen(true);
+
+                  const exact = findExactMatch(text);
+                  if (exact) {
+                    toggleTagId(exact.id);
+                    setInputValue("");
+                    setOpen(true);
+                    return;
+                  }
+
+                  if (canCreate) {
+                    void createTag(text);
+                    return;
+                  }
                 }
               }}
             />
@@ -181,9 +227,9 @@ export function TagMultiSelectInput({
                 type="button"
                 className="w-full rounded-sm px-2 py-2 text-left text-sm hover:bg-accent"
                 onClick={() => {
-                  addTag(query);
-                  setInputValue("");
+                  void createTag(query);
                 }}
+                disabled={disabled || isCreating}
               >
                 「{query}」を追加
               </button>
@@ -195,21 +241,21 @@ export function TagMultiSelectInput({
               </p>
             ) : (
               filteredOptions.map((tag) => {
-                const selected = isSelected(tag);
+                const selected = isSelected(tag.id);
                 return (
                   <button
-                    key={tag}
+                    key={tag.id}
                     type="button"
                     className={cn(
                       "flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent",
                       selected && "bg-accent"
                     )}
-                    onClick={() => toggleTag(tag)}
+                    onClick={() => toggleTagId(tag.id)}
                   >
                     <span className="inline-flex size-4 items-center justify-center">
                       {selected ? <Check className="size-4" /> : null}
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{tag}</span>
+                    <span className="min-w-0 flex-1 truncate">{tag.text}</span>
                   </button>
                 );
               })
@@ -220,19 +266,22 @@ export function TagMultiSelectInput({
 
       {value.length > 0 ? (
         <div className="flex flex-wrap gap-1">
-          {value.map((tag) => (
-            <Badge key={tag} variant="secondary" className="gap-1">
-              <span className="max-w-[240px] truncate">{tag}</span>
-              <button
-                type="button"
-                className="rounded-sm hover:opacity-80"
-                onClick={() => removeTag(tag)}
-                aria-label={`${tag} を削除`}
-              >
-                <X className="size-3" />
-              </button>
-            </Badge>
-          ))}
+          {value.map((tagId) => {
+            const label = tagsById.get(tagId)?.text ?? tagId;
+            return (
+              <Badge key={tagId} variant="secondary" className="gap-1">
+                <span className="max-w-[240px] truncate">{label}</span>
+                <button
+                  type="button"
+                  className="rounded-sm hover:opacity-80"
+                  onClick={() => removeTag(tagId)}
+                  aria-label={`${label} を削除`}
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            );
+          })}
         </div>
       ) : null}
     </div>

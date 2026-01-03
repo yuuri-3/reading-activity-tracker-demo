@@ -11,16 +11,17 @@ import React, {
 import {
   addDoc,
   collection,
-  deleteField,
   deleteDoc,
+  deleteField,
   doc,
   onSnapshot,
   orderBy,
   query,
   setDoc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
-import { Book, ReadingRecord, TimerState, BookMemo } from "../types";
+import { Book, ReadingRecord, TimerState, BookMemo, Tag } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { getFirestoreDb } from "../firebase/firebase";
 
@@ -33,6 +34,19 @@ interface AppContextType {
   deleteBook: (id: string) => Promise<void>;
   getBook: (id: string) => Book | undefined;
   addBookMemo: (bookId: string, memoText: string) => void;
+
+  // Tags
+  tags: Tag[];
+  createTag: (tag: {
+    text: string;
+    description?: string;
+  }) => Promise<string | null>;
+  updateTag: (
+    id: string,
+    updates: Partial<Pick<Tag, "text" | "description">>
+  ) => Promise<void>;
+  deleteTag: (id: string) => Promise<void>;
+  restoreTag: (tag: Tag) => Promise<void>;
 
   // Records
   records: ReadingRecord[];
@@ -167,10 +181,19 @@ function normalizeDurationSeconds(data: {
   return Math.max(0, Math.floor(n));
 }
 
+function normalizeTagText(text: string) {
+  return text.trim();
+}
+
+function normalizeTagCompareKey(text: string) {
+  return normalizeTagText(text).toLocaleLowerCase();
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [records, setRecords] = useState<ReadingRecord[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [searchText, setSearchText] = useState("");
   const [timerState, setTimerState] = useState<TimerState>({
     isRunning: false,
@@ -192,11 +215,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return getFirestoreDb();
   }, [uid]);
 
+  const tagsHydratedRef = useRef(false);
+
   // Subscribe to Firestore (single source of truth)
   useEffect(() => {
     if (!db || !uid) {
       setBooks([]);
       setRecords([]);
+      setTags([]);
+      tagsHydratedRef.current = false;
       return;
     }
 
@@ -207,6 +234,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const recordsQuery = query(
       collection(db, "users", uid, "records"),
+      orderBy("createdAt", "desc")
+    );
+
+    const tagsQuery = query(
+      collection(db, "users", uid, "tags"),
       orderBy("createdAt", "desc")
     );
 
@@ -234,7 +266,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
             bookId: data.bookId,
             duration: normalizeDurationSeconds(data),
             memo: data.memo,
-            tags: data.tags ?? [],
+            tagIds: Array.isArray(
+              (data as unknown as { tagIds?: unknown }).tagIds
+            )
+              ? (
+                  (data as unknown as { tagIds?: unknown }).tagIds as unknown[]
+                ).filter(
+                  (v): v is string => typeof v === "string" && v.length > 0
+                )
+              : undefined,
+            tags: Array.isArray((data as unknown as { tags?: unknown }).tags)
+              ? (
+                  (data as unknown as { tags?: unknown }).tags as unknown[]
+                ).filter((v): v is string => typeof v === "string")
+              : undefined,
             startTime: data.startTime,
             endTime: data.endTime,
             createdAt: data.createdAt,
@@ -243,11 +288,178 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     });
 
+    const unsubTags = onSnapshot(tagsQuery, (snapshot) => {
+      setTags(
+        snapshot.docs.map((d) => {
+          const data = d.data() as {
+            text?: unknown;
+            description?: unknown;
+            createdAt?: unknown;
+          };
+
+          const text = typeof data.text === "string" ? data.text : "";
+          const description =
+            typeof data.description === "string" ? data.description : "";
+          const createdAt =
+            typeof data.createdAt === "string"
+              ? data.createdAt
+              : new Date().toISOString();
+
+          return {
+            id: d.id,
+            text,
+            description,
+            createdAt,
+          } satisfies Tag;
+        })
+      );
+      tagsHydratedRef.current = true;
+    });
+
     return () => {
       unsubBooks();
       unsubRecords();
+      unsubTags();
     };
   }, [db, uid]);
+
+  // Migration: legacy records.tags(string[]) => records.tagIds(string[])
+  useEffect(() => {
+    if (!db || !uid) return;
+    if (!tagsHydratedRef.current) return;
+
+    const legacyTargets = records.filter(
+      (r) => (!r.tagIds || r.tagIds.length === 0) && (r.tags ?? []).length > 0
+    );
+    if (legacyTargets.length === 0) return;
+
+    void (async () => {
+      // Build name -> id index (prefer first found; duplicates allowed).
+      const byName = new Map<string, string>();
+      for (const t of tags) {
+        const key = normalizeTagCompareKey(t.text);
+        if (!key) continue;
+        if (!byName.has(key)) byName.set(key, t.id);
+      }
+
+      // Create missing tags for legacy labels.
+      const missingNames = new Map<string, string>();
+      for (const r of legacyTargets) {
+        for (const raw of r.tags ?? []) {
+          const text = normalizeTagText(raw);
+          if (!text) continue;
+          const k = normalizeTagCompareKey(text);
+          if (!k) continue;
+          if (byName.has(k)) continue;
+          if (missingNames.has(k)) continue;
+          missingNames.set(k, text);
+        }
+      }
+
+      for (const text of missingNames.values()) {
+        const now = new Date().toISOString();
+        const created = await addDoc(collection(db, "users", uid, "tags"), {
+          text,
+          description: "",
+          createdAt: now,
+        });
+        byName.set(normalizeTagCompareKey(text), created.id);
+      }
+
+      // Update records with resolved tagIds.
+      let batch = writeBatch(db);
+      let ops = 0;
+      const commit = async () => {
+        if (ops === 0) return;
+        await batch.commit();
+        batch = writeBatch(db);
+        ops = 0;
+      };
+
+      for (const r of legacyTargets) {
+        const nextIds: string[] = [];
+        const seen = new Set<string>();
+        for (const raw of r.tags ?? []) {
+          const text = normalizeTagText(raw);
+          if (!text) continue;
+          const id = byName.get(normalizeTagCompareKey(text));
+          if (!id) continue;
+          if (seen.has(id)) continue;
+          seen.add(id);
+          nextIds.push(id);
+        }
+
+        if (nextIds.length === 0) continue;
+        batch.update(doc(db, "users", uid, "records", r.id), {
+          tagIds: nextIds,
+        });
+        ops += 1;
+        if (ops >= 450) await commit();
+      }
+
+      await commit();
+    })();
+  }, [db, records, tags, uid]);
+
+  const createTag = async (tag: { text: string; description?: string }) => {
+    if (!db || !uid) return null;
+    const text = normalizeTagText(tag.text);
+    if (!text) return null;
+    const now = new Date().toISOString();
+    const created = await addDoc(collection(db, "users", uid, "tags"), {
+      text,
+      description: tag.description ?? "",
+      createdAt: now,
+    });
+    return created.id;
+  };
+
+  const updateTag = async (
+    id: string,
+    updates: Partial<Pick<Tag, "text" | "description">>
+  ) => {
+    if (!db || !uid) return;
+    const current = tags.find((t) => t.id === id);
+    if (!current) return;
+
+    const nextText =
+      typeof updates.text === "string"
+        ? normalizeTagText(updates.text)
+        : current.text;
+    const nextDescription =
+      typeof updates.description === "string"
+        ? updates.description
+        : current.description;
+
+    await updateDoc(
+      doc(db, "users", uid, "tags", id),
+      stripUndefined({
+        ...(nextText !== current.text ? { text: nextText } : {}),
+        ...(nextDescription !== current.description
+          ? { description: nextDescription }
+          : {}),
+      })
+    );
+  };
+
+  const deleteTag = async (id: string) => {
+    if (!db || !uid) return;
+    await deleteDoc(doc(db, "users", uid, "tags", id));
+  };
+
+  const restoreTag = async (tag: Tag) => {
+    if (!db || !uid) return;
+    const { id, ...rest } = tag;
+    await setDoc(
+      doc(db, "users", uid, "tags", id),
+      stripUndefined({
+        ...rest,
+        text: normalizeTagText(tag.text),
+        description: tag.description ?? "",
+        createdAt: tag.createdAt ?? new Date().toISOString(),
+      } as unknown as Record<string, unknown>)
+    );
+  };
 
   // Restore timer state from localStorage so reload doesn't reset measurement.
   // Use layout effect to avoid a "reset to 0" paint before hydration.
@@ -431,6 +643,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteBook,
         getBook,
         addBookMemo,
+        tags,
+        createTag,
+        updateTag,
+        deleteTag,
+        restoreTag,
         records,
         addRecord,
         updateRecord,

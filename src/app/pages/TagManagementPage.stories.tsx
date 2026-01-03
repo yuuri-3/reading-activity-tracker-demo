@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { TagManagementPage } from "./TagManagementPage";
+import { createDemoTags } from "../stories/demoData";
 
 export default {
   title: "Pages/TagManagementPage",
@@ -20,5 +21,5 @@ export default {
 type Story = StoryObj<typeof TagManagementPage>;
 
 export const Default: Story = {
-  render: () => <TagManagementPage />,
+  render: () => <TagManagementPage initialTags={createDemoTags()} />,
 };

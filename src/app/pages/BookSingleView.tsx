@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Calendar, Clock, FileText } from "lucide-react";
 
@@ -12,6 +12,7 @@ import { FieldItem } from "../components/FieldItem";
 import { NeumorphicTextarea } from "../components/NeumorphicTextarea";
 import { formatDateTime, formatDurationHms } from "../utils/format";
 import { toast } from "sonner";
+import { Tag as TagChip } from "../components/Tag";
 
 export type BookSingleViewProps = {
   book: Book;
@@ -22,11 +23,16 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   const {
     updateBook,
     deleteBook,
+    tags,
     getRecordsByBook,
     getTotalDurationByBook,
     updateRecord,
     deleteRecord,
   } = useApp();
+
+  const tagsById = useMemo(() => {
+    return new Map(tags.map((t) => [t.id, t.text] as const));
+  }, [tags]);
 
   const [segment, setSegment] = useState<"all" | "reading" | "book">("all");
 
@@ -244,6 +250,22 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
               feedItems.map((item) => {
                 if (item.kind === "record") {
                   const r = item.record;
+
+                  const tagsNode = (() => {
+                    const ids = r.tagIds ?? [];
+                    if (ids.length > 0) {
+                      return ids.map((id) => (
+                        <TagChip key={id}>{tagsById.get(id) ?? id}</TagChip>
+                      ));
+                    }
+
+                    const legacy = r.tags ?? [];
+                    if (legacy.length === 0) return undefined;
+                    return legacy.map((t, idx) => (
+                      <TagChip key={`legacy:${idx}:${t}`}>{t}</TagChip>
+                    ));
+                  })();
+
                   return (
                     <ListCard
                       key={item.key}
@@ -252,7 +274,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                       dateTime={r.startTime}
                       recordNote={r.memo}
                       bookName={book.title}
-                      tags={r.tags}
+                      tagsNode={tagsNode}
                       onDelete={() => handleDeleteRecord(r.id)}
                       onEdit={() => handleOpenEditRecord(r.id)}
                     />

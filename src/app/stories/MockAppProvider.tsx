@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AppContext } from "../context/AppContext";
-import type { Book, ReadingRecord, TimerState } from "../types";
+import type { Book, ReadingRecord, Tag, TimerState } from "../types";
 
 export type MockAppProviderProps = {
   children: ReactNode;
 
   initialBooks?: Book[];
   initialRecords?: ReadingRecord[];
+  initialTags?: Tag[];
   initialSearchText?: string;
 
   initialTimerSeconds?: number;
@@ -20,6 +21,7 @@ export function MockAppProvider({
   children,
   initialBooks,
   initialRecords,
+  initialTags,
   initialSearchText,
   initialTimerSeconds = 0,
   initialTimerRunning = false,
@@ -29,6 +31,7 @@ export function MockAppProvider({
   const [records, setRecords] = useState<ReadingRecord[]>(
     () => initialRecords ?? []
   );
+  const [tags, setTags] = useState<Tag[]>(() => initialTags ?? []);
   const [searchText, setSearchText] = useState(initialSearchText ?? "");
   const [timerState, setTimerState] = useState<TimerState>(() => {
     const startTime = initialTimerRunning ? Date.now() : null;
@@ -61,6 +64,61 @@ export function MockAppProvider({
     NonNullable<React.ContextType<typeof AppContext>>
   >(() => {
     const getBook = (id: string) => books.find((b) => b.id === id);
+
+    const createTag = async (tag: { text: string; description?: string }) => {
+      const text = tag.text.trim();
+      if (!text) return null;
+
+      const now = new Date().toISOString();
+      const id = `tag-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      setTags((prev) => [
+        {
+          id,
+          text,
+          description: tag.description ?? "",
+          createdAt: now,
+        },
+        ...prev,
+      ]);
+      return id;
+    };
+
+    const updateTag = async (
+      id: string,
+      updates: Partial<Pick<Tag, "text" | "description">>
+    ) => {
+      setTags((prev) =>
+        prev.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                ...(typeof updates.text === "string"
+                  ? { text: updates.text }
+                  : {}),
+                ...(typeof updates.description === "string"
+                  ? { description: updates.description }
+                  : {}),
+              }
+            : t
+        )
+      );
+    };
+
+    const deleteTag = async (id: string) => {
+      setTags((prev) => prev.filter((t) => t.id !== id));
+    };
+
+    const restoreTag = async (tag: Tag) => {
+      setTags((prev) => {
+        const idx = prev.findIndex((t) => t.id === tag.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = tag;
+          return next;
+        }
+        return [tag, ...prev];
+      });
+    };
 
     const addBook = async (book: Omit<Book, "id" | "createdAt">) => {
       setBooks((prev) => [
@@ -180,6 +238,11 @@ export function MockAppProvider({
       deleteBook,
       getBook,
       addBookMemo,
+      tags,
+      createTag,
+      updateTag,
+      deleteTag,
+      restoreTag,
       records,
       addRecord,
       updateRecord,
@@ -194,7 +257,7 @@ export function MockAppProvider({
       searchText,
       setSearchText,
     };
-  }, [books, records, searchText, timerState]);
+  }, [books, records, searchText, tags, timerState]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

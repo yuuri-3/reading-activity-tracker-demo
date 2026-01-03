@@ -192,6 +192,8 @@ export function RecordSingleView({
   const {
     records,
     books,
+    tags: allTags,
+    createTag,
     addRecord,
     updateRecord,
     deleteRecord,
@@ -210,7 +212,7 @@ export function RecordSingleView({
   const [selectedBookId, setSelectedBookId] = useState<string>("");
   const [memo, setMemo] = useState("");
   const [bookMemo, setBookMemo] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [startAt, setStartAt] = useState(
     () => getDefaultAddRecordDateTimeValues().startAt
   );
@@ -225,17 +227,47 @@ export function RecordSingleView({
   useElementScrollRestoration(scrollContainerRef, "records");
 
   const tagOptions = useMemo(() => {
-    const unique = new Map<string, string>();
-    for (const record of records) {
-      for (const t of record.tags ?? []) {
-        const trimmed = t.trim();
-        if (!trimmed) continue;
-        const key = trimmed.toLocaleLowerCase();
-        if (!unique.has(key)) unique.set(key, trimmed);
-      }
+    return [...allTags]
+      .sort((a, b) => a.text.localeCompare(b.text, "ja"))
+      .map((t) => ({ id: t.id, text: t.text }));
+  }, [allTags]);
+
+  const tagsById = useMemo(() => {
+    return new Map(allTags.map((t) => [t.id, t] as const));
+  }, [allTags]);
+
+  const tagIdByTextKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of allTags) {
+      const key = t.text.trim().toLocaleLowerCase();
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, t.id);
     }
-    return Array.from(unique.values()).sort((a, b) => a.localeCompare(b, "ja"));
-  }, [records]);
+    return map;
+  }, [allTags]);
+
+  const getRecordTagItems = (record: ReadingRecord) => {
+    const ids = record.tagIds ?? [];
+    if (ids.length > 0) {
+      return ids.map((id) => ({ key: id, text: tagsById.get(id)?.text ?? id }));
+    }
+
+    const legacy = record.tags ?? [];
+    return legacy
+      .map((raw, idx) => {
+        const text = raw.trim();
+        if (!text) return null;
+        return { key: `legacy:${idx}:${text}`, text };
+      })
+      .filter(
+        (
+          v
+        ): v is {
+          key: string;
+          text: string;
+        } => v != null
+      );
+  };
 
   const durationSeconds = useMemo(() => {
     const start = startAt ? new Date(startAt) : null;
@@ -258,7 +290,7 @@ export function RecordSingleView({
     setSelectedBookId("");
     setMemo("");
     setBookMemo("");
-    setTags([]);
+    setTagIds([]);
     setStartAt(defaults.startAt);
     setEndAt(defaults.endAt);
     setSaveError(null);
@@ -283,7 +315,21 @@ export function RecordSingleView({
     setSelectedBookId(record.bookId ?? "");
     setMemo(record.memo ?? "");
     setBookMemo("");
-    setTags(record.tags ?? []);
+    if (record.tagIds && record.tagIds.length > 0) {
+      setTagIds(record.tagIds);
+    } else {
+      const nextIds: string[] = [];
+      const seen = new Set<string>();
+      for (const raw of record.tags ?? []) {
+        const key = raw.trim().toLocaleLowerCase();
+        if (!key) continue;
+        const id = tagIdByTextKey.get(key);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        nextIds.push(id);
+      }
+      setTagIds(nextIds);
+    }
 
     const start = new Date(record.startTime);
     const end = new Date(record.endTime);
@@ -334,7 +380,7 @@ export function RecordSingleView({
           // 編集時は、解除(空文字)も反映させるため常に送る
           bookId: selectedBookId,
           // 編集時は、タグを全て外した場合(空配列)も反映させるため常に送る
-          tags,
+          tagIds,
         });
       } else {
         await addRecord({
@@ -343,7 +389,7 @@ export function RecordSingleView({
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           ...(selectedBookId ? { bookId: selectedBookId } : {}),
-          ...(tags.length ? { tags } : {}),
+          ...(tagIds.length ? { tagIds } : {}),
         });
       }
 
@@ -403,9 +449,9 @@ export function RecordSingleView({
     return records
       .map((record) => {
         const memoText = (record.memo ?? "").toLowerCase();
-        const tags = record.tags ?? [];
+        const tagTexts = getRecordTagItems(record).map((t) => t.text);
         const matchedMemo = memoText.includes(normalizedQuery);
-        const matchedTags = tags.some((t) =>
+        const matchedTags = tagTexts.some((t) =>
           t.trim().toLowerCase().includes(normalizedQuery)
         );
 
@@ -421,7 +467,7 @@ export function RecordSingleView({
         };
       })
       .filter(Boolean) as SearchItem[];
-  }, [records, isSearchActive, normalizedQuery]);
+  }, [records, isSearchActive, normalizedQuery, tagsById]);
 
   const bookMemoSearchItems = useMemo(() => {
     if (!isSearchActive) return [] as SearchItem[];
@@ -713,11 +759,14 @@ export function RecordSingleView({
             instance={
               <TagMultiSelectInput
                 id="tags"
-                value={tags}
-                onChange={setTags}
+                value={tagIds}
+                onChange={setTagIds}
                 options={tagOptions}
                 placeholder="タグを選択または追加してください"
                 disabled={isSaving}
+                onCreateOption={async (text) => {
+                  return await createTag({ text });
+                }}
               />
             }
           />
@@ -850,21 +899,25 @@ export function RecordSingleView({
                                 ? highlightText(record.memo ?? "", searchQuery)
                                 : record.memo;
 
-                              const tagsNode = (record.tags ?? []).length
-                                ? (record.tags ?? []).map((t) => {
-                                    const tagMatched = t
-                                      .trim()
-                                      .toLowerCase()
-                                      .includes(normalizedQuery);
-                                    return (
-                                      <Tag key={t}>
-                                        {tagMatched
-                                          ? highlightText(t, searchQuery)
-                                          : t}
-                                      </Tag>
-                                    );
-                                  })
-                                : undefined;
+                              const tagsNode = (() => {
+                                const items = getRecordTagItems(record);
+                                if (items.length === 0) return undefined;
+
+                                return items.map((t) => {
+                                  const tagMatched = t.text
+                                    .trim()
+                                    .toLowerCase()
+                                    .includes(normalizedQuery);
+
+                                  return (
+                                    <Tag key={t.key}>
+                                      {tagMatched
+                                        ? highlightText(t.text, searchQuery)
+                                        : t.text}
+                                    </Tag>
+                                  );
+                                });
+                              })();
 
                               return (
                                 <ListCard
@@ -909,6 +962,14 @@ export function RecordSingleView({
                                 ? getBook(record.bookId)
                                 : null;
 
+                              const tagsNode = (() => {
+                                const items = getRecordTagItems(record);
+                                if (items.length === 0) return undefined;
+                                return items.map((t) => (
+                                  <Tag key={t.key}>{t.text}</Tag>
+                                ));
+                              })();
+
                               return (
                                 <ListCard
                                   key={record.id}
@@ -917,7 +978,7 @@ export function RecordSingleView({
                                   dateTime={record.startTime}
                                   recordNote={record.memo}
                                   bookName={book?.title}
-                                  tags={record.tags}
+                                  tagsNode={tagsNode}
                                   onEdit={() => handleOpenEditDialog(record.id)}
                                   onDelete={() => void handleDelete(record.id)}
                                 />
@@ -1051,11 +1112,14 @@ export function RecordSingleView({
             instance={
               <TagMultiSelectInput
                 id="tags"
-                value={tags}
-                onChange={setTags}
+                value={tagIds}
+                onChange={setTagIds}
                 options={tagOptions}
                 placeholder="タグを選択または追加してください"
                 disabled={isSaving}
+                onCreateOption={async (text) => {
+                  return await createTag({ text });
+                }}
               />
             }
           />

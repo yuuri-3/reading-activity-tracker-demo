@@ -6,6 +6,7 @@ import {
   createDemoBooks,
   createDemoRecords,
   createIsoDate,
+  createDemoTags,
 } from "../stories/demoData";
 
 export default {
@@ -28,6 +29,28 @@ type Story = StoryObj<typeof RecordSingleView>;
 function createDefaultRecordsStoryData() {
   const books = createDemoBooks({ variant: "rich" });
   const baseRecords = createDemoRecords({ variant: "recent" });
+
+  const tags = [
+    ...createDemoTags(),
+    {
+      id: "tag-1",
+      text: "タグ1",
+      description: "",
+      createdAt: createIsoDate(-10 * 24 * 60),
+    },
+    {
+      id: "tag-2",
+      text: "タグ2",
+      description: "",
+      createdAt: createIsoDate(-10 * 24 * 60 + 1),
+    },
+    {
+      id: "tag-3",
+      text: "タグ3",
+      description: "",
+      createdAt: createIsoDate(-10 * 24 * 60 + 2),
+    },
+  ];
 
   const withAllCombos = [
     // tags: on/off, book: on/off, memo: on/off (8 patterns)
@@ -98,15 +121,19 @@ function createDefaultRecordsStoryData() {
     };
   });
 
-  return { books, records: [...withAllCombos, ...baseRecords] };
+  return { books, tags, records: [...withAllCombos, ...baseRecords] };
 }
 
 export const Default: Story = {
   render: () => {
-    const { books, records } = createDefaultRecordsStoryData();
+    const { books, records, tags } = createDefaultRecordsStoryData();
 
     return (
-      <MockAppProvider initialBooks={books} initialRecords={records}>
+      <MockAppProvider
+        initialBooks={books}
+        initialRecords={records}
+        initialTags={tags}
+      >
         <RecordSingleView />
       </MockAppProvider>
     );
@@ -115,7 +142,11 @@ export const Default: Story = {
 
 export const Empty: Story = {
   render: () => (
-    <MockAppProvider initialBooks={createDemoBooks()} initialRecords={[]}>
+    <MockAppProvider
+      initialBooks={createDemoBooks()}
+      initialRecords={[]}
+      initialTags={createDemoTags()}
+    >
       <RecordSingleView />
     </MockAppProvider>
   ),
@@ -123,10 +154,14 @@ export const Empty: Story = {
 
 export const Filtered: Story = {
   render: () => {
-    const { books, records } = createDefaultRecordsStoryData();
+    const { books, records, tags } = createDefaultRecordsStoryData();
 
     return (
-      <MockAppProvider initialBooks={books} initialRecords={records}>
+      <MockAppProvider
+        initialBooks={books}
+        initialRecords={records}
+        initialTags={tags}
+      >
         <RecordSingleView />
       </MockAppProvider>
     );

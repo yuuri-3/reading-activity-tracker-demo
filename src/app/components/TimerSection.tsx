@@ -13,7 +13,7 @@ export type TimerSectionProps = {
   memo?: string;
   selectedBookId?: string;
   bookMemo?: string;
-  tags?: string[];
+  tagIds?: string[];
   onClearInputs?: () => void;
 };
 
@@ -21,7 +21,7 @@ export function TimerSection({
   memo = "",
   selectedBookId = "",
   bookMemo = "",
-  tags = [],
+  tagIds = [],
   onClearInputs,
 }: TimerSectionProps) {
   const {
@@ -94,7 +94,7 @@ export function TimerSection({
     const memoSnapshot = memo;
     const selectedBookIdSnapshot = selectedBookId;
     const bookMemoSnapshot = bookMemo;
-    const tagsSnapshot = tags;
+    const tagIdsSnapshot = tagIds;
 
     const now = new Date();
     const computedStartMs =
@@ -118,7 +118,7 @@ export function TimerSection({
       startTime,
       endTime: now.toISOString(),
       ...(selectedBookIdSnapshot ? { bookId: selectedBookIdSnapshot } : {}),
-      ...(tagsSnapshot.length ? { tags: tagsSnapshot } : {}),
+      ...(tagIdsSnapshot.length ? { tagIds: tagIdsSnapshot } : {}),
     }).catch((err) => {
       console.error(err);
       toast.error("計測結果の保存に失敗しました");

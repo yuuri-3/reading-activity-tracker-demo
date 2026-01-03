@@ -1,4 +1,4 @@
-import type { Book, ReadingRecord } from "../types";
+import type { Book, ReadingRecord, Tag } from "../types";
 
 export function createIsoDate(offsetMinutes: number) {
   return new Date(Date.now() + offsetMinutes * 60 * 1000).toISOString();
@@ -83,6 +83,35 @@ export function createDemoRecords({
       startTime: createIsoDate(-90),
       endTime: createIsoDate(-65),
       createdAt: createIsoDate(-65),
+    },
+  ];
+}
+
+export function createDemoTags(): Tag[] {
+  return [
+    {
+      id: "tag-react",
+      text: "React",
+      description: "ここにタグの補足説明",
+      createdAt: createIsoDate(-7 * 24 * 60),
+    },
+    {
+      id: "tag-design",
+      text: "Design",
+      description: "",
+      createdAt: createIsoDate(-6 * 24 * 60),
+    },
+    {
+      id: "tag-journal",
+      text: "Journal",
+      description: "",
+      createdAt: createIsoDate(-5 * 24 * 60),
+    },
+    {
+      id: "tag-dev",
+      text: "Dev",
+      description: "ここにタグの補足説明",
+      createdAt: createIsoDate(-4 * 24 * 60),
     },
   ];
 }

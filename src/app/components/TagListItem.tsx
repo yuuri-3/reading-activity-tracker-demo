@@ -3,16 +3,20 @@ import { IconEdit } from "./icons/IconEdit";
 
 export type TagListItemProps = {
   showDescription?: boolean;
-  text?: string;
+  text: string;
   description?: string;
-  amount?: string;
+  amount: string;
+  onEdit?: () => void;
+  onDelete?: () => void;
 };
 
 export function TagListItem({
   showDescription = true,
-  text = "React",
-  description = "あああ",
-  amount = "1",
+  text,
+  description,
+  amount,
+  onEdit,
+  onDelete,
 }: TagListItemProps) {
   return (
     <div
@@ -36,7 +40,7 @@ export function TagListItem({
 
           {showDescription ? (
             <p className="mt-0.5 text-[14px] font-normal leading-5 text-muted-foreground">
-              {description}
+              {description ?? ""}
             </p>
           ) : null}
         </div>
@@ -47,6 +51,7 @@ export function TagListItem({
               type="button"
               aria-label="編集"
               className="transition-colors hover:text-foreground"
+              onClick={onEdit}
             >
               <IconEdit size={20} />
             </button>
@@ -54,6 +59,7 @@ export function TagListItem({
               type="button"
               aria-label="削除"
               className="transition-colors hover:text-foreground"
+              onClick={onDelete}
             >
               <IconDelete size={20} />
             </button>
