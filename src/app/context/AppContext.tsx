@@ -21,6 +21,7 @@ import {
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
+import { toast } from "sonner";
 import { Book, ReadingRecord, TimerState, BookMemo, Tag } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { getFirestoreDb } from "../firebase/firebase";
@@ -216,6 +217,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [uid]);
 
   const tagsHydratedRef = useRef(false);
+  const migrationInFlightRef = useRef(false);
+  const didNotifyMigrationRef = useRef(false);
 
   // Subscribe to Firestore (single source of truth)
   useEffect(() => {
@@ -327,13 +330,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!db || !uid) return;
     if (!tagsHydratedRef.current) return;
+    if (migrationInFlightRef.current) return;
 
     const legacyTargets = records.filter(
       (r) => (!r.tagIds || r.tagIds.length === 0) && (r.tags ?? []).length > 0
     );
-    if (legacyTargets.length === 0) return;
+
+    const mixedTargets = records.filter(
+      (r) => (r.tagIds ?? []).length > 0 && (r.tags ?? []).length > 0
+    );
+
+    if (legacyTargets.length === 0 && mixedTargets.length === 0) return;
 
     void (async () => {
+      migrationInFlightRef.current = true;
       // Build name -> id index (prefer first found; duplicates allowed).
       const byName = new Map<string, string>();
       for (const t of tags) {
@@ -342,33 +352,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!byName.has(key)) byName.set(key, t.id);
       }
 
-      // Create missing tags for legacy labels.
-      const missingNames = new Map<string, string>();
-      for (const r of legacyTargets) {
-        for (const raw of r.tags ?? []) {
-          const text = normalizeTagText(raw);
-          if (!text) continue;
-          const k = normalizeTagCompareKey(text);
-          if (!k) continue;
-          if (byName.has(k)) continue;
-          if (missingNames.has(k)) continue;
-          missingNames.set(k, text);
+      if (legacyTargets.length > 0) {
+        // Create missing tags for legacy labels.
+        const missingNames = new Map<string, string>();
+        for (const r of legacyTargets) {
+          for (const raw of r.tags ?? []) {
+            const text = normalizeTagText(raw);
+            if (!text) continue;
+            const k = normalizeTagCompareKey(text);
+            if (!k) continue;
+            if (byName.has(k)) continue;
+            if (missingNames.has(k)) continue;
+            missingNames.set(k, text);
+          }
         }
-      }
 
-      for (const text of missingNames.values()) {
-        const now = new Date().toISOString();
-        const created = await addDoc(collection(db, "users", uid, "tags"), {
-          text,
-          description: "",
-          createdAt: now,
-        });
-        byName.set(normalizeTagCompareKey(text), created.id);
+        for (const text of missingNames.values()) {
+          const now = new Date().toISOString();
+          const created = await addDoc(collection(db, "users", uid, "tags"), {
+            text,
+            description: "",
+            createdAt: now,
+          });
+          byName.set(normalizeTagCompareKey(text), created.id);
+        }
       }
 
       // Update records with resolved tagIds.
       let batch = writeBatch(db);
       let ops = 0;
+      let migratedRecords = 0;
+      let clearedLegacyTags = 0;
       const commit = async () => {
         if (ops === 0) return;
         await batch.commit();
@@ -392,13 +406,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (nextIds.length === 0) continue;
         batch.update(doc(db, "users", uid, "records", r.id), {
           tagIds: nextIds,
+          // Remove legacy field after migration (finish the mixed state quickly).
+          tags: deleteField(),
         });
         ops += 1;
+        migratedRecords += 1;
+        clearedLegacyTags += 1;
+        if (ops >= 450) await commit();
+      }
+
+      for (const r of mixedTargets) {
+        batch.update(doc(db, "users", uid, "records", r.id), {
+          tags: deleteField(),
+        });
+        ops += 1;
+        clearedLegacyTags += 1;
         if (ops >= 450) await commit();
       }
 
       await commit();
-    })();
+
+      if (
+        !didNotifyMigrationRef.current &&
+        (migratedRecords > 0 || clearedLegacyTags > 0)
+      ) {
+        didNotifyMigrationRef.current = true;
+        const cleanedOnly = Math.max(0, clearedLegacyTags - migratedRecords);
+        const parts: string[] = [];
+        if (migratedRecords > 0) parts.push(`移行: ${migratedRecords}件`);
+        if (cleanedOnly > 0) parts.push(`整理: ${cleanedOnly}件`);
+        const detail = parts.length ? `（${parts.join(" / ")}）` : "";
+        toast.success(`タグの移行が完了しました${detail}`);
+      }
+      migrationInFlightRef.current = false;
+    })().catch((err) => {
+      migrationInFlightRef.current = false;
+      console.error(err);
+    });
   }, [db, records, tags, uid]);
 
   const createTag = async (tag: { text: string; description?: string }) => {
@@ -552,9 +596,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addRecord = async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
     if (!db || !uid) return;
     const now = new Date().toISOString();
+    const { tags: _legacyTags, ...rest } = record as unknown as Record<
+      string,
+      unknown
+    >;
     await addDoc(collection(db, "users", uid, "records"), {
       ...stripUndefined({
-        ...(record as unknown as Record<string, unknown>),
+        ...rest,
         duration:
           typeof record.duration === "number"
             ? Math.max(0, Math.floor(record.duration))
@@ -575,6 +623,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...(typeof rest.bookId === "string" && rest.bookId === ""
         ? { bookId: deleteField() }
         : {}),
+      // If caller uses tagIds (including empty array to clear), remove legacy tags.
+      ...("tagIds" in rest ? { tags: deleteField() } : {}),
     };
     await updateDoc(
       doc(db, "users", uid, "records", id),
