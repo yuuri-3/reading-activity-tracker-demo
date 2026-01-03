@@ -25,12 +25,12 @@ Run `npm run build-storybook` to build a static Storybook.
 
 本番ホスティングは Firebase Hosting を使います。
 
-### 1) Firebase プロジェクトを用意
+### 1 Firebase プロジェクトを用意
 
 - 既存の Firebase プロジェクトを使うか、新規作成します。
 - Hosting を有効化します。
 
-### 2) ローカルから手動デプロイ（最短で動作確認）
+### 2 ローカルから手動デプロイ（最短で動作確認）
 
 - `npm ci`
 - `npm run build`
@@ -41,13 +41,17 @@ Run `npm run build-storybook` to build a static Storybook.
 
 このリポジトリは SPA なので、Hosting 側は [firebase.json](firebase.json) の rewrite 設定で `/** -> /index.html` にしています。
 
-### 3) GitHub Actions で自動デプロイ
+### 3 GitHub Actions で自動デプロイ
 
 このリポジトリには [deploy-firebase-hosting.yml](.github/workflows/deploy-firebase-hosting.yml) を用意しています。
 
 必要な GitHub 設定:
 
-- Actions Variables: `VITE_FIREBASE_*`
-- Actions Secrets: `FIREBASE_SERVICE_ACCOUNT`
-
 `FIREBASE_SERVICE_ACCOUNT` は Firebase プロジェクトのサービスアカウント JSON をそのまま貼り付けます。
+
+## Cloudflare Tunnel（プレビュー公開）
+
+Cloudflare Tunnel でプレビューを公開するために必要なコマンドは以下の 2 つです（別ターミナルで併行実行）。
+
+- `cloudflared tunnel run my-preview`
+- `npm run build && npm run preview -- --host --port 4173`
