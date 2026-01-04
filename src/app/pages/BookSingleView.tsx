@@ -13,6 +13,7 @@ import { NeumorphicTextarea } from "../components/NeumorphicTextarea";
 import { formatDateTime, formatDurationHms } from "../utils/format";
 import { toast } from "sonner";
 import { Tag as TagChip } from "../components/Tag";
+import { IconBack } from "../components/icons/IconBack";
 
 export type BookSingleViewProps = {
   book: Book;
@@ -186,56 +187,64 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
       <div className="shrink-0">
-        <div className="max-w-2xl mx-auto p-6">
-          <div className="flex flex-col gap-6">
+        <div className="max-w-2xl mx-auto">
+          <header className="sticky top-0 z-30 flex flex-col gap-2 px-6 pt-8 pb-4 backdrop-blur-lg bg-[rgba(232,237,242,0.9)] supports-[backdrop-filter]:bg-[rgba(232,237,242,0.75)]">
             <button
+              type="button"
               onClick={onBack}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-0.5 text-[14px] font-normal leading-5 text-foreground"
             >
-              ← 一覧に戻る
+              <IconBack size={20} className="shrink-0" />
+              <span className="pb-[2px]">戻る</span>
             </button>
 
-            <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-medium tracking-[0.02em] text-foreground">
-                {book.title}
-              </h1>
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Calendar className="size-4" />
-                  <p className="text-[13px] leading-5 tabular-nums">
-                    {formatDateTime(lastActivityAt)}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2.5 text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <FileText className="size-4" />
+            <div className="flex flex-col gap-6 pt-2">
+              <div className="flex flex-col gap-1">
+                <h1 className="text-2xl font-medium tracking-[0.02em] text-foreground">
+                  {book.title}
+                </h1>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Calendar className="size-4" />
                     <p className="text-[13px] leading-5 tabular-nums">
-                      {memos.length} notes
+                      {formatDateTime(lastActivityAt)}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <Clock className="size-4" />
-                    <p className="text-[13px] leading-5 tabular-nums">
-                      {formatDurationHms(totalDuration)}
-                    </p>
+                  <div className="flex items-center gap-2.5 text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <FileText className="size-4" />
+                      <p className="text-[13px] leading-5 tabular-nums">
+                        {memos.length} notes
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Clock className="size-4" />
+                      <p className="text-[13px] leading-5 tabular-nums">
+                        {formatDurationHms(totalDuration)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <SegmentedControl
-              value={segment}
-              onValueChange={(v) => setSegment(v as any)}
-              className="w-full rounded-full"
-              items={[
-                { value: "all", text: "すべて", amount: allCount },
-                { value: "reading", text: "記録メモ", amount: records.length },
-                { value: "book", text: "書籍メモ", amount: memos.length },
-              ]}
-            />
-          </div>
+              <SegmentedControl
+                value={segment}
+                onValueChange={(v) => setSegment(v as any)}
+                className="w-full rounded-full"
+                items={[
+                  { value: "all", text: "すべて", amount: allCount },
+                  {
+                    value: "reading",
+                    text: "記録メモ",
+                    amount: records.length,
+                  },
+                  { value: "book", text: "書籍メモ", amount: memos.length },
+                ]}
+              />
+            </div>
+          </header>
         </div>
       </div>
 
