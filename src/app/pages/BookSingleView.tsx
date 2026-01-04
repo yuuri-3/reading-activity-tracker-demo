@@ -358,6 +358,8 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
         title="記録メモを編集"
         description="記録メモを編集します"
         formPatternType="AddRecord"
+        stickyHeader
+        contentClassName="sm:max-w-[720px]"
         cancelLabel="キャンセル"
         confirmLabel="保存"
         onCancel={() => setIsEditRecordOpen(false)}

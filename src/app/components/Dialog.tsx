@@ -51,6 +51,9 @@ export type DialogProps = {
   /** Styling hooks */
   contentClassName?: string;
 
+  /** Keep header visible while scrolling inside the dialog */
+  stickyHeader?: boolean;
+
   /** Make the dialog occupy the full viewport on mobile */
   fullScreenOnMobile?: boolean;
 
@@ -81,6 +84,7 @@ export function Dialog({
   disableEscapeClose,
   disableOutsideClose,
   contentClassName,
+  stickyHeader = false,
   fullScreenOnMobile = false,
   cancelButtonProps,
   confirmButtonProps,
@@ -92,7 +96,11 @@ export function Dialog({
       <DialogContent
         hideClose
         mobileFullScreen={fullScreenOnMobile}
-        className={cn("sm:max-w-[360px]", contentClassName)}
+        className={cn(
+          "sm:max-w-[360px]",
+          stickyHeader && "sm:p-0 sm:gap-0",
+          contentClassName
+        )}
         onOpenAutoFocus={
           formPatternType === "AddRecord"
             ? (e) => {
@@ -110,20 +118,34 @@ export function Dialog({
           disableOutsideClose ? (e) => e.preventDefault() : undefined
         }
       >
-        <div className="flex flex-col gap-5">
-          <DialogHeader className="items-center text-center">
+        <div className={cn("flex flex-col", stickyHeader ? "gap-0" : "gap-5")}>
+          <DialogHeader
+            className={cn(
+              "items-center text-center",
+              stickyHeader &&
+                "sticky top-0 z-10 w-full bg-[var(--background-solid)] pb-5 sm:px-6 sm:pt-6"
+            )}
+          >
             <DialogTitle>{title}</DialogTitle>
             {description && (
               <DialogDescription>{description}</DialogDescription>
             )}
           </DialogHeader>
 
-          <DialogFormPattern type={formPatternType}>
+          <DialogFormPattern
+            type={formPatternType}
+            className={cn(stickyHeader && "sm:px-6")}
+          >
             {children}
           </DialogFormPattern>
         </div>
 
-        <div className="sticky bottom-0 left-0 right-0 z-10 flex gap-4 bg-[var(--background-solid)] pb-[max(env(safe-area-inset-bottom),4px)]">
+        <div
+          className={cn(
+            "sticky bottom-0 left-0 right-0 z-10 flex gap-4 bg-[var(--background-solid)] pb-[max(env(safe-area-inset-bottom),4px)]",
+            stickyHeader && "sm:px-6 sm:pt-5 sm:pb-6"
+          )}
+        >
           <PrimaryButton
             type="button"
             onClick={onCancel}

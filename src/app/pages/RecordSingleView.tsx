@@ -969,6 +969,8 @@ export function RecordSingleView({
             : "手動で記録を追加できます"
         }
         formPatternType="AddRecord"
+        stickyHeader
+        contentClassName="sm:max-w-[720px]"
         cancelLabel={editingRecordId ? "変更せず戻る" : "追加せず戻る"}
         confirmLabel={editingRecordId ? "保存" : "追加"}
         onCancel={handleCancelAdd}
