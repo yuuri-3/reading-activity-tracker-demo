@@ -13,28 +13,68 @@ import { Toast } from "./components/Toast";
 type RecordsSubPage = "add" | null;
 type SanctumSubPage = "tags" | null;
 
+function joinWithBase(pathname: string) {
+  const base = (import.meta as any).env?.BASE_URL ?? "/";
+  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+  const normalizedPath = pathname === "/" ? "" : pathname;
+  return `${normalizedBase}${normalizedPath}` || "/";
+}
+
+function stripBase(pathname: string) {
+  const base = (import.meta as any).env?.BASE_URL ?? "/";
+  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+
+  if (!normalizedBase || normalizedBase === "/") return pathname;
+  return pathname.startsWith(normalizedBase)
+    ? pathname.slice(normalizedBase.length) || "/"
+    : pathname;
+}
+
+function parseRouteFromPath(pathname: string) {
+  const path = stripBase(pathname).replace(/^\/+/, "").trim();
+  if (!path)
+    return { page: "home" as Page, recordsSubPage: null, sanctumSubPage: null };
+
+  const [pageRaw, subRaw] = path.split("/");
+  const page: Page =
+    pageRaw === "home" ||
+    pageRaw === "books" ||
+    pageRaw === "records" ||
+    pageRaw === "sanctum"
+      ? (pageRaw as Page)
+      : "home";
+
+  const recordsSubPage: RecordsSubPage =
+    page === "records" && subRaw === "add" ? "add" : null;
+
+  const sanctumSubPage: SanctumSubPage =
+    page === "sanctum" && subRaw === "tags" ? "tags" : null;
+
+  return { page, recordsSubPage, sanctumSubPage };
+}
+
+function toPathname(
+  page: Page,
+  recordsSubPage: RecordsSubPage,
+  sanctumSubPage: SanctumSubPage
+) {
+  if (page === "home") return "/";
+  if (page === "records" && recordsSubPage) return `/records/${recordsSubPage}`;
+  if (page === "sanctum" && sanctumSubPage) return `/sanctum/${sanctumSubPage}`;
+  return `/${page}`;
+}
+
 function AppContent() {
   const initialRoute = useMemo(() => {
-    const raw = (typeof window !== "undefined" ? window.location.hash : "")
-      .replace(/^#/, "")
-      .trim();
+    if (typeof window === "undefined") {
+      return {
+        page: "home" as Page,
+        recordsSubPage: null,
+        sanctumSubPage: null,
+      };
+    }
 
-    const [pageRaw, subRaw] = raw.split("/");
-    const page: Page =
-      pageRaw === "home" ||
-      pageRaw === "books" ||
-      pageRaw === "records" ||
-      pageRaw === "sanctum"
-        ? (pageRaw as Page)
-        : "home";
-
-    const recordsSubPage: RecordsSubPage =
-      page === "records" && subRaw === "add" ? "add" : null;
-
-    const sanctumSubPage: SanctumSubPage =
-      page === "sanctum" && subRaw === "tags" ? "tags" : null;
-
-    return { page, recordsSubPage, sanctumSubPage };
+    return parseRouteFromPath(window.location.pathname);
   }, []);
 
   const [currentPage, setCurrentPage] = useState<Page>(initialRoute.page);
@@ -48,42 +88,31 @@ function AppContent() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const nextHash =
-      currentPage === "records" && recordsSubPage
-        ? `#records/${recordsSubPage}`
-        : currentPage === "sanctum" && sanctumSubPage
-        ? `#sanctum/${sanctumSubPage}`
-        : `#${currentPage}`;
-    if (window.location.hash !== nextHash) {
-      window.location.hash = nextHash;
+    const nextPathname = joinWithBase(
+      toPathname(currentPage, recordsSubPage, sanctumSubPage)
+    );
+    if (window.location.pathname !== nextPathname) {
+      window.history.pushState(
+        null,
+        "",
+        `${nextPathname}${window.location.search}`
+      );
     }
   }, [currentPage, recordsSubPage, sanctumSubPage]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const onHashChange = () => {
-      const raw = window.location.hash.replace(/^#/, "").trim();
-      const [pageRaw, subRaw] = raw.split("/");
-
-      if (
-        pageRaw === "home" ||
-        pageRaw === "books" ||
-        pageRaw === "records" ||
-        pageRaw === "sanctum"
-      ) {
-        const nextPage = pageRaw as Page;
-        setCurrentPage(nextPage);
-        setRecordsSubPage(
-          nextPage === "records" && subRaw === "add" ? "add" : null
-        );
-        setSanctumSubPage(
-          nextPage === "sanctum" && subRaw === "tags" ? "tags" : null
-        );
-      }
+    const onPopState = () => {
+      const { page, recordsSubPage, sanctumSubPage } = parseRouteFromPath(
+        window.location.pathname
+      );
+      setCurrentPage(page);
+      setRecordsSubPage(recordsSubPage);
+      setSanctumSubPage(sanctumSubPage);
     };
-    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onPopState);
     return () => {
-      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("popstate", onPopState);
     };
   }, []);
 
