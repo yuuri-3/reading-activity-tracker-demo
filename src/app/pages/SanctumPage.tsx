@@ -110,10 +110,13 @@ export function SanctumPage() {
 
               <div className="rounded-[12px] px-4 pt-4 pb-5 bg-[var(--background-solid)] [box-shadow:var(--shadow-neumorphism-sm)]">
                 <ul className="list-disc pl-5 text-sm leading-6 text-foreground">
-                  <li>タグ管理画面</li>
+                  <li>手書きメモの写真を自動読み取り</li>
+                  <li>書籍登録をバーコード読み取りで簡単に</li>
                   <li>書籍の並び順を手動で変更可能に</li>
+                  <li>記録検索をタグによって絞り込む</li>
                   <li>メモの内容をランダムで通知</li>
-                  <li>手書きメモを自動読み取り</li>
+                  <li>読了フラグとSNSでの共有機能</li>
+                  <li>合計時間の計測範囲を任意で変更可能に</li>
                 </ul>
               </div>
             </section>
