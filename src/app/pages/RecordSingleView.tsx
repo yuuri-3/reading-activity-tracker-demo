@@ -663,8 +663,9 @@ export function RecordSingleView({
                 placeholder="例）P.10まで読んだ"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                rows={1}
-                className="h-11 text-base leading-5"
+                className="text-base leading-5"
+                rows={2}
+                autoResize
                 disabled={isSaving}
               />
             }
@@ -704,8 +705,9 @@ export function RecordSingleView({
                 placeholder="例）第2章に具体的な例が多い"
                 value={bookMemo}
                 onChange={(e) => setBookMemo(e.target.value)}
-                rows={1}
-                className="h-11 text-base leading-5"
+                className="text-base leading-5"
+                rows={2}
+                autoResize
                 disabled={isSaving}
               />
             }
@@ -1016,8 +1018,9 @@ export function RecordSingleView({
                 placeholder="例）P.10まで読んだ"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                rows={1}
-                className="h-11 text-base leading-5"
+                className="text-base leading-5"
+                rows={2}
+                autoResize
                 disabled={isSaving}
               />
             }
@@ -1057,8 +1060,9 @@ export function RecordSingleView({
                 placeholder="例）第2章に具体的な例が多い"
                 value={bookMemo}
                 onChange={(e) => setBookMemo(e.target.value)}
-                rows={1}
-                className="h-11 text-base leading-5"
+                className="text-base leading-5"
+                rows={2}
+                autoResize
                 disabled={isSaving}
               />
             }

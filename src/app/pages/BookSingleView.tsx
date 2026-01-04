@@ -329,7 +329,8 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
               id="editBookMemo"
               value={editingBookMemoText}
               onChange={(e) => setEditingBookMemoText(e.target.value)}
-              rows={3}
+              rows={2}
+              autoResize
               placeholder="例）第2章に具体的な例が多い"
             />
           }
@@ -361,7 +362,8 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
               id="editHistoryMemo"
               value={editingRecordMemo}
               onChange={(e) => setEditingRecordMemo(e.target.value)}
-              rows={3}
+              rows={2}
+              autoResize
               placeholder="例）P.10まで読んだ"
             />
           }

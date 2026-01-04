@@ -60,7 +60,8 @@ export function TimerPage() {
                   onChange={(e) =>
                     setValues((prev) => ({ ...prev, memo: e.target.value }))
                   }
-                  rows={1}
+                  rows={2}
+                  autoResize
                 />
               }
             />
@@ -107,7 +108,8 @@ export function TimerPage() {
                       bookMemo: e.target.value,
                     }))
                   }
-                  rows={1}
+                  rows={2}
+                  autoResize
                 />
               }
             />
