@@ -527,6 +527,26 @@ export function RecordSingleView({
     }, 0);
   }, [records]);
 
+  const filteredMonthlyTotalSeconds = useMemo(() => {
+    if (!isSearchActive) return monthlyTotalSeconds;
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+
+    return recordSearchItems.reduce((sum, item) => {
+      if (item.kind !== "record") return sum;
+      const start = new Date(item.record.startTime);
+      if (Number.isNaN(start.getTime())) return sum;
+      if (start.getFullYear() !== y || start.getMonth() !== m) return sum;
+      return sum + item.record.duration;
+    }, 0);
+  }, [isSearchActive, monthlyTotalSeconds, recordSearchItems]);
+
+  const displayedMonthlyTotalSeconds = isSearchActive
+    ? filteredMonthlyTotalSeconds
+    : monthlyTotalSeconds;
+
   const groupedSearchItems = useMemo(() => {
     if (!isSearchActive)
       return [] as Array<{
@@ -767,17 +787,15 @@ export function RecordSingleView({
           />
 
           <div className="px-6 pt-2 pb-28">
-            {!isSearchActive ? (
-              <div className="pb-6">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="size-4" />
-                  <p className="text-sm">今月の合計時間</p>
-                </div>
-                <p className="mt-1 text-[28px] leading-8 font-medium tabular-nums text-foreground">
-                  {formatDurationHms(monthlyTotalSeconds)}
-                </p>
+            <div className="pb-6">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="size-4" />
+                <p className="text-sm">今月の合計時間</p>
               </div>
-            ) : null}
+              <p className="mt-1 text-[28px] leading-8 font-medium tabular-nums text-foreground">
+                {formatDurationHms(displayedMonthlyTotalSeconds)}
+              </p>
+            </div>
 
             {!isSearchActive && records.length === 0 ? (
               <div className="min-h-full flex items-start justify-center">
