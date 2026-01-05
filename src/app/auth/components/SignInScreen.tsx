@@ -1,4 +1,3 @@
-import { LogoWithSymbol } from "../../components/icons/LogoWithSymbol";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 export type SignInScreenProps = {
@@ -19,7 +18,11 @@ export function SignInScreen({
       <div className="w-full max-w-[393px] px-6">
         <div className="flex flex-col items-center gap-[80px] pb-[200px]">
           <div className="flex flex-col items-center gap-8">
-            <LogoWithSymbol />
+            <img
+              src="/logo-new.svg"
+              alt="Yomzoy"
+              className="block w-[186px] h-[141px] object-contain"
+            />
             <p className="pl-3 text-[16px] leading-none text-foreground text-center">
               読む時間を、残していく。
             </p>
