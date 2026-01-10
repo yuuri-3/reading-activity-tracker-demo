@@ -96,12 +96,13 @@ function toPathname(
 }
 
 function AppContent() {
-  const initialRoute = useMemo(() => {
+  const initialRoute = useMemo<RouteState>(() => {
     if (typeof window === "undefined") {
       return {
         page: "home" as Page,
         recordsSubPage: null,
         sanctumSubPage: null,
+        privacyPolicySubPage: null,
       };
     }
 
@@ -137,7 +138,7 @@ function AppContent() {
         `${nextPathname}${window.location.search}`
       );
     }
-  }, [currentPage, recordsSubPage, sanctumSubPage]);
+  }, [currentPage, recordsSubPage, sanctumSubPage, privacyPolicySubPage]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
