@@ -11,9 +11,9 @@ function setRedirectFlag(value: boolean) {
   try {
     if (typeof window === "undefined") return;
     if (value) {
-      window.localStorage.setItem(REDIRECT_FLAG_KEY, "1");
+      window.sessionStorage.setItem(REDIRECT_FLAG_KEY, "1");
     } else {
-      window.localStorage.removeItem(REDIRECT_FLAG_KEY);
+      window.sessionStorage.removeItem(REDIRECT_FLAG_KEY);
     }
   } catch {
     // ignore
