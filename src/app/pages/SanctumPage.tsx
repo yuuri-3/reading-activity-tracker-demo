@@ -10,7 +10,6 @@ import { LogoYomzoy } from "../components/icons/LogoYomzoy";
 import { useAuth } from "../auth/AuthContext";
 import { useState } from "react";
 import { toast } from "sonner";
-import { PrimaryButton } from "../components/PrimaryButton";
 
 export function SanctumPage() {
   const { user, signOut, deleteAccount, signInWithGoogle, error } = useAuth();
@@ -52,57 +51,63 @@ export function SanctumPage() {
               </p>
 
               <div className="rounded-[12px] p-4 bg-[var(--background-solid)] [box-shadow:var(--shadow-neumorphism-sm)]">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-base overflow-hidden">
-                      {photoURL ? (
-                        <img
-                          src={photoURL}
-                          alt={displayName || email || "ユーザー"}
-                          className="h-full w-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        fallbackInitial
-                      )}
-                    </div>
-                    <p className="text-base leading-6 text-foreground">
-                      {isAnonymous ? "ゲスト" : email || ""}
+                {isAnonymous ? (
+                  <div className="flex flex-col items-center justify-center gap-2.5">
+                    <button
+                      type="button"
+                      className="rounded-[40px] bg-[rgba(242,242,242,0.7)] px-6 py-3 text-sm font-medium leading-[1.3] text-foreground disabled:opacity-50"
+                      onClick={() => setIsLinkDialogOpen(true)}
+                      disabled={isLinking}
+                    >
+                      Googleアカウントに連携する
+                    </button>
+
+                    <p className="text-xs leading-5 text-muted-foreground text-center whitespace-pre-line">
+                      {
+                        "Googleアカウントでログインすると\n保存済みのデータが連携されます"
+                      }
                     </p>
+
+                    {error && (
+                      <div className="text-sm text-destructive whitespace-pre-wrap text-center">
+                        {error}
+                      </div>
+                    )}
                   </div>
-
-                  <div className="h-px w-full bg-border" />
-
-                  {isAnonymous && (
-                    <div className="flex flex-col items-center gap-2">
-                      <PrimaryButton
-                        type="button"
-                        onClick={() => setIsLinkDialogOpen(true)}
-                        className="w-full"
-                        disabled={isLinking}
-                      >
-                        Google でログイン
-                      </PrimaryButton>
-
-                      {error && (
-                        <div className="text-sm text-destructive whitespace-pre-wrap text-center">
-                          {error}
-                        </div>
-                      )}
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-base overflow-hidden">
+                        {photoURL ? (
+                          <img
+                            src={photoURL}
+                            alt={displayName || email || "ユーザー"}
+                            className="h-full w-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          fallbackInitial
+                        )}
+                      </div>
+                      <p className="text-base leading-6 text-foreground">
+                        {email || ""}
+                      </p>
                     </div>
-                  )}
 
-                  <button
-                    type="button"
-                    className="mx-auto flex items-center gap-1.5 px-2 py-1 text-sm text-foreground"
-                    onClick={() => {
-                      void signOut();
-                    }}
-                  >
-                    <IconLogout size={24} />
-                    ログアウト
-                  </button>
-                </div>
+                    <div className="h-px w-full bg-border" />
+
+                    <button
+                      type="button"
+                      className="mx-auto flex items-center gap-1.5 px-2 py-1 text-sm text-foreground"
+                      onClick={() => {
+                        void signOut();
+                      }}
+                    >
+                      <IconLogout size={24} />
+                      ログアウト
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
 
