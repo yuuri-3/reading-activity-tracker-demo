@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { AuthGate } from "./auth/AuthGate";
 import { AuthProvider } from "./auth/AuthContext";
+import { useAuth } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
+import { useApp } from "./context/AppContext";
 import { TimerPage } from "./pages/TimerPage";
 import { BookCollectionView } from "./pages/BookCollectionView";
 import { RecordSingleView } from "./pages/RecordSingleView";
@@ -9,6 +11,7 @@ import { SanctumPage } from "./pages/SanctumPage";
 import { TagManagementPage } from "./pages/TagManagementPage";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { TabBar, type Page } from "./components/TabBar";
+import { Dialog } from "./components/Dialog";
 import { Toast } from "./components/Toast";
 
 type RecordsSubPage = "add" | null;
@@ -96,6 +99,13 @@ function toPathname(
 }
 
 function AppContent() {
+  const { user } = useAuth();
+  const {
+    guestCreateNoticeOpen,
+    closeGuestCreateNotice,
+    dismissGuestCreateNotice,
+  } = useApp();
+
   const initialRoute = useMemo<RouteState>(() => {
     if (typeof window === "undefined") {
       return {
@@ -204,6 +214,35 @@ function AppContent() {
           </div>
         </div>
       </nav>
+
+      <Dialog
+        open={guestCreateNoticeOpen && !!user?.isAnonymous}
+        onOpenChange={(open) => {
+          if (open) return;
+          closeGuestCreateNotice();
+        }}
+        title="ログインしてデータを守りませんか？"
+        description={
+          "ゲストのままだと、端末変更やアプリ削除でデータが消える可能性があります。ログインすると別端末でも使えます。"
+        }
+        formPatternType="AddRecord"
+        cancelLabel="表示しない"
+        confirmLabel="書斎でログイン"
+        onCancel={dismissGuestCreateNotice}
+        onConfirm={() => {
+          closeGuestCreateNotice();
+          handleChangePage("sanctum");
+        }}
+      >
+        <div className="flex flex-col gap-2 text-sm leading-6 text-foreground">
+          <p>
+            ゲスト利用はこの端末のみに保存されるため、端末を変えると引き継げません。
+          </p>
+          <p className="text-muted-foreground">
+            ※書斎ページの「Googleアカウントに連携する」からログインできます。
+          </p>
+        </div>
+      </Dialog>
 
       <Toast />
     </div>

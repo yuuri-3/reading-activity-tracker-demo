@@ -65,6 +65,11 @@ interface AppContextType {
   // Search
   searchText: string;
   setSearchText: (text: string) => void;
+
+  // Guest notice
+  guestCreateNoticeOpen: boolean;
+  closeGuestCreateNotice: () => void;
+  dismissGuestCreateNotice: () => void;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -78,8 +83,22 @@ type PersistedTimerStateV1 = {
 
 const TIMER_STORAGE_VERSION = 1 as const;
 
+type PersistedGuestCreateNoticeV1 = {
+  v: 1;
+  createdCount: number;
+  dismissed: boolean;
+};
+
+const GUEST_CREATE_NOTICE_STORAGE_VERSION = 1 as const;
+
 function getTimerStorageKey(uid: string | undefined) {
   return `yomzoy:timerState:v${TIMER_STORAGE_VERSION}:${uid ?? "anon"}`;
+}
+
+function getGuestCreateNoticeStorageKey(uid: string | undefined) {
+  return `yomzoy:guestCreateNotice:v${GUEST_CREATE_NOTICE_STORAGE_VERSION}:${
+    uid ?? "anon"
+  }`;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -151,6 +170,70 @@ function savePersistedTimerState(storageKey: string, timerState: TimerState) {
   }
 }
 
+function loadPersistedGuestCreateNotice(
+  storageKey: string
+): PersistedGuestCreateNoticeV1 {
+  if (typeof window === "undefined") {
+    return {
+      v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
+      createdCount: 0,
+      dismissed: false,
+    };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw)
+      return {
+        v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
+        createdCount: 0,
+        dismissed: false,
+      };
+    const parsed = JSON.parse(raw) as Partial<PersistedGuestCreateNoticeV1>;
+    if (parsed.v !== GUEST_CREATE_NOTICE_STORAGE_VERSION)
+      return {
+        v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
+        createdCount: 0,
+        dismissed: false,
+      };
+
+    const createdCount =
+      typeof parsed.createdCount === "number" &&
+      Number.isFinite(parsed.createdCount)
+        ? Math.max(0, Math.floor(parsed.createdCount))
+        : 0;
+    const dismissed =
+      typeof parsed.dismissed === "boolean" ? parsed.dismissed : false;
+
+    return { v: GUEST_CREATE_NOTICE_STORAGE_VERSION, createdCount, dismissed };
+  } catch {
+    return {
+      v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
+      createdCount: 0,
+      dismissed: false,
+    };
+  }
+}
+
+function savePersistedGuestCreateNotice(
+  storageKey: string,
+  state: PersistedGuestCreateNoticeV1
+) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    // ignore (e.g. storage full / disabled)
+  }
+}
+
+function shouldShowGuestCreateNotice(createdCount: number) {
+  if (createdCount === 3) return true;
+  if (createdCount > 3 && (createdCount - 3) % 5 === 0) return true;
+  return false;
+}
+
 function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return Object.fromEntries(
     Object.entries(obj).filter(([, value]) => value !== undefined)
@@ -197,8 +280,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     pausedTime: 0,
   });
 
+  const [guestCreateNoticeOpen, setGuestCreateNoticeOpen] = useState(false);
+
   const timerStorageKey = useMemo(
     () => getTimerStorageKey(user?.uid),
+    [user?.uid]
+  );
+
+  const guestCreateNoticeStorageKey = useMemo(
+    () => getGuestCreateNoticeStorageKey(user?.uid),
     [user?.uid]
   );
   const timerHydratingKeyRef = useRef<string | null>(null);
@@ -209,6 +299,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!uid) return null;
     return getFirestoreDb();
   }, [uid]);
+
+  useEffect(() => {
+    if (!user?.isAnonymous) {
+      setGuestCreateNoticeOpen(false);
+    }
+  }, [user?.isAnonymous]);
+
+  useEffect(() => {
+    setGuestCreateNoticeOpen(false);
+  }, [guestCreateNoticeStorageKey]);
 
   // Subscribe to Firestore (single source of truth)
   useEffect(() => {
@@ -447,6 +547,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }),
       createdAt: now,
     });
+
+    if (user?.isAnonymous) {
+      const current = loadPersistedGuestCreateNotice(
+        guestCreateNoticeStorageKey
+      );
+      if (!current.dismissed) {
+        const next: PersistedGuestCreateNoticeV1 = {
+          v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
+          createdCount: current.createdCount + 1,
+          dismissed: false,
+        };
+        savePersistedGuestCreateNotice(guestCreateNoticeStorageKey, next);
+        if (shouldShowGuestCreateNotice(next.createdCount)) {
+          setGuestCreateNoticeOpen(true);
+        }
+      }
+    }
   };
 
   const updateBook = async (id: string, updates: Partial<Book>) => {
@@ -493,6 +610,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
             : record.duration,
       }),
       createdAt: now,
+    });
+
+    if (user?.isAnonymous) {
+      const current = loadPersistedGuestCreateNotice(
+        guestCreateNoticeStorageKey
+      );
+      if (!current.dismissed) {
+        const next: PersistedGuestCreateNoticeV1 = {
+          v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
+          createdCount: current.createdCount + 1,
+          dismissed: false,
+        };
+        savePersistedGuestCreateNotice(guestCreateNoticeStorageKey, next);
+        if (shouldShowGuestCreateNotice(next.createdCount)) {
+          setGuestCreateNoticeOpen(true);
+        }
+      }
+    }
+  };
+
+  const closeGuestCreateNotice = () => setGuestCreateNoticeOpen(false);
+
+  const dismissGuestCreateNotice = () => {
+    setGuestCreateNoticeOpen(false);
+    if (!user?.isAnonymous) return;
+    const current = loadPersistedGuestCreateNotice(guestCreateNoticeStorageKey);
+    if (current.dismissed) return;
+    savePersistedGuestCreateNotice(guestCreateNoticeStorageKey, {
+      ...current,
+      dismissed: true,
     });
   };
 
@@ -597,6 +744,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         resetTimer,
         searchText,
         setSearchText,
+
+        guestCreateNoticeOpen,
+        closeGuestCreateNotice,
+        dismissGuestCreateNotice,
       }}
     >
       {children}
