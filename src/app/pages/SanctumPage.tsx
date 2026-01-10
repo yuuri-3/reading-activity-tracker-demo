@@ -12,9 +12,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export function SanctumPage() {
-  const { user, signOut, deleteAccount } = useAuth();
+  const { user, signOut, deleteAccount, signInWithGoogle, error } = useAuth();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
+
+  const isAnonymous = !!user?.isAnonymous;
 
   const email = user?.email ?? "";
   const displayName = user?.displayName ?? "";
@@ -47,38 +51,63 @@ export function SanctumPage() {
               </p>
 
               <div className="rounded-[12px] p-4 bg-[var(--background-solid)] [box-shadow:var(--shadow-neumorphism-sm)]">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-base overflow-hidden">
-                      {photoURL ? (
-                        <img
-                          src={photoURL}
-                          alt={displayName || email || "ユーザー"}
-                          className="h-full w-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        fallbackInitial
-                      )}
-                    </div>
-                    <p className="text-base leading-6 text-foreground">
-                      {email || ""}
+                {isAnonymous ? (
+                  <div className="flex flex-col items-center justify-center gap-2.5">
+                    <button
+                      type="button"
+                      className="rounded-[40px] bg-[rgba(242,242,242,0.7)] px-6 py-3 text-sm font-medium leading-[1.3] text-foreground disabled:opacity-50"
+                      onClick={() => setIsLinkDialogOpen(true)}
+                      disabled={isLinking}
+                    >
+                      Googleアカウントに連携する
+                    </button>
+
+                    <p className="text-xs leading-5 text-muted-foreground text-center whitespace-pre-line">
+                      {
+                        "Googleアカウントでログインすると\n保存済みのデータが連携されます"
+                      }
                     </p>
+
+                    {error && (
+                      <div className="text-sm text-destructive whitespace-pre-wrap text-center">
+                        {error}
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-base overflow-hidden">
+                        {photoURL ? (
+                          <img
+                            src={photoURL}
+                            alt={displayName || email || "ユーザー"}
+                            className="h-full w-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          fallbackInitial
+                        )}
+                      </div>
+                      <p className="text-base leading-6 text-foreground">
+                        {email || ""}
+                      </p>
+                    </div>
 
-                  <div className="h-px w-full bg-border" />
+                    <div className="h-px w-full bg-border" />
 
-                  <button
-                    type="button"
-                    className="mx-auto flex items-center gap-1.5 px-2 py-1 text-sm text-foreground"
-                    onClick={() => {
-                      void signOut();
-                    }}
-                  >
-                    <IconLogout size={24} />
-                    ログアウト
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      className="mx-auto flex items-center gap-1.5 px-2 py-1 text-sm text-foreground"
+                      onClick={() => {
+                        void signOut();
+                      }}
+                    >
+                      <IconLogout size={24} />
+                      ログアウト
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -186,6 +215,40 @@ export function SanctumPage() {
                 <p className="text-muted-foreground">
                   ※削除に失敗する場合は、いったんログアウト→再ログイン後にお試しください。
                 </p>
+              </div>
+            </Dialog>
+
+            <Dialog
+              open={isLinkDialogOpen}
+              onOpenChange={(open) => {
+                if (isLinking) return;
+                setIsLinkDialogOpen(open);
+              }}
+              title="ゲストデータを統合します"
+              description="この端末のゲストデータを、これからログインするアカウントに統合します。"
+              cancelLabel="キャンセル"
+              confirmLabel={isLinking ? "処理中…" : "続行"}
+              disableEscapeClose={isLinking}
+              disableOutsideClose={isLinking}
+              onCancel={() => setIsLinkDialogOpen(false)}
+              onConfirm={() => {
+                if (isLinking) return;
+
+                void (async () => {
+                  setIsLinking(true);
+                  try {
+                    setIsLinkDialogOpen(false);
+                    await signInWithGoogle();
+                  } finally {
+                    setIsLinking(false);
+                  }
+                })();
+              }}
+              cancelButtonProps={{ disabled: isLinking }}
+              confirmButtonProps={{ disabled: isLinking }}
+            >
+              <div className="text-sm leading-6 text-foreground">
+                統合後は同じ端末・同じアカウントでログインすると、ゲスト中に作成した本棚や記録が引き続き表示されます。
               </div>
             </Dialog>
           </div>

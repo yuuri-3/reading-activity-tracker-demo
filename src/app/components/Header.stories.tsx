@@ -4,16 +4,19 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Header } from "./Header";
 import { MockAppProvider } from "../stories/MockAppProvider";
 
+type HeaderDefaultProps = Extract<
+  ComponentProps<typeof Header>,
+  { variant?: "default" }
+>;
+
 function HeaderHarness(
-  props: Omit<
-    ComponentProps<typeof Header>,
-    "searchQuery" | "onSearchQueryChange"
-  >
+  props: Omit<HeaderDefaultProps, "searchQuery" | "onSearchQueryChange">
 ) {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <Header
+      variant="default"
       {...props}
       searchQuery={searchQuery}
       onSearchQueryChange={setSearchQuery}
