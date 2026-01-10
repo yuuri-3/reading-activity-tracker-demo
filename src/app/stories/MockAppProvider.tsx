@@ -43,6 +43,8 @@ export function MockAppProvider({
     };
   });
 
+  const [guestCreateNoticeOpen, setGuestCreateNoticeOpen] = useState(false);
+
   useEffect(() => {
     let interval: number | undefined;
 
@@ -256,8 +258,12 @@ export function MockAppProvider({
       resetTimer,
       searchText,
       setSearchText,
+
+      guestCreateNoticeOpen,
+      closeGuestCreateNotice: () => setGuestCreateNoticeOpen(false),
+      dismissGuestCreateNotice: () => setGuestCreateNoticeOpen(false),
     };
-  }, [books, records, searchText, tags, timerState]);
+  }, [books, records, searchText, tags, timerState, guestCreateNoticeOpen]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

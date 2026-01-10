@@ -307,6 +307,35 @@ function isLikelyMobile(): boolean {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
+function cleanupLocalStorageForUid(
+  targetUid: string,
+  options: {
+    guestCreateNotice?: boolean;
+    timerState?: boolean;
+  }
+) {
+  if (typeof window === "undefined") return;
+
+  const prefixes: string[] = [];
+  if (options.guestCreateNotice) prefixes.push("yomzoy:guestCreateNotice:v");
+  if (options.timerState) prefixes.push("yomzoy:timerState:v");
+  if (prefixes.length === 0) return;
+
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (!key) continue;
+      if (!key.endsWith(`:${targetUid}`)) continue;
+      if (!prefixes.some((p) => key.startsWith(p))) continue;
+      keysToRemove.push(key);
+    }
+    keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // ignore (e.g. storage disabled)
+  }
+}
+
 function getErrorCode(err: unknown): string | undefined {
   const maybe = err as { code?: unknown };
   return typeof maybe?.code === "string" ? maybe.code : undefined;
@@ -626,6 +655,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    // When a guest user becomes a non-anonymous user (via link or redirect sign-in),
+    // remove guest-only counters from localStorage.
+    if (!user?.uid) return;
+    if (user.isAnonymous) return;
+    cleanupLocalStorageForUid(user.uid, { guestCreateNotice: true });
+  }, [user?.uid, user?.isAnonymous]);
+
   const value = useMemo<AuthContextValue>(() => {
     return {
       user,
@@ -676,7 +713,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (currentUser?.isAnonymous) {
             try {
               // Prefer linking so uid stays the same.
+              const anonUid = currentUser.uid;
               await linkWithPopup(currentUser, provider);
+
+              // Guest-only counters are no longer needed after linking.
+              cleanupLocalStorageForUid(anonUid, { guestCreateNotice: true });
               return;
             } catch (err) {
               const code = getErrorCode(err);
@@ -1399,6 +1440,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           await deleteUser(currentUser);
+          cleanupLocalStorageForUid(uid, {
+            guestCreateNotice: true,
+            timerState: true,
+          });
         } catch (err) {
           setError(
             err instanceof Error ? err.message : "アカウント削除に失敗しました"
