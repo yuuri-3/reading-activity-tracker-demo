@@ -10,7 +10,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="h-dvh w-full overflow-hidden">
+      <div className="h-dvh w-full overflow-y-auto">
         <Story />
       </div>
     ),

@@ -7,11 +7,20 @@ import { BookCollectionView } from "./pages/BookCollectionView";
 import { RecordSingleView } from "./pages/RecordSingleView";
 import { SanctumPage } from "./pages/SanctumPage";
 import { TagManagementPage } from "./pages/TagManagementPage";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { TabBar, type Page } from "./components/TabBar";
 import { Toast } from "./components/Toast";
 
 type RecordsSubPage = "add" | null;
 type SanctumSubPage = "tags" | null;
+type PrivacyPolicySubPage = "privacy-policy" | null;
+
+type RouteState = {
+  page: Page;
+  recordsSubPage: RecordsSubPage;
+  sanctumSubPage: SanctumSubPage;
+  privacyPolicySubPage: PrivacyPolicySubPage;
+};
 
 function joinWithBase(pathname: string) {
   const base = (import.meta as any).env?.BASE_URL ?? "/";
@@ -33,9 +42,24 @@ function stripBase(pathname: string) {
 function parseRouteFromPath(pathname: string) {
   const path = stripBase(pathname).replace(/^\/+/, "").trim();
   if (!path)
-    return { page: "home" as Page, recordsSubPage: null, sanctumSubPage: null };
+    return {
+      page: "home" as Page,
+      recordsSubPage: null,
+      sanctumSubPage: null,
+      privacyPolicySubPage: null,
+    } satisfies RouteState;
 
   const [pageRaw, subRaw] = path.split("/");
+
+  if (pageRaw === "privacy-policy") {
+    return {
+      page: "home" as Page,
+      recordsSubPage: null,
+      sanctumSubPage: null,
+      privacyPolicySubPage: "privacy-policy" as const,
+    } satisfies RouteState;
+  }
+
   const page: Page =
     pageRaw === "home" ||
     pageRaw === "books" ||
@@ -50,14 +74,21 @@ function parseRouteFromPath(pathname: string) {
   const sanctumSubPage: SanctumSubPage =
     page === "sanctum" && subRaw === "tags" ? "tags" : null;
 
-  return { page, recordsSubPage, sanctumSubPage };
+  return {
+    page,
+    recordsSubPage,
+    sanctumSubPage,
+    privacyPolicySubPage: null,
+  } satisfies RouteState;
 }
 
 function toPathname(
   page: Page,
   recordsSubPage: RecordsSubPage,
-  sanctumSubPage: SanctumSubPage
+  sanctumSubPage: SanctumSubPage,
+  privacyPolicySubPage: PrivacyPolicySubPage
 ) {
+  if (privacyPolicySubPage) return "/privacy-policy";
   if (page === "home") return "/";
   if (page === "records" && recordsSubPage) return `/records/${recordsSubPage}`;
   if (page === "sanctum" && sanctumSubPage) return `/sanctum/${sanctumSubPage}`;
@@ -86,10 +117,18 @@ function AppContent() {
     initialRoute.sanctumSubPage
   );
 
+  const [privacyPolicySubPage, setPrivacyPolicySubPage] =
+    useState<PrivacyPolicySubPage>(initialRoute.privacyPolicySubPage);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const nextPathname = joinWithBase(
-      toPathname(currentPage, recordsSubPage, sanctumSubPage)
+      toPathname(
+        currentPage,
+        recordsSubPage,
+        sanctumSubPage,
+        privacyPolicySubPage
+      )
     );
     if (window.location.pathname !== nextPathname) {
       window.history.pushState(
@@ -103,12 +142,12 @@ function AppContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onPopState = () => {
-      const { page, recordsSubPage, sanctumSubPage } = parseRouteFromPath(
-        window.location.pathname
-      );
+      const { page, recordsSubPage, sanctumSubPage, privacyPolicySubPage } =
+        parseRouteFromPath(window.location.pathname);
       setCurrentPage(page);
       setRecordsSubPage(recordsSubPage);
       setSanctumSubPage(sanctumSubPage);
+      setPrivacyPolicySubPage(privacyPolicySubPage);
     };
     window.addEventListener("popstate", onPopState);
     return () => {
@@ -120,12 +159,14 @@ function AppContent() {
     setCurrentPage(next);
     setRecordsSubPage(null);
     setSanctumSubPage(null);
+    setPrivacyPolicySubPage(null);
   };
 
   const handleChangeRecordsSubPage = (next: RecordsSubPage) => {
     setCurrentPage("records");
     setRecordsSubPage(next);
     setSanctumSubPage(null);
+    setPrivacyPolicySubPage(null);
   };
 
   return (
@@ -133,7 +174,11 @@ function AppContent() {
       {/* Main Content */}
       <main className="flex-1 w-full pb-24">
         <div className="w-full">
-          {currentPage === "home" && <TimerPage />}
+          {privacyPolicySubPage === "privacy-policy" ? (
+            <PrivacyPolicyPage onClose={() => setPrivacyPolicySubPage(null)} />
+          ) : currentPage === "home" ? (
+            <TimerPage />
+          ) : null}
           {currentPage === "books" && <BookCollectionView />}
           {currentPage === "records" && (
             <RecordSingleView

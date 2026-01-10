@@ -1,5 +1,7 @@
 import { GoogleSignInButton } from "./GoogleSignInButton";
-import { PrimaryButton } from "../../components/PrimaryButton";
+import { LogoWithSymbol } from "../../components/icons/LogoWithSymbol";
+import { IconInfo } from "../../components/icons/IconInfo";
+import { IconOpenInNew } from "../../components/icons/IconOpenInNew";
 
 export type SignInScreenProps = {
   onSignInWithGoogle: () => void;
@@ -17,34 +19,49 @@ export function SignInScreen({
   redirecting = false,
 }: SignInScreenProps) {
   return (
-    <div className="size-full flex flex-col items-center justify-center">
-      <div className="w-full max-w-[393px] px-6">
-        <div className="flex flex-col items-center gap-[80px] pb-[200px]">
+    <div className="min-h-dvh w-full bg-gradient-to-b from-[#e8edf2] to-[#dde3ea] overflow-y-auto">
+      <div className="w-full max-w-[393px] px-6 pt-[104px] pb-16 mx-auto flex flex-col items-center gap-8">
+        <div className="flex flex-col items-center gap-[80px]">
           <div className="flex flex-col items-center gap-8">
-            <img
-              src="/logo-new.svg"
-              alt="Yomzoy"
-              className="block w-[186px] h-[141px] object-contain"
-            />
-            <p className="pl-3 text-[16px] leading-none text-foreground text-center">
+            <LogoWithSymbol />
+            <p className="pl-3 text-[16px] leading-none text-[#5a6372] text-center">
               読む時間を、残していく。
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-3">
+          <div className="w-full flex flex-col items-center gap-8">
             <GoogleSignInButton
               onClick={onSignInWithGoogle}
               disabled={disabled}
             />
 
-            <PrimaryButton
-              type="button"
-              onClick={onSignInAnonymously}
-              disabled={disabled}
-              className="w-full max-w-[280px]"
-            >
-              ログインせず利用する
-            </PrimaryButton>
+            <div className="w-full flex items-center gap-4">
+              <div className="h-px flex-1 bg-[#b7c7da]" />
+              <p className="text-[12px] leading-[18px] text-[#5a6372] text-center">
+                もしくは
+              </p>
+              <div className="h-px flex-1 bg-[#b7c7da]" />
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <button
+                type="button"
+                onClick={onSignInAnonymously}
+                disabled={disabled}
+                className="bg-[rgba(242,242,242,0.7)] rounded-[40px] px-6 py-3 text-[14px] font-medium leading-[1.3] text-[#5a6372] text-center disabled:opacity-50 disabled:pointer-events-none"
+              >
+                ログインせず利用する
+              </button>
+
+              <div className="flex flex-col items-center gap-1">
+                <IconInfo size={20} color="#7a8a9d" />
+                <p className="text-[11px] leading-[1.5] text-[#7a8a9d] text-center whitespace-pre-line">
+                  {
+                    "ログインせずに利用している間は、\n機種変更時などに保存データが消失します。"
+                  }
+                </p>
+              </div>
+            </div>
 
             {error && (
               <div className="text-sm text-destructive whitespace-pre-wrap text-center">
@@ -59,6 +76,16 @@ export function SignInScreen({
             )}
           </div>
         </div>
+
+        <a
+          href="/privacy-policy"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-0.5 text-[12px] leading-[18px] font-medium text-[#5a6372]"
+        >
+          プライバシーポリシー
+          <IconOpenInNew size={18} color="currentColor" />
+        </a>
       </div>
     </div>
   );
