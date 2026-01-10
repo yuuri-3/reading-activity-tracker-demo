@@ -57,8 +57,14 @@ function isRedirectInProgress(): boolean {
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading, error, signInWithGoogle, signInAnonymously } =
-    useAuth();
+  const {
+    user,
+    loading,
+    error,
+    fallbackMigrationInProgress,
+    signInWithGoogle,
+    signInAnonymously,
+  } = useAuth();
   const redirecting = !user && isRedirectInProgress();
 
   // auth callback に戻ってきたら、ログイン完了後は必ず計測画面（/）へ
@@ -73,6 +79,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="size-full flex items-center justify-center p-6">
         <div className="text-sm text-muted-foreground">読み込み中…</div>
+      </div>
+    );
+  }
+
+  if (fallbackMigrationInProgress) {
+    return (
+      <div className="size-full flex items-center justify-center p-6">
+        <div className="text-sm text-muted-foreground text-center whitespace-pre-line">
+          {"データを移行しています…\n画面が戻るまでお待ちください…"}
+        </div>
       </div>
     );
   }

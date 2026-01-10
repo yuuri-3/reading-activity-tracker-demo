@@ -8,15 +8,40 @@ import { IconTag } from "../components/icons/IconTag";
 import { IconForward } from "../components/icons/IconForward";
 import { LogoYomzoy } from "../components/icons/LogoYomzoy";
 import { useAuth } from "../auth/AuthContext";
-import { useState } from "react";
+import { useApp } from "../context/AppContext";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export function SanctumPage() {
-  const { user, signOut, deleteAccount, signInWithGoogle, error } = useAuth();
+  const {
+    user,
+    signOut,
+    deleteAccount,
+    signInWithGoogle,
+    confirmFallbackMigration,
+    confirmFallbackAccountMismatchProceed,
+    cancelFallbackAccountMismatch,
+    cancelFallbackMigration,
+    fallbackMigrationInProgress,
+    pendingFallbackAccountMismatch,
+    pendingFallbackMigration,
+    error,
+  } = useAuth();
+  const { books, tags, records } = useApp();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
+  const [isFallbackDialogOpen, setIsFallbackDialogOpen] = useState(false);
+  const [isMismatchDialogOpen, setIsMismatchDialogOpen] = useState(false);
+  const isFallbackMigrating = fallbackMigrationInProgress;
+
+  const pendingFallbackAccountMismatchRef = useRef(
+    pendingFallbackAccountMismatch
+  );
+  useEffect(() => {
+    pendingFallbackAccountMismatchRef.current = pendingFallbackAccountMismatch;
+  }, [pendingFallbackAccountMismatch]);
 
   const isAnonymous = !!user?.isAnonymous;
 
@@ -28,6 +53,16 @@ export function SanctumPage() {
     const src = (displayName || email).trim();
     return src ? src[0].toUpperCase() : "?";
   })();
+
+  useEffect(() => {
+    if (!pendingFallbackMigration) return;
+    setIsFallbackDialogOpen(true);
+  }, [pendingFallbackMigration]);
+
+  useEffect(() => {
+    if (!pendingFallbackAccountMismatch) return;
+    setIsMismatchDialogOpen(true);
+  }, [pendingFallbackAccountMismatch]);
 
   return (
     <div className="w-full">
@@ -76,6 +111,13 @@ export function SanctumPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
+                    {import.meta.env.DEV ? (
+                      <div className="text-[11px] leading-4 text-muted-foreground whitespace-pre-wrap">
+                        {`debug uid: ${user?.uid ?? ""}\nbooks: ${
+                          books.length
+                        } / tags: ${tags.length} / records: ${records.length}`}
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-3">
                       <div className="size-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-base overflow-hidden">
                         {photoURL ? (
@@ -249,6 +291,114 @@ export function SanctumPage() {
             >
               <div className="text-sm leading-6 text-foreground">
                 統合後は同じ端末・同じアカウントでログインすると、ゲスト中に作成した本棚や記録が引き続き表示されます。
+              </div>
+            </Dialog>
+
+            <Dialog
+              open={isFallbackDialogOpen && !!pendingFallbackMigration}
+              onOpenChange={(open) => {
+                if (isFallbackMigrating) return;
+                // 閉じる操作はキャンセル扱いにする（匿名維持）
+                if (!open) {
+                  cancelFallbackMigration();
+                }
+                setIsFallbackDialogOpen(open);
+              }}
+              title="追加のみ移行を実行します"
+              description={
+                "このGoogleアカウントは、すでに別のユーザーに紐付いているため統合（同じuidのまま連携）ができません。\n\n続行すると、Googleでログインした後に、この端末のゲストデータを『追加のみ』コピーして統合します（既存データは削除しません）。"
+              }
+              cancelLabel="キャンセル"
+              confirmLabel={isFallbackMigrating ? "処理中…" : "続行"}
+              disableEscapeClose={isFallbackMigrating}
+              disableOutsideClose={isFallbackMigrating}
+              onCancel={() => {
+                if (isFallbackMigrating) return;
+                cancelFallbackMigration();
+                setIsFallbackDialogOpen(false);
+              }}
+              onConfirm={() => {
+                if (isFallbackMigrating) return;
+
+                void (async () => {
+                  // ここでダイアログを閉じ、2回目のアカウント選択後に
+                  // 最終確認ダイアログが見え続ける体験を避ける。
+                  setIsFallbackDialogOpen(false);
+                  try {
+                    const ok = await confirmFallbackMigration();
+                    // mismatchの場合は別ダイアログへ誘導するので、ここでは再オープンしない
+                    if (!ok) {
+                      window.setTimeout(() => {
+                        if (pendingFallbackAccountMismatchRef.current) return;
+                        setIsFallbackDialogOpen(true);
+                      }, 0);
+                    }
+                  } finally {
+                    // `isFallbackMigrating` は AuthContext 側の状態で制御
+                  }
+                })();
+              }}
+              cancelButtonProps={{ disabled: isFallbackMigrating }}
+              confirmButtonProps={{ disabled: isFallbackMigrating }}
+            >
+              <div className="text-sm leading-6 text-foreground whitespace-pre-line">
+                {pendingFallbackMigration
+                  ? `移行対象: タグ ${pendingFallbackMigration.counts.tags}件 / 本棚 ${pendingFallbackMigration.counts.books}件 / 記録 ${pendingFallbackMigration.counts.records}件\n\n※キャンセルすると、ゲストのまま利用できます。別のGoogleアカウントを選び直すこともできます。`
+                  : ""}
+              </div>
+            </Dialog>
+
+            <Dialog
+              open={isMismatchDialogOpen && !!pendingFallbackAccountMismatch}
+              onOpenChange={(open) => {
+                if (isFallbackMigrating) return;
+                // 閉じる操作はキャンセル扱い（匿名維持）
+                if (!open) {
+                  cancelFallbackAccountMismatch();
+                }
+                setIsMismatchDialogOpen(open);
+              }}
+              title="別のGoogleアカウントが選択されました"
+              description={
+                pendingFallbackAccountMismatch
+                  ? `最初に選択したアカウント（推定）: ${pendingFallbackAccountMismatch.expectedEmail}\n今回選択したアカウント: ${pendingFallbackAccountMismatch.selectedEmail}\n\nこのアカウントにゲストデータを統合します。よろしいですか？`
+                  : ""
+              }
+              cancelLabel="キャンセル"
+              confirmLabel={
+                isFallbackMigrating ? "処理中…" : "このアカウントに統合する"
+              }
+              disableEscapeClose={isFallbackMigrating}
+              disableOutsideClose={isFallbackMigrating}
+              onCancel={() => {
+                if (isFallbackMigrating) return;
+                cancelFallbackAccountMismatch();
+                setIsMismatchDialogOpen(false);
+              }}
+              onConfirm={() => {
+                if (isFallbackMigrating) return;
+
+                void (async () => {
+                  setIsMismatchDialogOpen(false);
+                  const ok = await confirmFallbackAccountMismatchProceed();
+                  if (!ok) {
+                    window.setTimeout(() => {
+                      if (pendingFallbackAccountMismatchRef.current) {
+                        setIsMismatchDialogOpen(true);
+                        return;
+                      }
+                      setIsFallbackDialogOpen(true);
+                    }, 0);
+                  }
+                })();
+              }}
+              cancelButtonProps={{ disabled: isFallbackMigrating }}
+              confirmButtonProps={{ disabled: isFallbackMigrating }}
+            >
+              <div className="text-sm leading-6 text-foreground whitespace-pre-line">
+                {pendingFallbackAccountMismatch
+                  ? `移行対象: タグ ${pendingFallbackAccountMismatch.counts.tags}件 / 本棚 ${pendingFallbackAccountMismatch.counts.books}件 / 記録 ${pendingFallbackAccountMismatch.counts.records}件\n\n※キャンセルすると、ゲストのまま利用できます。`
+                  : ""}
               </div>
             </Dialog>
           </div>
