@@ -75,14 +75,36 @@ function isMissingInitialStateError(err: unknown): boolean {
 }
 
 const REDIRECT_FLAG_KEY = "yomzoy_redirect_in_progress";
+const AUTH_CALLBACK_PATH = "/auth/callback";
+
+function joinWithBase(pathname: string) {
+  const base = (import.meta as any).env?.BASE_URL ?? "/";
+  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+  const normalizedPath = pathname === "/" ? "" : pathname;
+  return `${normalizedBase}${normalizedPath}` || "/";
+}
+
+function replacePathname(pathname: string) {
+  try {
+    if (typeof window === "undefined") return;
+    const nextPathname = joinWithBase(pathname);
+    window.history.replaceState(
+      null,
+      "",
+      `${nextPathname}${window.location.search}`
+    );
+  } catch {
+    // ignore
+  }
+}
 
 function setRedirectFlag(value: boolean) {
   try {
     if (typeof window === "undefined") return;
     if (value) {
-      window.localStorage.setItem(REDIRECT_FLAG_KEY, "1");
+      window.sessionStorage.setItem(REDIRECT_FLAG_KEY, "1");
     } else {
-      window.localStorage.removeItem(REDIRECT_FLAG_KEY);
+      window.sessionStorage.removeItem(REDIRECT_FLAG_KEY);
     }
   } catch {
     // ignore (storage may be unavailable)
@@ -93,7 +115,7 @@ function getRedirectFlag(): boolean {
   try {
     return (
       typeof window !== "undefined" &&
-      window.localStorage.getItem(REDIRECT_FLAG_KEY) === "1"
+      window.sessionStorage.getItem(REDIRECT_FLAG_KEY) === "1"
     );
   } catch {
     return false;
@@ -102,12 +124,16 @@ function getRedirectFlag(): boolean {
 
 async function startRedirect(auth: Auth) {
   const provider = getGoogleProvider();
+  // redirect後の戻り先を callback に固定
+  replacePathname(AUTH_CALLBACK_PATH);
   setRedirectFlag(true);
   await signInWithRedirect(auth, provider);
 }
 
 async function startLinkRedirect(auth: Auth, user: User) {
   const provider = getGoogleProvider();
+  // redirect後の戻り先を callback に固定
+  replacePathname(AUTH_CALLBACK_PATH);
   setRedirectFlag(true);
   await linkWithRedirect(user, provider);
 }
