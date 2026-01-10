@@ -1,7 +1,9 @@
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { PrimaryButton } from "../../components/PrimaryButton";
 
 export type SignInScreenProps = {
   onSignInWithGoogle: () => void;
+  onSignInAnonymously: () => void;
   disabled?: boolean;
   error?: string | null;
   redirecting?: boolean;
@@ -9,6 +11,7 @@ export type SignInScreenProps = {
 
 export function SignInScreen({
   onSignInWithGoogle,
+  onSignInAnonymously,
   disabled = false,
   error,
   redirecting = false,
@@ -33,6 +36,15 @@ export function SignInScreen({
               onClick={onSignInWithGoogle}
               disabled={disabled}
             />
+
+            <PrimaryButton
+              type="button"
+              onClick={onSignInAnonymously}
+              disabled={disabled}
+              className="w-full max-w-[280px]"
+            >
+              ログインせず利用する
+            </PrimaryButton>
 
             {error && (
               <div className="text-sm text-destructive whitespace-pre-wrap text-center">

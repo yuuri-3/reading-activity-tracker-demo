@@ -15,7 +15,8 @@ function isRedirectInProgress(): boolean {
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading, error, signInWithGoogle } = useAuth();
+  const { user, loading, error, signInWithGoogle, signInAnonymously } =
+    useAuth();
   const redirecting = !user && isRedirectInProgress();
 
   if (loading) {
@@ -31,6 +32,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <SignInScreen
         onSignInWithGoogle={() => {
           void signInWithGoogle();
+        }}
+        onSignInAnonymously={() => {
+          void signInAnonymously();
         }}
         disabled={redirecting}
         error={error}

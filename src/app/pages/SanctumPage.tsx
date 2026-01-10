@@ -10,11 +10,16 @@ import { LogoYomzoy } from "../components/icons/LogoYomzoy";
 import { useAuth } from "../auth/AuthContext";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PrimaryButton } from "../components/PrimaryButton";
 
 export function SanctumPage() {
-  const { user, signOut, deleteAccount } = useAuth();
+  const { user, signOut, deleteAccount, signInWithGoogle, error } = useAuth();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
+
+  const isAnonymous = !!user?.isAnonymous;
 
   const email = user?.email ?? "";
   const displayName = user?.displayName ?? "";
@@ -62,11 +67,30 @@ export function SanctumPage() {
                       )}
                     </div>
                     <p className="text-base leading-6 text-foreground">
-                      {email || ""}
+                      {isAnonymous ? "ゲスト" : email || ""}
                     </p>
                   </div>
 
                   <div className="h-px w-full bg-border" />
+
+                  {isAnonymous && (
+                    <div className="flex flex-col items-center gap-2">
+                      <PrimaryButton
+                        type="button"
+                        onClick={() => setIsLinkDialogOpen(true)}
+                        className="w-full"
+                        disabled={isLinking}
+                      >
+                        Google でログイン
+                      </PrimaryButton>
+
+                      {error && (
+                        <div className="text-sm text-destructive whitespace-pre-wrap text-center">
+                          {error}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <button
                     type="button"
@@ -186,6 +210,40 @@ export function SanctumPage() {
                 <p className="text-muted-foreground">
                   ※削除に失敗する場合は、いったんログアウト→再ログイン後にお試しください。
                 </p>
+              </div>
+            </Dialog>
+
+            <Dialog
+              open={isLinkDialogOpen}
+              onOpenChange={(open) => {
+                if (isLinking) return;
+                setIsLinkDialogOpen(open);
+              }}
+              title="ゲストデータを統合します"
+              description="この端末のゲストデータを、これからログインするアカウントに統合します。"
+              cancelLabel="キャンセル"
+              confirmLabel={isLinking ? "処理中…" : "続行"}
+              disableEscapeClose={isLinking}
+              disableOutsideClose={isLinking}
+              onCancel={() => setIsLinkDialogOpen(false)}
+              onConfirm={() => {
+                if (isLinking) return;
+
+                void (async () => {
+                  setIsLinking(true);
+                  try {
+                    setIsLinkDialogOpen(false);
+                    await signInWithGoogle();
+                  } finally {
+                    setIsLinking(false);
+                  }
+                })();
+              }}
+              cancelButtonProps={{ disabled: isLinking }}
+              confirmButtonProps={{ disabled: isLinking }}
+            >
+              <div className="text-sm leading-6 text-foreground">
+                統合後は同じ端末・同じアカウントでログインすると、ゲスト中に作成した本棚や記録が引き続き表示されます。
               </div>
             </Dialog>
           </div>
