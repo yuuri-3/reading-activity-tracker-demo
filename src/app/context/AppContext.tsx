@@ -219,6 +219,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const onSnapshotError = (err: unknown) => {
+      // This used to be silent; keep it visible for debugging.
+      // eslint-disable-next-line no-console
+      console.error("[AppContext] onSnapshot error", err);
+    };
+
     const booksQuery = query(
       collection(db, "users", uid, "books"),
       orderBy("createdAt", "desc")
@@ -234,75 +240,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
       orderBy("createdAt", "desc")
     );
 
-    const unsubBooks = onSnapshot(booksQuery, (snapshot) => {
-      setBooks(
-        snapshot.docs.map((d) => {
-          const data = d.data() as Omit<Book, "id">;
-          return {
-            id: d.id,
-            title: data.title,
-            author: data.author,
-            memos: data.memos ?? [],
-            createdAt: data.createdAt,
-          };
-        })
-      );
-    });
+    const unsubBooks = onSnapshot(
+      booksQuery,
+      (snapshot) => {
+        setBooks(
+          snapshot.docs.map((d) => {
+            const data = d.data() as Omit<Book, "id">;
+            return {
+              id: d.id,
+              title: data.title,
+              author: data.author,
+              memos: data.memos ?? [],
+              createdAt: data.createdAt,
+            };
+          })
+        );
+      },
+      onSnapshotError
+    );
 
-    const unsubRecords = onSnapshot(recordsQuery, (snapshot) => {
-      setRecords(
-        snapshot.docs.map((d) => {
-          const data = d.data() as Omit<ReadingRecord, "id">;
-          const tagIds: string[] | undefined = Array.isArray(
-            (data as unknown as { tagIds?: unknown }).tagIds
-          )
-            ? (
-                (data as unknown as { tagIds?: unknown }).tagIds as unknown[]
-              ).filter(
-                (v): v is string => typeof v === "string" && v.length > 0
-              )
-            : undefined;
+    const unsubRecords = onSnapshot(
+      recordsQuery,
+      (snapshot) => {
+        setRecords(
+          snapshot.docs.map((d) => {
+            const data = d.data() as Omit<ReadingRecord, "id">;
+            const tagIds: string[] | undefined = Array.isArray(
+              (data as unknown as { tagIds?: unknown }).tagIds
+            )
+              ? (
+                  (data as unknown as { tagIds?: unknown }).tagIds as unknown[]
+                ).filter(
+                  (v): v is string => typeof v === "string" && v.length > 0
+                )
+              : undefined;
 
-          return {
-            id: d.id,
-            bookId: data.bookId,
-            duration: normalizeDurationSeconds(data),
-            memo: data.memo,
-            tagIds,
-            startTime: data.startTime,
-            endTime: data.endTime,
-            createdAt: data.createdAt,
-          };
-        })
-      );
-    });
+            return {
+              id: d.id,
+              bookId: data.bookId,
+              duration: normalizeDurationSeconds(data),
+              memo: data.memo,
+              tagIds,
+              startTime: data.startTime,
+              endTime: data.endTime,
+              createdAt: data.createdAt,
+            };
+          })
+        );
+      },
+      onSnapshotError
+    );
 
-    const unsubTags = onSnapshot(tagsQuery, (snapshot) => {
-      setTags(
-        snapshot.docs.map((d) => {
-          const data = d.data() as {
-            text?: unknown;
-            description?: unknown;
-            createdAt?: unknown;
-          };
+    const unsubTags = onSnapshot(
+      tagsQuery,
+      (snapshot) => {
+        setTags(
+          snapshot.docs.map((d) => {
+            const data = d.data() as {
+              text?: unknown;
+              description?: unknown;
+              createdAt?: unknown;
+            };
 
-          const text = typeof data.text === "string" ? data.text : "";
-          const description =
-            typeof data.description === "string" ? data.description : "";
-          const createdAt =
-            typeof data.createdAt === "string"
-              ? data.createdAt
-              : new Date().toISOString();
+            const text = typeof data.text === "string" ? data.text : "";
+            const description =
+              typeof data.description === "string" ? data.description : "";
+            const createdAt =
+              typeof data.createdAt === "string"
+                ? data.createdAt
+                : new Date().toISOString();
 
-          return {
-            id: d.id,
-            text,
-            description,
-            createdAt,
-          } satisfies Tag;
-        })
-      );
-    });
+            return {
+              id: d.id,
+              text,
+              description,
+              createdAt,
+            } satisfies Tag;
+          })
+        );
+      },
+      onSnapshotError
+    );
 
     return () => {
       unsubBooks();
