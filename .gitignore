@@ -35,7 +35,4 @@ pnpm-debug.log*
 # misc
 coverage/
 
-# local docs
-DEPLOYMENT_PLAN.md
-
 *storybook.log
