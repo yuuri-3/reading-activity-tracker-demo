@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,11 +56,12 @@ jobs:
 
       - name: Write Firebase service account key
         run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
           if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
             echo "Missing secrets.FIREBASE_SERVICE_ACCOUNT" >&2
             exit 1
           fi
-          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$RUNNER_TEMP/firebase-service-account.json"
 
       # Deploy Functions first so we never ship a new frontend that depends on old Functions.
       - name: Deploy Functions (live)
