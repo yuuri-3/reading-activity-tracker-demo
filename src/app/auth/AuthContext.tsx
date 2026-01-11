@@ -66,11 +66,6 @@ type PreviewGuestMergeCallableResult = {
   counts: { tags: number; books: number; records: number };
 };
 
-type SignInWithGoogleOptions = {
-  /** Force client-side migration (skip backend guest merge even if enabled). */
-  preferClientGuestMerge?: boolean;
-};
-
 async function createSecondaryAppAuthAndDb() {
   const primaryApp = getFirebaseApp();
   const name = `yomzoy-secondary-${Date.now()}-${Math.random()}`;
@@ -487,7 +482,7 @@ type AuthContextValue = {
     counts: { tags: number; books: number; records: number };
   } | null;
   signInAnonymously: () => Promise<void>;
-  signInWithGoogle: (options?: SignInWithGoogleOptions) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   confirmFallbackMigration: () => Promise<boolean>;
   confirmFallbackAccountMismatchProceed: () => Promise<boolean>;
   cancelFallbackAccountMismatch: () => void;
@@ -507,7 +502,7 @@ export type MockAuthProviderProps = {
   pendingFallbackAccountMismatch?: AuthContextValue["pendingFallbackAccountMismatch"];
   pendingFallbackMigration?: AuthContextValue["pendingFallbackMigration"];
   signInAnonymously?: () => Promise<void>;
-  signInWithGoogle?: (options?: SignInWithGoogleOptions) => Promise<void>;
+  signInWithGoogle?: () => Promise<void>;
   confirmFallbackMigration?: () => Promise<boolean>;
   confirmFallbackAccountMismatchProceed?: () => Promise<boolean>;
   cancelFallbackAccountMismatch?: () => void;
@@ -714,7 +709,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         }
       },
-      signInWithGoogle: async (options) => {
+      signInWithGoogle: async () => {
         setError(null);
 
         // Clear any pending mismatch flow.
@@ -797,20 +792,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     err
                   ) as OAuthCredential | null) ?? null;
 
-                if (enableBackendMerge && !options?.preferClientGuestMerge) {
+                if (enableBackendMerge) {
                   try {
                     const backend = await checkGuestMergeBackend();
                     if (backend.status !== "available") {
-                      const suffix = backend.code ? `（${backend.code}）` : "";
-                      if (backend.status === "missing") {
-                        toast.message(
-                          `統合機能（サーバー側）が利用できないため、端末内の移行に切り替えます${suffix}`
-                        );
-                      } else {
-                        toast.message(
-                          `統合機能の確認に失敗したため、端末内の移行に切り替えます${suffix}`
-                        );
-                      }
                       throw new Error("BACKEND_MERGE_UNAVAILABLE");
                     }
 

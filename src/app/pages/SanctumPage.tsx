@@ -11,20 +11,11 @@ import { useAuth } from "../auth/AuthContext";
 import { useApp } from "../context/AppContext";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { checkGuestMergeBackend } from "../firebase/guestMergeBackend";
 import {
   joinWithBase,
   navigate,
   shouldHandleClientNavigation,
 } from "../utils/navigation";
-
-type GuestMergeBackendUiState =
-  | { status: "idle" }
-  | { status: "checking" }
-  | { status: "available"; apiVersion: number }
-  | { status: "missing"; code?: string }
-  | { status: "temporary"; code?: string }
-  | { status: "error"; code?: string };
 
 export function SanctumFullScreenLoadingOverlay({
   variant,
@@ -68,9 +59,6 @@ export function SanctumPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
-  const [guestMergeBackendState, setGuestMergeBackendState] =
-    useState<GuestMergeBackendUiState>({ status: "idle" });
-  const [preferClientGuestMerge, setPreferClientGuestMerge] = useState(false);
   const [isFallbackDialogOpen, setIsFallbackDialogOpen] = useState(false);
   const [isMismatchDialogOpen, setIsMismatchDialogOpen] = useState(false);
   const isFallbackMigrating = fallbackMigrationInProgress;
@@ -84,9 +72,6 @@ export function SanctumPage() {
   }, [pendingFallbackAccountMismatch]);
 
   const isAnonymous = !!user?.isAnonymous;
-
-  const enableBackendMerge =
-    (import.meta as any)?.env?.VITE_ENABLE_BACKEND_GUEST_MERGE === "true";
 
   const email = user?.email ?? "";
   const displayName = user?.displayName ?? "";
@@ -106,43 +91,6 @@ export function SanctumPage() {
     if (!pendingFallbackAccountMismatch) return;
     setIsMismatchDialogOpen(true);
   }, [pendingFallbackAccountMismatch]);
-
-  useEffect(() => {
-    if (!isLinkDialogOpen) return;
-    if (!isAnonymous) return;
-    if (!enableBackendMerge) return;
-
-    let cancelled = false;
-    setPreferClientGuestMerge(false);
-    setGuestMergeBackendState({ status: "checking" });
-
-    void (async () => {
-      const res = await checkGuestMergeBackend();
-      if (cancelled) return;
-
-      if (res.status === "available") {
-        setGuestMergeBackendState({ status: "available", apiVersion: res.apiVersion });
-        return;
-      }
-
-      if (res.status === "missing") {
-        setGuestMergeBackendState({ status: "missing", code: res.code });
-        setPreferClientGuestMerge(true);
-        return;
-      }
-
-      if (res.status === "temporary") {
-        setGuestMergeBackendState({ status: "temporary", code: res.code });
-        return;
-      }
-
-      setGuestMergeBackendState({ status: "error", code: res.code });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [enableBackendMerge, isAnonymous, isLinkDialogOpen]);
 
   return (
     <div className="w-full">
@@ -361,175 +309,22 @@ export function SanctumPage() {
               onConfirm={() => {
                 if (isLinking) return;
 
-                if (
-                  enableBackendMerge &&
-                  !preferClientGuestMerge &&
-                  (guestMergeBackendState.status === "checking" ||
-                    guestMergeBackendState.status === "temporary" ||
-                    guestMergeBackendState.status === "error")
-                ) {
-                  toast.message("統合機能の準備状況を確認中です。再試行してください。");
-                  return;
-                }
-
                 void (async () => {
                   setIsLinking(true);
                   try {
                     setIsLinkDialogOpen(false);
-                    await signInWithGoogle({
-                      preferClientGuestMerge: enableBackendMerge
-                        ? preferClientGuestMerge
-                        : false,
-                    });
+                    await signInWithGoogle();
                   } finally {
                     setIsLinking(false);
                   }
                 })();
               }}
               cancelButtonProps={{ disabled: isLinking }}
-              confirmButtonProps={{
-                disabled:
-                  isLinking ||
-                  (enableBackendMerge &&
-                    !preferClientGuestMerge &&
-                    (guestMergeBackendState.status === "checking" ||
-                      guestMergeBackendState.status === "temporary" ||
-                      guestMergeBackendState.status === "error")),
-              }}
+              confirmButtonProps={{ disabled: isLinking }}
             >
               <div className="text-sm leading-6 text-foreground">
                 統合後は同じ端末・同じアカウントでログインすると、ゲスト中に作成した本棚や記録が引き続き表示されます。
               </div>
-
-              {enableBackendMerge && isAnonymous ? (
-                <div className="mt-3 rounded-[10px] bg-black/5 p-3 text-xs leading-5 text-muted-foreground">
-                  {guestMergeBackendState.status === "checking" ? (
-                    <div>統合機能（サーバー側）の準備状況を確認しています…</div>
-                  ) : guestMergeBackendState.status === "available" ? null :
-                    guestMergeBackendState.status === "missing" ? (
-                      <div>
-                        統合機能（サーバー側）が利用できないため、端末内の移行に切り替えます。
-                        {guestMergeBackendState.code ? `（${guestMergeBackendState.code}）` : ""}
-                      </div>
-                    ) : guestMergeBackendState.status === "temporary" ? (
-                      <div className="flex flex-col gap-2">
-                        <div>
-                          通信が不安定のため統合機能（サーバー側）を確認できません。
-                          {guestMergeBackendState.code ? `（${guestMergeBackendState.code}）` : ""}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            className="underline"
-                            onClick={() => {
-                              setGuestMergeBackendState({ status: "checking" });
-                              void (async () => {
-                                const res = await checkGuestMergeBackend();
-                                if (res.status === "available") {
-                                  setGuestMergeBackendState({
-                                    status: "available",
-                                    apiVersion: res.apiVersion,
-                                  });
-                                  setPreferClientGuestMerge(false);
-                                  return;
-                                }
-                                if (res.status === "missing") {
-                                  setGuestMergeBackendState({
-                                    status: "missing",
-                                    code: res.code,
-                                  });
-                                  setPreferClientGuestMerge(true);
-                                  return;
-                                }
-                                if (res.status === "temporary") {
-                                  setGuestMergeBackendState({
-                                    status: "temporary",
-                                    code: res.code,
-                                  });
-                                  return;
-                                }
-                                setGuestMergeBackendState({
-                                  status: "error",
-                                  code: res.code,
-                                });
-                              })();
-                            }}
-                          >
-                            再試行
-                          </button>
-                          <button
-                            type="button"
-                            className="underline"
-                            onClick={() => setPreferClientGuestMerge(true)}
-                          >
-                            端末内で移行する
-                          </button>
-                        </div>
-                      </div>
-                    ) : guestMergeBackendState.status === "error" ? (
-                      <div className="flex flex-col gap-2">
-                        <div>
-                          統合機能（サーバー側）の確認に失敗しました。
-                          {guestMergeBackendState.code ? `（${guestMergeBackendState.code}）` : ""}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            className="underline"
-                            onClick={() => {
-                              setGuestMergeBackendState({ status: "checking" });
-                              void (async () => {
-                                const res = await checkGuestMergeBackend();
-                                if (res.status === "available") {
-                                  setGuestMergeBackendState({
-                                    status: "available",
-                                    apiVersion: res.apiVersion,
-                                  });
-                                  setPreferClientGuestMerge(false);
-                                  return;
-                                }
-                                if (res.status === "missing") {
-                                  setGuestMergeBackendState({
-                                    status: "missing",
-                                    code: res.code,
-                                  });
-                                  setPreferClientGuestMerge(true);
-                                  return;
-                                }
-                                if (res.status === "temporary") {
-                                  setGuestMergeBackendState({
-                                    status: "temporary",
-                                    code: res.code,
-                                  });
-                                  return;
-                                }
-                                setGuestMergeBackendState({
-                                  status: "error",
-                                  code: res.code,
-                                });
-                              })();
-                            }}
-                          >
-                            再試行
-                          </button>
-                          <button
-                            type="button"
-                            className="underline"
-                            onClick={() => setPreferClientGuestMerge(true)}
-                          >
-                            端末内で移行する
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                  {preferClientGuestMerge ? (
-                    <div className="mt-2">
-                      ※端末内で移行します（件数が多い場合は少し時間がかかります）
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
             </Dialog>
 
             <Dialog
