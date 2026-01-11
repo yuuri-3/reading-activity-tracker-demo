@@ -1,7 +1,6 @@
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { LogoWithSymbol } from "../../components/icons/LogoWithSymbol";
 import { IconInfo } from "../../components/icons/IconInfo";
-import { IconOpenInNew } from "../../components/icons/IconOpenInNew";
 
 export type SignInScreenProps = {
   onSignInWithGoogle: () => void;
@@ -76,16 +75,6 @@ export function SignInScreen({
             )}
           </div>
         </div>
-
-        <a
-          href="/privacy-policy"
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-0.5 text-[12px] leading-[18px] font-medium text-[#5a6372]"
-        >
-          プライバシーポリシー
-          <IconOpenInNew size={18} color="currentColor" />
-        </a>
       </div>
     </div>
   );
