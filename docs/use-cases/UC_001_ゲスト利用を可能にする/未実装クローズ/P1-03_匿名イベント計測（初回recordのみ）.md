@@ -7,13 +7,23 @@
 
 ## 対象
 
-- [src/app/firebase/firebase.ts](../../../src/app/firebase/firebase.ts)
+- [src/app/firebase/firebase.ts](../../../../src/app/firebase/firebase.ts)
 - AppContext の record 作成処理（匿名ユーザー時）
 - 新規: `src/app/utils/guestInstallId`（端末内にランダム ID を永続するヘルパ）
 
 ## 実装状況
 
-Status: ⬜ 未着手
+Status: 📴 未実装クローズ（Firestore で目的を代替できるため）
+
+## クローズ理由
+
+- 匿名認証の導入により、ゲスト利用開始時点で Firebase Auth 上にユーザーが作成され、規模感が把握できるようになった
+- 本チケットの当初ゴール（「1つ以上 record を作ったゲスト人数」）も、現状の実装では Firestore 上で概ね代替できる
+  - ゲストが book/record を 1つ以上作成して初めて Firestore にユーザーが出現する運用のため、「Firestore に表示されているユーザー ≒ 1つ以上作成したゲスト」とみなせる
+- 追加の常時トラッキング（GA4 イベント送信）を導入せず、実装・プライバシー対応のコスト/リスクを増やさない方針とする
+
+メモ:
+- もし将来「record の初回作成コンバージョン」をプロダクト側で継続観測したくなった場合は、GA4 の `guest_first_record` を復活検討する
 
 ## 受け入れ条件
 
