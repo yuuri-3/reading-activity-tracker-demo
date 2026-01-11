@@ -1,0 +1,52 @@
+# DEPLOYMENT_PLAN
+
+## 概要
+
+本リポジトリは **Firebase Hosting** と **Cloud Functions** を、同じ導線で本番（live）へデプロイします。
+
+- トリガー: `main` への push（GitHub Actions）
+- 対象: 本番のみ（live）
+- 認証: サービスアカウント（`secrets.FIREBASE_SERVICE_ACCOUNT`）
+
+## CI デプロイフロー（本番）
+
+Workflow: `.github/workflows/deploy-firebase-hosting.yml`
+
+1. 依存関係インストール（root）
+2. フロントエンドビルド（`npm run build`）
+3. 依存関係インストール（Functions: `npm ci --prefix functions`）
+4. Functions ビルド（`npm run --prefix functions build`）
+5. **Functions → Hosting** の順でデプロイ
+
+Functions を先にデプロイする理由:
+「新しいフロントが、古い Functions に依存して壊れる」状態を避けるためです。
+
+## GitHub Actions の設定
+
+### Secrets
+
+- `FIREBASE_SERVICE_ACCOUNT`: Firebase サービスアカウントの JSON
+
+### Variables
+
+- `VITE_FIREBASE_PROJECT_ID`（Firebase の project ID としても使用）
+- その他、フロントのビルドに必要な `VITE_FIREBASE_*` 変数（workflow に記載）
+
+## 失敗時の扱い
+
+- workflow が失敗した場合、リリースは **失敗扱い** とします。
+- 途中までデプロイされる可能性はあります（例: Functions はデプロイ済みだが Hosting が未完了）。
+	- ただし「新しいフロント + 古い Functions」を避けるため、Functions を先にデプロイする設計としています。
+
+## ロールバック（切り戻し）
+
+基本方針: **正常だったリビジョンを再デプロイ** します。
+
+1. `main` 上で問題のコミットを `git revert` などで取り消す
+2. `main` に push
+3. GitHub Actions が revert 後の状態を再デプロイ
+
+緊急対応で Hosting / Functions だけを戻したい場合は、ローカルで Firebase CLI を使用します。
+
+- Hosting のみ: `firebase deploy --only hosting`
+- Functions のみ: `firebase deploy --only functions`

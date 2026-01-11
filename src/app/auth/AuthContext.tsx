@@ -45,6 +45,8 @@ import {
   getFirestoreDb,
   getGoogleProvider,
 } from "../firebase/firebase";
+import { checkGuestMergeBackend } from "../firebase/guestMergeBackend";
+import { getCallableErrorCode } from "../firebase/functionsError";
 
 type FirestoreDocData = Record<string, unknown>;
 type FirestoreDocSnapshot = { id: string; data: FirestoreDocData };
@@ -63,12 +65,6 @@ type PreviewGuestMergeCallableResult = {
   anonUid: string;
   counts: { tags: number; books: number; records: number };
 };
-
-function getCallableErrorCode(err: unknown): string | undefined {
-  const asAny = err as any;
-  const code = asAny?.code;
-  return typeof code === "string" ? code : undefined;
-}
 
 async function createSecondaryAppAuthAndDb() {
   const primaryApp = getFirebaseApp();
@@ -798,6 +794,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 if (enableBackendMerge) {
                   try {
+                    const backend = await checkGuestMergeBackend();
+                    if (backend.status !== "available") {
+                      throw new Error("BACKEND_MERGE_UNAVAILABLE");
+                    }
+
                     const functions = getFirebaseFunctions();
                     const prepare = httpsCallable(
                       functions,
@@ -852,13 +853,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     });
                     return;
                   } catch (migrationErr) {
-                    toast.error("統合準備に失敗しました");
-                    setError(
-                      migrationErr instanceof Error
-                        ? migrationErr.message
-                        : "統合準備に失敗しました"
-                    );
-                    return;
+                    // If backend merge is unavailable, fall back to legacy client-side copy.
+                    if (
+                      migrationErr instanceof Error &&
+                      migrationErr.message === "BACKEND_MERGE_UNAVAILABLE"
+                    ) {
+                      // continue to legacy fallback
+                    } else {
+                      toast.error("統合準備に失敗しました");
+                      setError(
+                        migrationErr instanceof Error
+                          ? migrationErr.message
+                          : "統合準備に失敗しました"
+                      );
+                      return;
+                    }
                   }
                 }
 
