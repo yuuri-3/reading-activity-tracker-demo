@@ -12,6 +12,7 @@ import { TagManagementPage } from "./pages/TagManagementPage";
 import { TabBar, type Page } from "./components/TabBar";
 import { Dialog } from "./components/Dialog";
 import { Toast } from "./components/Toast";
+import { joinWithBase, stripBase } from "./utils/navigation";
 
 type RecordsSubPage = "add" | null;
 type SanctumSubPage = "tags" | null;
@@ -21,23 +22,6 @@ type RouteState = {
   recordsSubPage: RecordsSubPage;
   sanctumSubPage: SanctumSubPage;
 };
-
-function joinWithBase(pathname: string) {
-  const base = (import.meta as any).env?.BASE_URL ?? "/";
-  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
-  const normalizedPath = pathname === "/" ? "" : pathname;
-  return `${normalizedBase}${normalizedPath}` || "/";
-}
-
-function stripBase(pathname: string) {
-  const base = (import.meta as any).env?.BASE_URL ?? "/";
-  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
-
-  if (!normalizedBase || normalizedBase === "/") return pathname;
-  return pathname.startsWith(normalizedBase)
-    ? pathname.slice(normalizedBase.length) || "/"
-    : pathname;
-}
 
 function parseRouteFromPath(pathname: string) {
   const path = stripBase(pathname).replace(/^\/+/, "").trim();
