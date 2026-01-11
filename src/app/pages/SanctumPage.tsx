@@ -12,6 +12,28 @@ import { useApp } from "../context/AppContext";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+export function SanctumFullScreenLoadingOverlay({
+  variant,
+}: {
+  variant: "linking" | "migrating";
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="rounded-[16px] bg-[var(--background-solid)] px-6 py-5 [box-shadow:var(--shadow-neumorphism-sm)]">
+        <div className="text-sm leading-6 text-foreground text-center whitespace-pre-line">
+          {variant === "migrating"
+            ? "データを統合しています…\n画面が戻るまでお待ちください…"
+            : "ログイン処理中です…\n画面が戻るまでお待ちください…"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SanctumPage() {
   const {
     user,
@@ -403,19 +425,9 @@ export function SanctumPage() {
             </Dialog>
 
             {showFullScreenLoading ? (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-                role="status"
-                aria-live="polite"
-              >
-                <div className="rounded-[16px] bg-[var(--background-solid)] px-6 py-5 [box-shadow:var(--shadow-neumorphism-sm)]">
-                  <div className="text-sm leading-6 text-foreground text-center whitespace-pre-line">
-                    {isFallbackMigrating
-                      ? "データを統合しています…\n画面が戻るまでお待ちください…"
-                      : "ログイン処理中です…\n画面が戻るまでお待ちください…"}
-                  </div>
-                </div>
-              </div>
+              <SanctumFullScreenLoadingOverlay
+                variant={isFallbackMigrating ? "migrating" : "linking"}
+              />
             ) : null}
           </div>
         </div>
