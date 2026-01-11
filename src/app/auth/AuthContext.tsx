@@ -45,6 +45,8 @@ import {
   getFirestoreDb,
   getGoogleProvider,
 } from "../firebase/firebase";
+import { checkGuestMergeBackend } from "../firebase/guestMergeBackend";
+import { getCallableErrorCode } from "../firebase/functionsError";
 
 type FirestoreDocData = Record<string, unknown>;
 type FirestoreDocSnapshot = { id: string; data: FirestoreDocData };
@@ -64,11 +66,10 @@ type PreviewGuestMergeCallableResult = {
   counts: { tags: number; books: number; records: number };
 };
 
-function getCallableErrorCode(err: unknown): string | undefined {
-  const asAny = err as any;
-  const code = asAny?.code;
-  return typeof code === "string" ? code : undefined;
-}
+type SignInWithGoogleOptions = {
+  /** Force client-side migration (skip backend guest merge even if enabled). */
+  preferClientGuestMerge?: boolean;
+};
 
 async function createSecondaryAppAuthAndDb() {
   const primaryApp = getFirebaseApp();
@@ -486,7 +487,7 @@ type AuthContextValue = {
     counts: { tags: number; books: number; records: number };
   } | null;
   signInAnonymously: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (options?: SignInWithGoogleOptions) => Promise<void>;
   confirmFallbackMigration: () => Promise<boolean>;
   confirmFallbackAccountMismatchProceed: () => Promise<boolean>;
   cancelFallbackAccountMismatch: () => void;
@@ -506,7 +507,7 @@ export type MockAuthProviderProps = {
   pendingFallbackAccountMismatch?: AuthContextValue["pendingFallbackAccountMismatch"];
   pendingFallbackMigration?: AuthContextValue["pendingFallbackMigration"];
   signInAnonymously?: () => Promise<void>;
-  signInWithGoogle?: () => Promise<void>;
+  signInWithGoogle?: (options?: SignInWithGoogleOptions) => Promise<void>;
   confirmFallbackMigration?: () => Promise<boolean>;
   confirmFallbackAccountMismatchProceed?: () => Promise<boolean>;
   cancelFallbackAccountMismatch?: () => void;
@@ -713,7 +714,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         }
       },
-      signInWithGoogle: async () => {
+      signInWithGoogle: async (options) => {
         setError(null);
 
         // Clear any pending mismatch flow.
@@ -796,8 +797,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     err
                   ) as OAuthCredential | null) ?? null;
 
-                if (enableBackendMerge) {
+                if (enableBackendMerge && !options?.preferClientGuestMerge) {
                   try {
+                    const backend = await checkGuestMergeBackend();
+                    if (backend.status !== "available") {
+                      const suffix = backend.code ? `（${backend.code}）` : "";
+                      if (backend.status === "missing") {
+                        toast.message(
+                          `統合機能（サーバー側）が利用できないため、端末内の移行に切り替えます${suffix}`
+                        );
+                      } else {
+                        toast.message(
+                          `統合機能の確認に失敗したため、端末内の移行に切り替えます${suffix}`
+                        );
+                      }
+                      throw new Error("BACKEND_MERGE_UNAVAILABLE");
+                    }
+
                     const functions = getFirebaseFunctions();
                     const prepare = httpsCallable(
                       functions,
@@ -852,13 +868,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     });
                     return;
                   } catch (migrationErr) {
-                    toast.error("統合準備に失敗しました");
-                    setError(
-                      migrationErr instanceof Error
-                        ? migrationErr.message
-                        : "統合準備に失敗しました"
-                    );
-                    return;
+                    // If backend merge is unavailable, fall back to legacy client-side copy.
+                    if (
+                      migrationErr instanceof Error &&
+                      migrationErr.message === "BACKEND_MERGE_UNAVAILABLE"
+                    ) {
+                      // continue to legacy fallback
+                    } else {
+                      toast.error("統合準備に失敗しました");
+                      setError(
+                        migrationErr instanceof Error
+                          ? migrationErr.message
+                          : "統合準備に失敗しました"
+                      );
+                      return;
+                    }
                   }
                 }
 

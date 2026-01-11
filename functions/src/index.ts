@@ -6,6 +6,20 @@ import { logger } from "firebase-functions";
 
 admin.initializeApp();
 
+type GuestMergeCapabilitiesResult = {
+  apiVersion: number;
+  features: {
+    guestMerge: {
+      prepareGuestMerge: true;
+      previewGuestMerge: true;
+      executeGuestMerge: true;
+    };
+  };
+  checkedAt: string; // ISO
+};
+
+const GUEST_MERGE_API_VERSION = 1;
+
 type PrepareGuestMergeResult = {
   requestId: string;
   secret: string;
@@ -167,6 +181,25 @@ export const prepareGuestMerge = onCall(
       requestId,
       secret,
       expiresAt: new Date(expiresAtMs).toISOString(),
+    };
+  }
+);
+
+// Health check / capability endpoint for the frontend.
+// If this callable is missing, the frontend can treat it as “Functions not deployed / too old”.
+export const getGuestMergeCapabilities = onCall(
+  async (request): Promise<GuestMergeCapabilitiesResult> => {
+    requireAuth(request.auth);
+    return {
+      apiVersion: GUEST_MERGE_API_VERSION,
+      features: {
+        guestMerge: {
+          prepareGuestMerge: true,
+          previewGuestMerge: true,
+          executeGuestMerge: true,
+        },
+      },
+      checkedAt: new Date().toISOString(),
     };
   }
 );
