@@ -68,6 +68,7 @@ function sha256Hex(value: string): string {
 
 const REQUESTS_COLLECTION = "guestMergeRequests" as const;
 const REQUEST_TTL_MS = 15 * 60 * 1000;
+const REQUEST_DELETE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function countSubcollection(
   db: FirebaseFirestore.Firestore,
@@ -147,6 +148,7 @@ export const prepareGuestMerge = onCall(
 
     const createdAtMs = Date.now();
     const expiresAtMs = createdAtMs + REQUEST_TTL_MS;
+    const deleteAtMs = createdAtMs + REQUEST_DELETE_TTL_MS;
 
     const db = admin.firestore();
     await db
@@ -158,6 +160,7 @@ export const prepareGuestMerge = onCall(
         status: "pending",
         createdAt: admin.firestore.Timestamp.fromMillis(createdAtMs),
         expiresAt: admin.firestore.Timestamp.fromMillis(expiresAtMs),
+        deleteAt: admin.firestore.Timestamp.fromMillis(deleteAtMs),
       });
 
     return {
@@ -264,6 +267,18 @@ export const executeGuestMerge = onCall(
       const expiresAtMs = expiresAt?.toMillis?.() ?? 0;
       if (expiresAtMs && Date.now() > expiresAtMs) {
         throw new HttpsError("deadline-exceeded", "Merge request expired");
+      }
+
+      const existingDeleteAt = data.deleteAt as
+        | admin.firestore.Timestamp
+        | undefined;
+      const createdAt = data.createdAt as admin.firestore.Timestamp | undefined;
+      if (!existingDeleteAt?.toMillis?.()) {
+        const createdAtMs = createdAt?.toMillis?.() ?? Date.now();
+        const deleteAtMs = createdAtMs + REQUEST_DELETE_TTL_MS;
+        tx.update(reqRef, {
+          deleteAt: admin.firestore.Timestamp.fromMillis(deleteAtMs),
+        });
       }
 
       if (status === "done") {
