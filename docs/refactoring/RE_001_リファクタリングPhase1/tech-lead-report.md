@@ -1,16 +1,17 @@
 # Yomzoy 技術レビュー（テックリード観点）
 
-作成日: 2026-01-03
+作成日: 2026-01-11
 
 ## 対象範囲
 
 - フロントエンド: Vite + React (18)
 - UI: Storybook, Tailwind, Radix, MUI（混在）
 - データ: Firebase Auth + Firestore
-- デプロイ: Firebase Hosting + GitHub Actions
+- サーバー: Cloud Functions for Firebase（ゲスト統合用途）
+- デプロイ: Firebase Hosting + GitHub Actions（現状は Hosting のみ自動）
 
 ※本レポートは「現状コードの設計/実装を読み、改善点を洗い出す」ことが目的です。
-レポート以外のファイル修正は行っていません。
+全体巡回の過程で、Storybook/Vitest のテスト導線が壊れていたため、最小限の修正を入れて「実行できる状態」まで復旧しました（詳細は後述）。
 
 参照した主なファイル:
 
@@ -20,11 +21,13 @@
 - vitest.workspace.ts
 - src/main.tsx
 - src/app/App.tsx
+- src/app/utils/navigation.ts
 - src/app/auth/AuthContext.tsx / src/app/auth/AuthGate.tsx
 - src/app/context/AppContext.tsx
 - src/app/firebase/firebase.ts
-- firebase.json
+- firebase.json / .firebaserc
 - .github/workflows/deploy-firebase-hosting.yml
+- functions/package.json / functions/src/index.ts
 - README.md / DEPLOYMENT_PLAN.md / PROJECT_LOG.md
 
 追加で確認したファイル（詳細分析用）:
@@ -62,10 +65,19 @@
 
 - `popup -> redirectフォールバック`、redirect ループ抑止、永続化（`browserLocalPersistence`）などが揃っている（`src/app/auth/AuthContext.tsx`）
 
+### 追加: ゲスト→ログイン統合の“現実解”が増えた
+
+- 連携（link）失敗時に、Cloud Functions の callable を使った「バックエンド統合」にフォールバックする実装が入っている（`functions/src/index.ts`, `src/app/auth/AuthContext.tsx`）
+- 環境差によるエラー（iOS/アプリ内ブラウザ等）を前提に、ユーザーへ確認を促す UI を持っている（`src/app/pages/SanctumPage.tsx`）
+
 ### 3) Storybook と “Story ベースのテスト” の土台がある
 
-- `vitest.workspace.ts` で `@storybook/experimental-addon-test/vitest-plugin` を使える状態
-- UI の回帰を「テストとして固定化」しやすい
+- `@storybook/addon-vitest` を使って story を Vitest（browser mode）で実行できる
+- `npm run test-storybook` で Storybook story テストを 1 回実行できる（watch は `npm run test-storybook:watch`）
+
+### 追加: ビルドに typecheck が組み込まれた
+
+- `npm run build` が `npm run typecheck` を前提にするようになり、最低限の品質ゲートが 1 つ上がった（`package.json`）
 
 ### 4) モバイル入力体験の配慮がある
 
@@ -77,12 +89,37 @@
 
 ## 主要な課題（優先度順）
 
+### P0: Cloud Functions を使う機能が増えたのに、デプロイ導線が Hosting 側にしか無い
+
+現状:
+
+- ゲスト統合が Cloud Functions（callable）に依存する（`functions/src/index.ts`）
+- しかし GitHub Actions は Hosting の deploy のみで、Functions をデプロイしていない（`.github/workflows/deploy-firebase-hosting.yml`）
+- 本番ビルドでは `VITE_ENABLE_BACKEND_GUEST_MERGE` がデフォルト true 扱いになっている（CI の env の `|| 'true'`）
+
+リスク:
+
+- Functions が未デプロイ/旧版の場合、本番でゲスト統合が失敗する（ユーザー影響が大きい）
+- 「フロントだけ更新されたが、Functions は古い」という状態を作りやすい（運用事故）
+
+推奨:
+
+- まず運用方針を決める
+  - A) Functions も CI でデプロイして「フロントと同時リリース」
+  - B) Functions は手動デプロイとし、フロント側の `VITE_ENABLE_BACKEND_GUEST_MERGE` のデフォルトを false に戻して“機能フラグで守る”
+- どちらでも良いが、少なくとも README / DEPLOYMENT_PLAN に「Functions をいつ/どうデプロイするか」を明記する
+
 ### P0: タイマーの tick が Context 経由で全体再レンダーを引き起こす（性能/電池）
 
 現状:
 
 - `AppContext` が `timerState` を持ち、`setInterval(100ms)` で `elapsedTime` を更新している（`src/app/context/AppContext.tsx`）
 - `useApp()` を購読するコンポーネントが多く、100ms ごとに広範囲が再レンダーされやすい（ページ/リスト/フォームにも波及し得る）
+
+追加観察（1/11 時点）:
+
+- タイマーの start/pause 状態は localStorage に永続化され、リロードで計測が破綻しにくくなった（`useLayoutEffect` + minimal persist）
+- 一方で `AppContext.Provider value` が `useMemo` 等で安定化されておらず、tick ごとに value オブジェクト自体が作り直される
 
 リスク:
 
@@ -94,13 +131,15 @@
 
 - Timer 専用の Context へ分離して購読範囲を限定
 - もしくは tick を 250ms〜1000ms に下げ、表示側は要件に合わせて調整
+- 併せて `AppContext.Provider value` を `useMemo` で安定化し、Timer 以外が不要に揺れないようにする
 
 ### P0: 品質ゲート（test/typecheck/lint）が実運用に足りない
 
 現状:
 
-- `package.json` に `test` / `typecheck` / `lint` / `format` がない
-- `vitest`/`playwright` が入っているのに「実行導線」がない（CI でも回っていない）
+- `typecheck` は追加され、`npm run build` の前提として動くようになった（改善）
+- `lint` / `format` は依然として scripts が無く、CI でも実行されていない
+- Storybook テストは `npm run test-storybook` で実行可能（1/11 時点で動作確認済み）
 - GitHub Actions は build→deploy のみ（`.github/workflows/deploy-firebase-hosting.yml`）
 
 リスク:
@@ -108,14 +147,17 @@
 - 変更のたびに品質が目視依存になり、回帰が増える
 - Storybook テストの資産が活かされない
 
-推奨（最小の改善順）:
+推奨（改善順）:
 
-1. scripts 追加（新規パッケージ導入なし）
-   - `test`: `vitest` を workspace で実行
-   - `typecheck`: `tsc -p tsconfig.json --noEmit`
-2. CI に「テスト + 型チェック」を追加（deploy 前に落とす）
+1. CI に「`test-storybook` + `typecheck`」を追加（deploy 前に落とす）
+  - browser mode のため CI では Playwright のブラウザ導入が必要（例: `npx playwright install chromium`）
+2. Vitest workspace の deprecated 警告に備えて移行
+  - 現状 `vitest.workspace.ts` が deprecated（将来削除予定）なので、次の大きい更新までに `vite.config.ts` 側の `test.projects` へ寄せる
+3. `lint/format` は方針決め（今の規模でも入れる価値は高いが、依存追加を許容するかの判断が要る）
 
-※このレポートでは実装変更は行っていません（要望が“レポート作成”のため）。
+備考（1/11 巡回で検知した警告）:
+
+- Story 実行中に React の「key が重複している」警告が出る story がある（UI の不具合に繋がり得るので、余裕があれば直す）
 
 ---
 
@@ -153,6 +195,10 @@
 - `firestore.rules` と `firebase.json` の rules 参照を導入（または別管理方針を明記）
 - 小規模共有が前提なら allowlist（メール/UID）を検討（DEPLOYMENT_PLAN.md と整合）
 
+追加（1/11 時点の重要性増）:
+
+- Cloud Functions で扱う `guestMergeRequests`（TTL含む）など、セキュリティ境界が増えているため「現状の Rules が何か」をコードで固定化する重要性が上がった
+
 ---
 
 ### P0: アカウント削除のデータ削除が不完全になり得る（残データ/運用事故）
@@ -172,8 +218,6 @@
 
 - 仕様として「何を消すか」を明文化し、実装も揃える（最低限 tags も対象に含める）
 - データ量増加を見据えるなら、将来は Cloud Functions 等のサーバー側削除（recursive delete）も検討
-
-※このレポートでは実装変更はしません。
 
 ---
 
@@ -199,7 +243,8 @@
 
 現状:
 
-- Hash + state + effect で簡易実装（`src/app/App.tsx`）
+- `history.pushState` + `popstate` で簡易実装（`src/app/App.tsx`）
+- base path を考慮するためのユーティリティが導入され、以前よりは安全（`src/app/utils/navigation.ts`）
 - サブページも同一コンポーネントに閉じている（records/add, sanctum/tags）
 
 リスク:
@@ -209,7 +254,7 @@
 推奨（最小）:
 
 - ルート解析/生成を `src/app/utils/router.ts` 等に切り出し
-- `parseHash()` と `buildHash()` にユニットテストを付ける（Vitest 活用）
+- `parseRouteFromPath()` と `toPathname()` にユニットテストを付ける（Vitest 活用）
 
 ※React Router 導入は将来選択肢。ただし「MVP 維持/追加依存最小」を優先するなら切り出しで十分。
 
@@ -219,7 +264,7 @@
 
 現状:
 
-- Books/Records/Tags/Timer/Search を単一 Context で保持（`src/app/context/AppContext.tsx` は 500 行超）
+- Books/Records/Tags/Timer/Search/Guest notice を単一 Context で保持（`src/app/context/AppContext.tsx` は 700 行超）
 
 リスク:
 
@@ -229,13 +274,36 @@
 推奨（段階的）:
 
 - ① Firestore 購読と CRUD を「データ層」に寄せる（例: `src/app/repositories/*`）
-- ② Timer や Search 等の UI 寄り状態を別 Context に分割
+- ② Timer や Search、Guest notice 等の UI 寄り状態を別 Context に分割
 - ③ Context の value は `useMemo` で安定化（関数が毎回生成される場合は要注意）
 
 補足（今回の追加観察）:
 
 - Record/Book 操作は `async` だが呼び出し側で await/エラーハンドリングが統一されていない箇所がある（例: `BookCollectionView` の登録処理）
 - ID 生成方針が混在している（例: BookMemo は `Date.now()` ベース、タグは `crypto.randomUUID()` 併用）
+
+---
+
+### P1: `AuthContext.tsx` が認証 + データ移行/統合の責務を抱え過ぎ
+
+現状:
+
+- `src/app/auth/AuthContext.tsx` が 1600 行超で、認証状態管理に加えて
+  - ゲスト統合（link失敗時の分岐、backend merge / client-side copy の両系統）
+  - 互換吸収（スキーマ揺れの正規化）
+  - secondary app の lifecyle 管理
+  などが同居している
+
+リスク:
+
+- 変更衝突が増え、バグ混入時の原因特定が難しくなる
+- フローの一部だけをテストしにくく、目視/手動確認に寄りやすい
+
+推奨:
+
+- `auth/guestMerge/*` のように「統合フロー/補助関数」をモジュール分離し、AuthContext はオーケストレーションに寄せる
+- backend merge の成功/失敗・期限切れ等の分岐をユニットテスト化（UI ではなく純関数部分を切り出す）
+- フィーチャーフラグ（`VITE_ENABLE_BACKEND_GUEST_MERGE`）のデフォルト方針を dev/prod で揃える（運用事故回避）
 
 ---
 
@@ -258,6 +326,11 @@
   - BookMemo をサブコレクション化（`users/{uid}/books/{bookId}/memos`）
   - もしくは memo 件数に上限を設け、UI/仕様で割り切る
 - 時刻は将来的に `serverTimestamp` / Firestore Timestamp を採用する余地を残す（移行方針をメモしておく）
+
+追加観察（1/11 時点）:
+
+- ゲスト統合のために「旧フィールド名や型の揺れ」を吸収する正規化処理が増えている（`src/app/auth/AuthContext.tsx` の `normalizeMigratingDocData`）
+- これはユーザー救済として有効だが、同時に「スキーマが揺れている事実」を示すため、どこかでスキーマの正規化方針（移行期限、互換の範囲）を決めると保守が楽になる
 
 ---
 
@@ -347,11 +420,11 @@
 
 ## すぐ効く改善（1 日以内の現実的 ToDo）
 
-- `docs/` とは別に、以下を最小追加するのが費用対効果が高い
-  - `package.json` scripts: `test`, `typecheck`
-  - CI: deploy 前に `npm run test` / `npm run typecheck`
-  - `.env.example` の追加
-  - Firestore Rules をリポジトリで管理する方針決め
+- 以下は 1 日以内でも効果が大きい
+  - `.env.example` の追加（README の整合も取る）
+  - Firestore Rules をリポジトリで管理（`firestore.rules` 等）
+  - `package.json` scripts に `test` を追加し、CI に組み込む（少なくとも Storybook story test）
+  - Cloud Functions のデプロイ方針を決め、CI/手順書に明記（Hosting-only の運用事故を潰す）
 
 追加（影響が大きく、早めにやる価値が高い）:
 
@@ -378,3 +451,42 @@
 
 - `VITE_FIREBASE_*` はフロントに埋め込まれるため秘匿情報ではない（キー制限・Rules が本丸）
 - 守るべきものは Firestore Rules と認可設計（allowlist 等）
+
+追加:
+
+- callable Functions を導入したことで、フロントの秘匿ではなく「サーバー側の認可/監査（ログ/レート制限/障害時の復旧手順）」の重要度が上がっている
+
+---
+
+## 全体巡回（2026-01-11）の実行結果（要約）
+
+このセクションは「実際にコマンドを回して分かったこと」を、優先順位付けしやすい形で要約します。
+
+### 実行して確認したこと
+
+- フロント: `npm run build` は成功（typecheck 含む）
+  - ただし bundle が大きい警告あり（`dist/assets/index-*.js` が約 1MB）
+- Functions: `functions` で `npm run build` は成功
+- Storybook story tests: `npm run test-storybook` は成功（29 files / 66 tests pass）
+  - 初回やキャッシュ再生成時は prepare が重く、数分待つことがある（Vitest browser mode + Storybook 変換の準備）
+
+### 巡回で観測した警告/注意
+
+- Vitest workspace（`vitest.workspace.ts`）が deprecated（次のメジャーで削除予定）
+  - 将来的に `vite.config.ts` の `test.projects` へ移行する前提で考える
+- Vitest browser 設定の `browser.name` が deprecated（instances 形式へ移行推奨）
+- `src/**/*.mdx` は該当無しの警告（現状は mdx stories が無いだけで、致命ではない）
+- React warning: key 重複が出る story がある
+  - 対象: `src/app/components/ListCard.stories.tsx`（表示が崩れるリスクがあるため、優先度は P2〜P1 の間で検討）
+- Storybook telemetry の案内が出る（必要なら opt-out を検討）
+
+### テストが不安定になった場合の対処（再現性メモ）
+
+- 一度だけ `SyntaxError: Unexpected token ')'` が `.storybook/vitest.setup.ts` に対して出てテストが落ちる事象を観測
+  - `node_modules/.cache/storybook` を削除して再実行すると解消した
+  - 体感としてキャッシュ破損/不整合が原因の可能性が高い（根本対策は今後の継続観察）
+
+### 依存の注意
+
+- `npm install` 時点で moderate の脆弱性が複数件（例: 11件）
+  - 今すぐ P0 で潰す必要はないが、公開運用や継続開発を見据えて定期的な `npm audit`/更新計画が必要
