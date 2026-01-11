@@ -17,22 +17,24 @@
 
 ## 実装状況
 
-Status: ⬜ 未着手
+Status: ✅ 実装完了（2026-01-12）
+
+- 検証: `npm test -- --run` / `npm run typecheck` OK
 
 ## 受け入れ条件
 
 達成チェック:
 
-- [ ] `VITE_ENABLE_OCR_HANDWRITTEN_MEMO` を導入し、`import.meta.env.VITE_ENABLE_OCR_HANDWRITTEN_MEMO === "true"` の場合のみ OCR 関連 UI/導線が表示される（未設定・それ以外は OFF 扱い）
-- [ ] 本番は既定 OFF とし、prod では `VITE_ENABLE_OCR_HANDWRITTEN_MEMO` を未設定で運用できる
-- [ ] OCR のフラグ参照/永続化参照は `src/app/ocr/` 配下に集約され、OCR 以外から env/localStorage を直参照しない
-- [ ] フラグ OFF の状態で、OCR 関連の UI/導線が一切表示されず、既存画面の見た目・遷移・動作が変化しない（「3) 検証」の手動チェックリストを満たす）
-- [ ] 端末ローカル状態が `yomzoy:ocrHandwrittenMemoState:v1` に保存/復元できる
+- [x] `VITE_ENABLE_OCR_HANDWRITTEN_MEMO` を導入し、`import.meta.env.VITE_ENABLE_OCR_HANDWRITTEN_MEMO === "true"` の場合のみ OCR 関連 UI/導線が表示される（未設定・それ以外は OFF 扱い）
+- [x] 本番は既定 OFF とし、prod では `VITE_ENABLE_OCR_HANDWRITTEN_MEMO` を未設定で運用できる
+- [x] OCR のフラグ参照/永続化参照は `src/app/ocr/` 配下に集約され、OCR 以外から env/localStorage を直参照しない
+- [x] フラグ OFF の状態で、OCR 関連の UI/導線が一切表示されず、既存画面の見た目・遷移・動作が変化しない（「3) 検証」の手動チェックリストを満たす）
+- [x] 端末ローカル状態が `yomzoy:ocrHandwrittenMemoState:v1` に保存/復元できる
   - `consentAccepted: boolean`（同意状態）
   - `defaultDestination: "book" | "record"`（保存先デフォルト、既定値は `"book"`）
   - 保存先を選択した場合、その選択が次回以降の既定値として復元される
-- [ ] `localStorage` が読めない/壊れている場合は未同意＋既定値（`"book"`）で開始する
-- [ ] `localStorage` が書けない場合でもアプリは落とさずに継続し、次回起動時は未同意＋既定値（`"book"`）から開始する
+- [x] `localStorage` が読めない/壊れている場合は未同意＋既定値（`"book"`）で開始する
+- [x] `localStorage` が書けない場合でもアプリは落とさずに継続し、次回起動時は未同意＋既定値（`"book"`）から開始する
 
 ## 作業内容
 
