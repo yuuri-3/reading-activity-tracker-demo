@@ -36,7 +36,21 @@ Functions を先にデプロイする理由:
 
 - workflow が失敗した場合、リリースは **失敗扱い** とします。
 - 途中までデプロイされる可能性はあります（例: Functions はデプロイ済みだが Hosting が未完了）。
-	- ただし「新しいフロント + 古い Functions」を避けるため、Functions を先にデプロイする設計としています。
+  - ただし「新しいフロント + 古い Functions」を避けるため、Functions を先にデプロイする設計としています。
+
+## つまずきポイント（運用メモ）
+
+### GitHub Actions の式/環境変数
+
+- `runner.temp` のようなコンテキストは、記述場所によっては式評価エラーになります。
+- `GOOGLE_APPLICATION_CREDENTIALS` は `$RUNNER_TEMP` と `$GITHUB_ENV` を使って設定するのが安全です。
+
+### Cloud Functions デプロイの IAM（`iam.serviceaccounts.actAs`）
+
+Functions（特に 2nd Gen）のデプロイでは、Cloud Build / Cloud Run などの内部処理で service account への `actAs` が必要になることがあります。
+
+- 症状: `Caller is missing permission 'iam.serviceaccounts.actAs'` の 403
+- 対応: 対象 service account（例: Default compute service account）に対して、デプロイ実行者（GitHub Actions のサービスアカウント）へ `roles/iam.serviceAccountUser` を付与
 
 ## ロールバック（切り戻し）
 
