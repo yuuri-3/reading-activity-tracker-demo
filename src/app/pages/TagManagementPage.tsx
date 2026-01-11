@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  joinWithBase,
+  navigate,
+  shouldHandleClientNavigation,
+} from "../utils/navigation";
 
 import type { Tag } from "../types";
 
@@ -225,8 +230,13 @@ export function TagManagementPage({ initialTags }: TagManagementPageProps) {
       <div className="max-w-2xl mx-auto">
         <header className="sticky top-0 z-30 flex flex-col gap-2 px-6 pt-8 pb-4 backdrop-blur-lg bg-[rgba(232,237,242,0.9)] supports-[backdrop-filter]:bg-[rgba(232,237,242,0.75)]">
           <a
-            href="#sanctum"
+            href={joinWithBase("/sanctum")}
             className="inline-flex items-center gap-0.5 text-[14px] font-normal leading-5 text-foreground"
+            onClick={(e) => {
+              if (!shouldHandleClientNavigation(e)) return;
+              e.preventDefault();
+              navigate("/sanctum");
+            }}
           >
             <IconBack size={20} className="shrink-0" />
             <span className="pb-[2px]">戻る</span>
