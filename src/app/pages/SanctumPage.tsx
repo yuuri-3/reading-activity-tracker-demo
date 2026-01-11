@@ -11,6 +11,11 @@ import { useAuth } from "../auth/AuthContext";
 import { useApp } from "../context/AppContext";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  joinWithBase,
+  navigate,
+  shouldHandleClientNavigation,
+} from "../utils/navigation";
 
 export function SanctumFullScreenLoadingOverlay({
   variant,
@@ -180,8 +185,13 @@ export function SanctumPage() {
               <p className="text-sm leading-5 text-muted-foreground">機能</p>
 
               <a
-                href="#sanctum/tags"
+                href={joinWithBase("/sanctum/tags")}
                 className="rounded-[12px] px-4 py-4 bg-[var(--background-solid)] [box-shadow:var(--shadow-neumorphism-sm)]"
+                onClick={(e) => {
+                  if (!shouldHandleClientNavigation(e)) return;
+                  e.preventDefault();
+                  navigate("/sanctum/tags");
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
