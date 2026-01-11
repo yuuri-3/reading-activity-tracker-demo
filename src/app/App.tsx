@@ -13,6 +13,8 @@ import { TabBar, type Page } from "./components/TabBar";
 import { Dialog } from "./components/Dialog";
 import { Toast } from "./components/Toast";
 import { joinWithBase, stripBase } from "./utils/navigation";
+import { isOcrHandwrittenMemoEnabled } from "./ocr/env";
+import { OcrHandwrittenMemoRootPage } from "./ocr/OcrHandwrittenMemoRootPage";
 
 type RecordsSubPage = "add" | null;
 type SanctumSubPage = "tags" | null;
@@ -21,6 +23,7 @@ type RouteState = {
   page: Page;
   recordsSubPage: RecordsSubPage;
   sanctumSubPage: SanctumSubPage;
+  ocrActive: boolean;
 };
 
 function parseRouteFromPath(pathname: string) {
@@ -30,9 +33,19 @@ function parseRouteFromPath(pathname: string) {
       page: "home" as Page,
       recordsSubPage: null,
       sanctumSubPage: null,
+      ocrActive: false,
     } satisfies RouteState;
 
   const [pageRaw, subRaw] = path.split("/");
+
+  if (isOcrHandwrittenMemoEnabled() && pageRaw === "ocr") {
+    return {
+      page: "home" as Page,
+      recordsSubPage: null,
+      sanctumSubPage: null,
+      ocrActive: true,
+    } satisfies RouteState;
+  }
 
   const page: Page =
     pageRaw === "home" ||
@@ -52,14 +65,17 @@ function parseRouteFromPath(pathname: string) {
     page,
     recordsSubPage,
     sanctumSubPage,
+    ocrActive: false,
   } satisfies RouteState;
 }
 
 function toPathname(
   page: Page,
   recordsSubPage: RecordsSubPage,
-  sanctumSubPage: SanctumSubPage
+  sanctumSubPage: SanctumSubPage,
+  ocrActive: boolean
 ) {
+  if (ocrActive) return "/ocr";
   if (page === "home") return "/";
   if (page === "records" && recordsSubPage) return `/records/${recordsSubPage}`;
   if (page === "sanctum" && sanctumSubPage) return `/sanctum/${sanctumSubPage}`;
@@ -80,6 +96,7 @@ function AppContent() {
         page: "home" as Page,
         recordsSubPage: null,
         sanctumSubPage: null,
+        ocrActive: false,
       };
     }
 
@@ -95,10 +112,12 @@ function AppContent() {
     initialRoute.sanctumSubPage
   );
 
+  const [ocrActive, setOcrActive] = useState<boolean>(initialRoute.ocrActive);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const nextPathname = joinWithBase(
-      toPathname(currentPage, recordsSubPage, sanctumSubPage)
+      toPathname(currentPage, recordsSubPage, sanctumSubPage, ocrActive)
     );
     if (window.location.pathname !== nextPathname) {
       window.history.pushState(
@@ -107,17 +126,17 @@ function AppContent() {
         `${nextPathname}${window.location.search}`
       );
     }
-  }, [currentPage, recordsSubPage, sanctumSubPage]);
+  }, [currentPage, recordsSubPage, sanctumSubPage, ocrActive]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onPopState = () => {
-      const { page, recordsSubPage, sanctumSubPage } = parseRouteFromPath(
-        window.location.pathname
-      );
+      const { page, recordsSubPage, sanctumSubPage, ocrActive } =
+        parseRouteFromPath(window.location.pathname);
       setCurrentPage(page);
       setRecordsSubPage(recordsSubPage);
       setSanctumSubPage(sanctumSubPage);
+      setOcrActive(ocrActive);
     };
     window.addEventListener("popstate", onPopState);
     return () => {
@@ -129,12 +148,14 @@ function AppContent() {
     setCurrentPage(next);
     setRecordsSubPage(null);
     setSanctumSubPage(null);
+    setOcrActive(false);
   };
 
   const handleChangeRecordsSubPage = (next: RecordsSubPage) => {
     setCurrentPage("records");
     setRecordsSubPage(next);
     setSanctumSubPage(null);
+    setOcrActive(false);
   };
 
   return (
@@ -142,30 +163,43 @@ function AppContent() {
       {/* Main Content */}
       <main className="flex-1 w-full pb-24">
         <div className="w-full">
-          {currentPage === "home" ? <TimerPage /> : null}
-          {currentPage === "books" && <BookCollectionView />}
-          {currentPage === "records" && (
-            <RecordSingleView
-              subPage={recordsSubPage}
-              onSubPageChange={handleChangeRecordsSubPage}
+          {ocrActive ? (
+            <OcrHandwrittenMemoRootPage
+              onExit={() => {
+                setOcrActive(false);
+                handleChangePage("home");
+              }}
             />
+          ) : (
+            <>
+              {currentPage === "home" ? <TimerPage /> : null}
+              {currentPage === "books" && <BookCollectionView />}
+              {currentPage === "records" && (
+                <RecordSingleView
+                  subPage={recordsSubPage}
+                  onSubPageChange={handleChangeRecordsSubPage}
+                />
+              )}
+              {currentPage === "sanctum" &&
+                (sanctumSubPage === "tags" ? (
+                  <TagManagementPage />
+                ) : (
+                  <SanctumPage />
+                ))}
+            </>
           )}
-          {currentPage === "sanctum" &&
-            (sanctumSubPage === "tags" ? (
-              <TagManagementPage />
-            ) : (
-              <SanctumPage />
-            ))}
         </div>
       </main>
 
       {/* Bottom Navigation - iOS Floating Style */}
       <nav className="fixed bottom-0 left-0 right-0 pointer-events-none">
-        <div className="max-w-2xl mx-auto px-4 pb-4">
-          <div className="pointer-events-auto -translate-y-6 max-w-[345px] mx-auto">
-            <TabBar currentPage={currentPage} onChange={handleChangePage} />
+        {ocrActive ? null : (
+          <div className="max-w-2xl mx-auto px-4 pb-4">
+            <div className="pointer-events-auto -translate-y-6 max-w-[345px] mx-auto">
+              <TabBar currentPage={currentPage} onChange={handleChangePage} />
+            </div>
           </div>
-        </div>
+        )}
       </nav>
 
       <Dialog
