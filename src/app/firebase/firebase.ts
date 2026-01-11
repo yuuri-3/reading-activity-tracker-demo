@@ -3,6 +3,7 @@
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFunctions, type Functions } from "firebase/functions";
 
 type FirebaseConfig = {
   apiKey: string;
@@ -17,6 +18,7 @@ type FirebaseConfig = {
 let cachedApp: FirebaseApp | null = null;
 let cachedAuth: Auth | null = null;
 let cachedDb: Firestore | null = null;
+let cachedFunctions: Functions | null = null;
 let cachedGoogleProvider: GoogleAuthProvider | null = null;
 
 function getEnvConfig(): FirebaseConfig {
@@ -66,6 +68,13 @@ export function getFirestoreDb(): Firestore {
     cachedDb = getFirestore(getFirebaseApp());
   }
   return cachedDb;
+}
+
+export function getFirebaseFunctions(): Functions {
+  if (!cachedFunctions) {
+    cachedFunctions = getFunctions(getFirebaseApp());
+  }
+  return cachedFunctions;
 }
 
 export function getGoogleProvider(): GoogleAuthProvider {

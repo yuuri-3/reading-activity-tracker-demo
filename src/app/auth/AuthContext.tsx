@@ -25,8 +25,10 @@ import {
   linkWithRedirect,
   signOut as firebaseSignOut,
   type User,
+  type OAuthCredential,
   updateCurrentUser,
 } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 import {
   collection,
   getDocs,
@@ -39,6 +41,7 @@ import { toast } from "sonner";
 import {
   getFirebaseAuth,
   getFirebaseApp,
+  getFirebaseFunctions,
   getFirestoreDb,
   getGoogleProvider,
 } from "../firebase/firebase";
@@ -49,6 +52,23 @@ type FirestoreDocSnapshot = { id: string; data: FirestoreDocData };
 type SecondaryAppAuthAndDb = Awaited<
   ReturnType<typeof createSecondaryAppAuthAndDb>
 >;
+
+type PrepareGuestMergeCallableResult = {
+  requestId: string;
+  secret: string;
+  expiresAt: string;
+};
+
+type PreviewGuestMergeCallableResult = {
+  anonUid: string;
+  counts: { tags: number; books: number; records: number };
+};
+
+function getCallableErrorCode(err: unknown): string | undefined {
+  const asAny = err as any;
+  const code = asAny?.code;
+  return typeof code === "string" ? code : undefined;
+}
 
 async function createSecondaryAppAuthAndDb() {
   const primaryApp = getFirebaseApp();
@@ -570,9 +590,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     reasonCode: NonNullable<
       AuthContextValue["pendingFallbackMigration"]
     >["reasonCode"];
-    anonTags: FirestoreDocSnapshot[];
-    anonBooks: FirestoreDocSnapshot[];
-    anonRecords: FirestoreDocSnapshot[];
+    // Backend merge support (ideal flow)
+    mergeRequest?: PrepareGuestMergeCallableResult;
+    linkErrorCredential?: OAuthCredential | null;
+
+    // Legacy client-side migration data (fallback)
+    anonTags?: FirestoreDocSnapshot[];
+    anonBooks?: FirestoreDocSnapshot[];
+    anonRecords?: FirestoreDocSnapshot[];
   } | null>(null);
 
   const fallbackSecondaryRef = React.useRef<{
@@ -758,20 +783,93 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 code === "auth/account-exists-with-different-credential" ||
                 code === "auth/email-already-in-use"
               ) {
-                // P0-02: 追加のみ移行（anon -> 既存uid）
-                // Redirect はページリロードでメモリが失われるため非対応。
+                // Ideal flow: account was selected already, but linking failed because it belongs to an existing user.
+                // Show a confirmation dialog and (on OK) migrate via backend without a second account picker.
+                const enableBackendMerge =
+                  (import.meta as any)?.env?.VITE_ENABLE_BACKEND_GUEST_MERGE ===
+                  "true";
+
                 const anonUid = currentUser.uid;
+                const expectedEmail = getErrorEmail(err);
+                const linkErrorCredential =
+                  (GoogleAuthProvider.credentialFromError(
+                    err
+                  ) as OAuthCredential | null) ?? null;
+
+                if (enableBackendMerge) {
+                  try {
+                    const functions = getFirebaseFunctions();
+                    const prepare = httpsCallable(
+                      functions,
+                      "prepareGuestMerge"
+                    );
+                    const preparedRaw = await prepare({});
+                    const prepared = (preparedRaw.data ?? {}) as any;
+                    const mergeRequest: PrepareGuestMergeCallableResult = {
+                      requestId: String(prepared.requestId ?? ""),
+                      secret: String(prepared.secret ?? ""),
+                      expiresAt: String(prepared.expiresAt ?? ""),
+                    };
+                    if (!mergeRequest.requestId || !mergeRequest.secret) {
+                      throw new Error("統合準備に失敗しました");
+                    }
+
+                    // Fetch counts from backend so we don't have to read all docs client-side.
+                    let counts = { tags: 0, books: 0, records: 0 };
+                    try {
+                      const preview = httpsCallable(
+                        functions,
+                        "previewGuestMerge"
+                      );
+                      const previewRaw = await preview({
+                        requestId: mergeRequest.requestId,
+                        secret: mergeRequest.secret,
+                      });
+                      const previewData = (previewRaw.data ??
+                        {}) as PreviewGuestMergeCallableResult;
+                      if (previewData?.counts) {
+                        counts = {
+                          tags: Number(previewData.counts.tags ?? 0),
+                          books: Number(previewData.counts.books ?? 0),
+                          records: Number(previewData.counts.records ?? 0),
+                        };
+                      }
+                    } catch {
+                      // If preview fails, still allow migration (counts will be unknown/0).
+                    }
+
+                    pendingFallbackDataRef.current = {
+                      anonUser: currentUser,
+                      anonUid,
+                      expectedEmail,
+                      reasonCode: code,
+                      mergeRequest,
+                      linkErrorCredential,
+                    };
+                    setPendingFallbackMigration({
+                      reasonCode: code,
+                      counts,
+                    });
+                    return;
+                  } catch (migrationErr) {
+                    toast.error("統合準備に失敗しました");
+                    setError(
+                      migrationErr instanceof Error
+                        ? migrationErr.message
+                        : "統合準備に失敗しました"
+                    );
+                    return;
+                  }
+                }
+
+                // Legacy fallback (client-side copy)
                 const db = getFirestoreDb();
                 try {
-                  // 1) anon のままサブコレクションを読み出し、メモリ保持（後続の最終確認用）
                   const [anonTags, anonBooks, anonRecords] = await Promise.all([
                     readUserSubcollectionDocs(db, anonUid, "tags"),
                     readUserSubcollectionDocs(db, anonUid, "books"),
                     readUserSubcollectionDocs(db, anonUid, "records"),
                   ]);
-
-                  const expectedEmail = getErrorEmail(err);
-
                   pendingFallbackDataRef.current = {
                     anonUser: currentUser,
                     anonUid,
@@ -880,6 +978,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const auth = getFirebaseAuth();
           const provider = getGoogleProvider();
           const db = getFirestoreDb();
+
+          // Ideal flow (backend merge): reuse the credential from the failed link attempt so we don't show
+          // the Google account picker again.
+          const enableBackendMerge =
+            (import.meta as any)?.env?.VITE_ENABLE_BACKEND_GUEST_MERGE ===
+            "true";
+          if (enableBackendMerge && pending.mergeRequest) {
+            try {
+              const functions = getFirebaseFunctions();
+
+              // 1) Switch primary auth to the selected Google account (no picker if we have a credential).
+              if (pending.linkErrorCredential) {
+                await signInWithCredential(auth, pending.linkErrorCredential);
+              } else {
+                // Fallback: picker may appear (rare; when credentialFromError is unavailable).
+                await signInWithPopup(auth, provider);
+              }
+              setUser(auth.currentUser);
+
+              // 2) Execute merge
+              const execute = httpsCallable(functions, "executeGuestMerge");
+              await execute({
+                requestId: pending.mergeRequest.requestId,
+                secret: pending.mergeRequest.secret,
+              });
+
+              cleanupLocalStorageForUid(pending.anonUid, {
+                guestCreateNotice: true,
+                timerState: true,
+              });
+
+              pendingFallbackDataRef.current = null;
+              setPendingFallbackMigration(null);
+              setPendingFallbackAccountMismatch(null);
+
+              toast.dismiss(migratingToastId);
+              toast.success("ゲストデータを統合しました");
+              return true;
+            } catch (err) {
+              const code = getCallableErrorCode(err);
+              setError(
+                code
+                  ? `統合に失敗しました（${code}）。もう一度お試しください。`
+                  : "統合に失敗しました。もう一度お試しください。"
+              );
+              toast.dismiss(migratingToastId);
+              return false;
+            }
+          }
 
           // Keep primary auth as anon until cleanup is done.
           const secondary = await createSecondaryAppAuthAndDb();

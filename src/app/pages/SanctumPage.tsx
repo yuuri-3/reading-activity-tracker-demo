@@ -12,6 +12,28 @@ import { useApp } from "../context/AppContext";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+export function SanctumFullScreenLoadingOverlay({
+  variant,
+}: {
+  variant: "linking" | "migrating";
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="rounded-[16px] bg-[var(--background-solid)] px-6 py-5 [box-shadow:var(--shadow-neumorphism-sm)]">
+        <div className="text-sm leading-6 text-foreground text-center whitespace-pre-line">
+          {variant === "migrating"
+            ? "データを統合しています…\n画面が戻るまでお待ちください…"
+            : "ログイン処理中です…\n画面が戻るまでお待ちください…"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SanctumPage() {
   const {
     user,
@@ -35,6 +57,7 @@ export function SanctumPage() {
   const [isFallbackDialogOpen, setIsFallbackDialogOpen] = useState(false);
   const [isMismatchDialogOpen, setIsMismatchDialogOpen] = useState(false);
   const isFallbackMigrating = fallbackMigrationInProgress;
+  const showFullScreenLoading = isLinking || isFallbackMigrating;
 
   const pendingFallbackAccountMismatchRef = useRef(
     pendingFallbackAccountMismatch
@@ -306,7 +329,7 @@ export function SanctumPage() {
               }}
               title="追加のみ移行を実行します"
               description={
-                "このGoogleアカウントは、すでに別のユーザーに紐付いているため統合（同じuidのまま連携）ができません。\n\n続行すると、Googleでログインした後に、この端末のゲストデータを『追加のみ』コピーして統合します（既存データは削除しません）。"
+                "選択したGoogleアカウントは、すでに別のユーザーに紐付いているため統合（同じuidのまま連携）ができません。\n\n続行すると、この端末のゲストデータを『追加のみ』コピーして統合します（既存データは削除しません）。"
               }
               cancelLabel="キャンセル"
               confirmLabel={isFallbackMigrating ? "処理中…" : "続行"}
@@ -321,8 +344,7 @@ export function SanctumPage() {
                 if (isFallbackMigrating) return;
 
                 void (async () => {
-                  // ここでダイアログを閉じ、2回目のアカウント選択後に
-                  // 最終確認ダイアログが見え続ける体験を避ける。
+                  // ここでダイアログを閉じ、統合処理を開始する。
                   setIsFallbackDialogOpen(false);
                   try {
                     const ok = await confirmFallbackMigration();
@@ -401,6 +423,12 @@ export function SanctumPage() {
                   : ""}
               </div>
             </Dialog>
+
+            {showFullScreenLoading ? (
+              <SanctumFullScreenLoadingOverlay
+                variant={isFallbackMigrating ? "migrating" : "linking"}
+              />
+            ) : null}
           </div>
         </div>
       </div>
