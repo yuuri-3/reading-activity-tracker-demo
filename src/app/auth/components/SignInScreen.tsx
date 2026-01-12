@@ -1,6 +1,6 @@
 import { GoogleSignInButton } from "./GoogleSignInButton";
-import { LogoWithSymbol } from "../../components/icons/LogoWithSymbol";
 import { IconInfo } from "../../components/icons/IconInfo";
+import logoPngUrl from "../../assets/logo.png";
 
 export type SignInScreenProps = {
   onSignInWithGoogle: () => void;
@@ -22,7 +22,11 @@ export function SignInScreen({
       <div className="w-full max-w-[393px] px-6 pt-[104px] pb-16 mx-auto flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-[80px]">
           <div className="flex flex-col items-center gap-8">
-            <LogoWithSymbol />
+            <img
+              src={logoPngUrl}
+              alt="Yomzoy"
+              className="block w-[11.625rem] h-auto aspect-[186/141]"
+            />
             <p className="pl-3 text-[16px] leading-none text-[#5a6372] text-center">
               読む時間を、残していく。
             </p>
