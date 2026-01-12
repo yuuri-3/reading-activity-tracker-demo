@@ -1,0 +1,22 @@
+{
+  "name": "Yomzoy",
+  "short_name": "Yomzoy",
+  "description": "Yomzoy",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#e0e5ec",
+  "theme_color": "#E8EDF2",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
