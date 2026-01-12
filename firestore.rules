@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ルート直下は全部拒否（意図しない公開を防ぐ）
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // このアプリが使う領域：users/{uid}/...（例: books / records / tags など）
+    // 自分の uid 配下だけ許可（サブコレクション含めて users 配下全体を対象）
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

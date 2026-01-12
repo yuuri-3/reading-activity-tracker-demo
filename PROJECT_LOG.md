@@ -164,6 +164,14 @@
 5. Firestore Database 作成
 6. ルール: `users/{uid}/**` のみ read/write
 
+#### Firestore Rules のリポジトリ管理
+
+Firestore の認可ルール（Rules）は、Console 手動変更の属人化を避けるためリポジトリで管理する。
+
+- 設定: [firebase.json](firebase.json)
+- Rules: [firestore.rules](firestore.rules)
+- 反映: `firebase deploy --only firestore:rules`
+
 ##### GitHub（本番）
 
 - Actions Variables に `VITE_FIREBASE_*` を登録（値はここには書かない）
