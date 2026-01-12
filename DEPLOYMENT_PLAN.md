@@ -64,3 +64,19 @@ Functions（特に 2nd Gen）のデプロイでは、Cloud Build / Cloud Run な
 
 - Hosting のみ: `firebase deploy --only hosting`
 - Functions のみ: `firebase deploy --only functions`
+
+## Firestore Rules（運用）
+
+Firestore Rules はリポジトリで管理します。
+
+- 参照設定: [firebase.json](firebase.json)
+- Rules: [firestore.rules](firestore.rules)
+- Indexes: [firestore.indexes.json](firestore.indexes.json)
+
+### 反映（Rules を変更したときだけ）
+
+- `firebase deploy --only firestore:rules`
+
+### ロールバック
+
+- 問題のコミットを revert して、同じコマンドで再デプロイする
