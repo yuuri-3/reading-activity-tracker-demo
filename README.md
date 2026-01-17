@@ -21,6 +21,17 @@ Run `npm run build-storybook` to build a static Storybook.
 - 必要な設定値（`VITE_FIREBASE_*`）は `.env.example` を参照してください。
 - 本番（CI）でデプロイする場合は、GitHub の Actions Variables に同じ `VITE_FIREBASE_*` を登録します。
 
+### ローカル起動（`.env.local`）
+
+1. `.env.example` をコピーして `.env.local` を作成
+   - `cp .env.example .env.local`
+2. `.env.local` に Firebase の Web 設定値（`VITE_FIREBASE_*`）を設定
+   - Firebase Console → Project settings → Your apps → Web app の設定を参照
+3. 必要に応じて機能フラグを設定
+   - 例: `VITE_ENABLE_OCR_HANDWRITTEN_MEMO=true`
+
+※ `VITE_*` はフロントに埋め込まれる値のため、サービスアカウントなどのシークレットは入れないでください。
+
 ## Firebase Hosting（本番ホスティング）
 
 本番ホスティングは Firebase Hosting を使います。
@@ -53,5 +64,7 @@ Run `npm run build-storybook` to build a static Storybook.
 
 Cloudflare Tunnel でプレビューを公開するために必要なコマンドは以下の 2 つです（別ターミナルで併行実行）。
 
-- `cloudflared tunnel run my-preview`
-- `npm run build && npm run preview -- --host --port 4173`
+```
+cloudflared tunnel run my-preview
+npm run build && npm run preview -- --host --port 4173
+```
