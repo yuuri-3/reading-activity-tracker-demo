@@ -67,3 +67,36 @@ Status: ✅ 完了（本番 live での同時デプロイ成立）
 ## 注意
 
 - Firebase の権限/シークレット（必要なら）を GitHub Actions 側に安全に設定すること
+
+## 履歴（運用メモ）
+
+## 今回の CI 復旧で追加したもの（結論）
+
+GitHub Actions の `firebase deploy` が通るように、次を追加しました。
+
+- IAM（CI 用サービスアカウント）: `Firebase Extensions 閲覧者（Firebase Extensions Viewer）`
+- 有効化した API（プロジェクト）: `Cloud Billing API`（`cloudbilling.googleapis.com`）
+
+背景:
+
+- `firebase-tools` がデプロイ処理の途中で Firebase Extensions のインスタンス一覧（`firebaseextensions.googleapis.com/.../instances`）へアクセスし、権限不足だと 403 で停止したため
+- `firebase-tools` がプロジェクトの Billing 情報（`cloudbilling.googleapis.com/.../billingInfo`）を参照し、Cloud Billing API が無効だと 403 で停止したため
+- これが「急に」起きた主因は、CI が `firebase-tools@latest` を参照しており Firebase CLI 側の更新で参照 API が増えた可能性が高いため
+
+### Cloud Billing API が無効で 403 になる
+
+Firebase CLI が内部でプロジェクトの請求（Billing）状態を確認することがあり、
+Cloud Billing API が無効だと次のようなエラーで止まります。
+
+- 症状: `cloudbilling.googleapis.com ... billingInfo ... 403, Cloud Billing API has not been used ... or it is disabled`
+
+対応（非エンジニア向け）:
+
+1. Google Cloud Console を開く: https://console.cloud.google.com/
+2. 上部で対象プロジェクト（例: `yomzoy`）を選択
+3. 左メニュー `API とサービス` → `ライブラリ`
+4. `Cloud Billing API` を検索して `有効にする`
+
+- エラーメッセージ内の URL（`.../apis/api/cloudbilling.googleapis.com/overview?...`）を開いて有効化しても OK
+
+5. 有効化直後は反映に数分かかることがあるため、1〜2 分待ってから workflow を再実行
