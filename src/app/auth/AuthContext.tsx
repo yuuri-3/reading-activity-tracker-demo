@@ -52,6 +52,47 @@ import {
   deleteFirestoreUserDataForAccountDeletion,
 } from "./accountDeletion";
 
+export async function deleteAccountImpl(args: {
+  auth: Auth;
+  db: ReturnType<typeof getFirestoreDb>;
+  deleteCollectionDocs: (
+    db: ReturnType<typeof getFirestoreDb>,
+    ...path: [string, ...string[]]
+  ) => Promise<void>;
+  deleteUserDoc: (
+    db: ReturnType<typeof getFirestoreDb>,
+    uid: string
+  ) => Promise<void>;
+  deleteAuthUser: (user: User) => Promise<void>;
+  cleanupLocalStorageForUid: (
+    targetUid: string,
+    options: { guestCreateNotice?: boolean; timerState?: boolean }
+  ) => void;
+}) {
+  const currentUser = args.auth.currentUser;
+  if (!currentUser) {
+    throw new Error("ログイン状態が確認できませんでした");
+  }
+
+  const uid = currentUser.uid;
+
+  // Delete Firestore user data first (so permissions still allow access).
+  await deleteFirestoreUserDataForAccountDeletion({
+    deleteSubcollection: async (subcollection) => {
+      await args.deleteCollectionDocs(args.db, "users", uid, subcollection);
+    },
+    deleteUserDoc: async () => {
+      await args.deleteUserDoc(args.db, uid);
+    },
+  });
+
+  await args.deleteAuthUser(currentUser);
+  args.cleanupLocalStorageForUid(uid, {
+    guestCreateNotice: true,
+    timerState: true,
+  });
+}
+
 type FirestoreDocData = Record<string, unknown>;
 type FirestoreDocSnapshot = { id: string; data: FirestoreDocData };
 
@@ -1580,28 +1621,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         try {
           const auth = getFirebaseAuth();
-          const currentUser = auth.currentUser;
-          if (!currentUser) {
-            throw new Error("ログイン状態が確認できませんでした");
-          }
-
-          const uid = currentUser.uid;
           const db = getFirestoreDb();
 
-          // Delete Firestore user data first (so permissions still allow access).
-          await deleteFirestoreUserDataForAccountDeletion({
-            deleteSubcollection: async (subcollection) => {
-              await deleteCollectionDocs(db, "users", uid, subcollection);
+          await deleteAccountImpl({
+            auth,
+            db,
+            deleteCollectionDocs,
+            deleteUserDoc: async (dbArg, uidArg) => {
+              await deleteDoc(firestoreDoc(dbArg, "users", uidArg));
             },
-            deleteUserDoc: async () => {
-              await deleteDoc(firestoreDoc(db, "users", uid));
+            deleteAuthUser: async (userArg) => {
+              await deleteUser(userArg);
             },
-          });
-
-          await deleteUser(currentUser);
-          cleanupLocalStorageForUid(uid, {
-            guestCreateNotice: true,
-            timerState: true,
+            cleanupLocalStorageForUid,
           });
         } catch (err) {
           setError(

@@ -25,32 +25,46 @@
 - Firestore 側の削除が完了しない限り、Auth のユーザー削除（`deleteUser`）には進まない
   - 途中まで消えていても問題ない（再実行で残りが消える）ため、操作は冪等に扱う
 - 削除対象一覧は「コードで一元管理」し、テストで漏れを検知する
-  - 定数: [src/app/auth/accountDeletion.ts](../../../src/app/auth/accountDeletion.ts)
-  - テスト: [src/app/auth/accountDeletion.test.ts](../../../src/app/auth/accountDeletion.test.ts)
+  - 定数: [src/app/auth/accountDeletion.ts](../../../../src/app/auth/accountDeletion.ts)
+  - テスト: [src/app/auth/accountDeletion.test.ts](../../../../src/app/auth/accountDeletion.test.ts)
 
 ## 対象
 
-- 認証/削除: [src/app/auth/AuthContext.tsx](../../../src/app/auth/AuthContext.tsx)
+- 認証/削除: [src/app/auth/AuthContext.tsx](../../../../src/app/auth/AuthContext.tsx)
 - Firestore: `users/{uid}/books`, `users/{uid}/records`, `users/{uid}/tags`
 
 ## 実装状況
 
-Status: ⬜ 未着手
+Status: ✅ 完了
+
+現状確認（2026-01-17）:
+
+- 実装: tags を含めた削除対象一覧が追加され、`deleteAccount` がその一覧に従って削除する
+  - 定数: [src/app/auth/accountDeletion.ts](../../../../src/app/auth/accountDeletion.ts)
+  - 呼び出し: [src/app/auth/AuthContext.tsx](../../../../src/app/auth/AuthContext.tsx)
+- テスト: 削除順序・失敗時のユーザードキュメント削除抑止はテスト済み
+  - テスト: [src/app/auth/accountDeletion.test.ts](../../../../src/app/auth/accountDeletion.test.ts)
+  - 実行: `npm test -- --run src/app/auth/accountDeletion.test.ts`（pass）
+- テスト: `deleteAccount` が削除対象一覧に従うこと / Firestore 失敗時に Auth 削除へ進まないことをテストで担保
+  - テスト: [src/app/auth/deleteAccountImpl.test.ts](../../../../src/app/auth/deleteAccountImpl.test.ts)
+  - 実行: `npm test -- --run src/app/auth/deleteAccountImpl.test.ts`（pass）
 
 ## 受け入れ条件
 
 達成チェック:
 
-- [ ] アカウント削除で tags も削除される
-- [ ] 既存の削除挙動（books/records）が壊れない
-- [ ] 仕様として「削除対象」を本ドキュメントに明記する（README には書かない運用）
+- [x] アカウント削除で tags も削除される
+- [x] 既存の削除挙動（books/records）が壊れない
+- [x] 仕様として「削除対象」を本ドキュメントに明記する（README には書かない運用）
 
 補足（理想ゴールに対する最低条件）:
 
-- [ ] `users/{uid}` ドキュメント本体が存在する場合は削除される
-- [ ] 「削除対象の一覧」がソースと齟齬なく管理される（今後サブコレクションが増えても漏れに気づける）
-- [ ] 削除対象一覧の漏れをテストで検知できる（`accountDeletion.test.ts`）
-- [ ] Firestore 側の削除が失敗した場合、Auth のユーザー削除は実行されない（= 再試行可能な状態を保つ）
+- [x] `users/{uid}` ドキュメント本体が存在する場合は削除される
+- [x] 「削除対象の一覧」がソースと齟齬なく管理される（今後サブコレクションが増えても漏れに気づける）
+- [x] 削除対象一覧の漏れをテストで検知できる（`accountDeletion.test.ts`）
+  - `deleteAccountImpl.test.ts` で「削除対象一覧に従って subcollection 削除が呼ばれる」ことも検証
+- [x] Firestore 側の削除が失敗した場合、Auth のユーザー削除は実行されない（= 再試行可能な状態を保つ）
+  - `deleteAccountImpl.test.ts` で「Firestore 側失敗時に `deleteUser` されない」ことを直接検証
 
 ## 作業内容
 
@@ -101,9 +115,9 @@ Status: ⬜ 未着手
 
 別チケット案:
 
-- [RE_001-TK_024 アカウント削除のサーバー側一括削除（Admin recursive delete）](RE_001-TK_024_アカウント削除のサーバー側一括削除.md)
+- [RE_001-TK_024 アカウント削除のサーバー側一括削除（Admin recursive delete）](../RE_001-TK_024_アカウント削除のサーバー側一括削除.md)
 
 ## 注意
 
 - モバイル回線などで失敗し得るため、UX（失敗時の案内）も要検討
-- 「削除しました」等の完了文言の定義（Auth 削除完了なのか、Firestore 含めた全削除完了なのか）は、サーバー側一括削除と合わせて [RE_001-TK_024](RE_001-TK_024_アカウント削除のサーバー側一括削除.md) で決める
+- 「削除しました」等の完了文言の定義（Auth 削除完了なのか、Firestore 含めた全削除完了なのか）は、サーバー側一括削除と合わせて [RE_001-TK_024](../RE_001-TK_024_アカウント削除のサーバー側一括削除.md) で決める
