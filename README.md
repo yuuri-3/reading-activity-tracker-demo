@@ -60,6 +60,12 @@ Run `npm run build-storybook` to build a static Storybook.
 
 `FIREBASE_SERVICE_ACCOUNT` は Firebase プロジェクトのサービスアカウント JSON をそのまま貼り付けます。
 
+#### 注意: firebase-tools は固定バージョン
+
+CI では `firebase-tools` を固定バージョンで実行します（`@latest` にすると、ツール側の更新で急に必要権限/API が増えてデプロイが落ちることがあるため）。
+
+- 固定値は [deploy-firebase-hosting.yml](.github/workflows/deploy-firebase-hosting.yml) の `FIREBASE_TOOLS_VERSION`
+
 ## Cloudflare Tunnel（プレビュー公開）
 
 Cloudflare Tunnel でプレビューを公開するために必要なコマンドは以下の 2 つです（別ターミナルで併行実行）。

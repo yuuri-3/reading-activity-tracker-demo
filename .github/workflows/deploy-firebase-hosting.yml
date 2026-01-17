@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+      FIREBASE_TOOLS_VERSION: 15.3.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,7 +69,7 @@ jobs:
 
       # Deploy Functions first so we never ship a new frontend that depends on old Functions.
       - name: Deploy Functions (live)
-        run: npx firebase-tools@latest deploy --project "$FIREBASE_PROJECT_ID" --only functions --non-interactive
+        run: npx firebase-tools@"$FIREBASE_TOOLS_VERSION" deploy --project "$FIREBASE_PROJECT_ID" --only functions --non-interactive
 
       - name: Deploy Hosting (live)
-        run: npx firebase-tools@latest deploy --project "$FIREBASE_PROJECT_ID" --only hosting --non-interactive
+        run: npx firebase-tools@"$FIREBASE_TOOLS_VERSION" deploy --project "$FIREBASE_PROJECT_ID" --only hosting --non-interactive
