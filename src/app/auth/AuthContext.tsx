@@ -47,6 +47,10 @@ import {
 } from "../firebase/firebase";
 import { checkGuestMergeBackend } from "../firebase/guestMergeBackend";
 import { getCallableErrorCode } from "../firebase/functionsError";
+import {
+  ACCOUNT_DELETION_SUBCOLLECTIONS,
+  deleteFirestoreUserDataForAccountDeletion,
+} from "./accountDeletion";
 
 type FirestoreDocData = Record<string, unknown>;
 type FirestoreDocSnapshot = { id: string; data: FirestoreDocData };
@@ -1434,14 +1438,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(pending.anonUser);
 
             try {
-              await deleteCollectionDocs(
-                db,
-                "users",
-                pending.anonUid,
-                "records"
-              );
-              await deleteCollectionDocs(db, "users", pending.anonUid, "books");
-              await deleteCollectionDocs(db, "users", pending.anonUid, "tags");
+              for (const subcollection of ACCOUNT_DELETION_SUBCOLLECTIONS) {
+                await deleteCollectionDocs(
+                  db,
+                  "users",
+                  pending.anonUid,
+                  subcollection
+                );
+              }
               try {
                 await deleteDoc(firestoreDoc(db, "users", pending.anonUid));
               } catch {
@@ -1585,15 +1589,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const db = getFirestoreDb();
 
           // Delete Firestore user data first (so permissions still allow access).
-          await deleteCollectionDocs(db, "users", uid, "records");
-          await deleteCollectionDocs(db, "users", uid, "books");
-
-          // Optional: delete user document (may not exist).
-          try {
-            await deleteDoc(firestoreDoc(db, "users", uid));
-          } catch {
-            // ignore
-          }
+          await deleteFirestoreUserDataForAccountDeletion({
+            deleteSubcollection: async (subcollection) => {
+              await deleteCollectionDocs(db, "users", uid, subcollection);
+            },
+            deleteUserDoc: async () => {
+              await deleteDoc(firestoreDoc(db, "users", uid));
+            },
+          });
 
           await deleteUser(currentUser);
           cleanupLocalStorageForUid(uid, {
