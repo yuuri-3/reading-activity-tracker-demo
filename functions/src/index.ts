@@ -1,6 +1,7 @@
 import * as crypto from "node:crypto";
 
 import * as admin from "firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 import { GoogleAuth } from "google-auth-library";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
@@ -104,7 +105,7 @@ const OCR_MAX_IMAGE_BYTES = 4_194_304;
 const OCR_REGION = "asia-northeast1";
 const OCR_VERTEX_LOCATION = "asia-northeast1";
 const OCR_GEMINI_MODEL =
-  process.env.OCR_GEMINI_MODEL?.trim() || "gemini-1.5-flash";
+  process.env.OCR_GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 
 const OCR_RATE_LIMITS = {
   perMinute: 5,
@@ -301,15 +302,13 @@ async function consumeOcrQuotaOrThrow(
       } satisfies HttpsErrorDetails);
     }
 
-    const tsNow = admin.firestore.Timestamp.fromMillis(nowMs);
+    const tsNow = Timestamp.fromMillis(nowMs);
 
     // Keep docs for a while (can be used with Firestore TTL if enabled later).
-    const deleteAtMinute = admin.firestore.Timestamp.fromMillis(
+    const deleteAtMinute = Timestamp.fromMillis(
       nowMs + 8 * 24 * 60 * 60 * 1000
     );
-    const deleteAtDay = admin.firestore.Timestamp.fromMillis(
-      nowMs + 40 * 24 * 60 * 60 * 1000
-    );
+    const deleteAtDay = Timestamp.fromMillis(nowMs + 40 * 24 * 60 * 60 * 1000);
 
     tx.set(
       minuteRef,
@@ -528,9 +527,9 @@ export const prepareGuestMerge = onCall(
         anonUid,
         secretHash,
         status: "pending",
-        createdAt: admin.firestore.Timestamp.fromMillis(createdAtMs),
-        expiresAt: admin.firestore.Timestamp.fromMillis(expiresAtMs),
-        deleteAt: admin.firestore.Timestamp.fromMillis(deleteAtMs),
+        createdAt: Timestamp.fromMillis(createdAtMs),
+        expiresAt: Timestamp.fromMillis(expiresAtMs),
+        deleteAt: Timestamp.fromMillis(deleteAtMs),
       });
 
     return {
@@ -600,7 +599,7 @@ export const previewGuestMerge = onCall(
       };
     }
 
-    const expiresAt = data.expiresAt as admin.firestore.Timestamp | undefined;
+    const expiresAt = data.expiresAt as FirebaseFirestore.Timestamp | undefined;
     const expiresAtMs = expiresAt?.toMillis?.() ?? 0;
     if (expiresAtMs && Date.now() > expiresAtMs) {
       throw new HttpsError("deadline-exceeded", "Merge request expired");
@@ -652,21 +651,25 @@ export const executeGuestMerge = onCall(
       }
 
       const status = typeof data.status === "string" ? data.status : "";
-      const expiresAt = data.expiresAt as admin.firestore.Timestamp | undefined;
+      const expiresAt = data.expiresAt as
+        | FirebaseFirestore.Timestamp
+        | undefined;
       const expiresAtMs = expiresAt?.toMillis?.() ?? 0;
       if (expiresAtMs && Date.now() > expiresAtMs) {
         throw new HttpsError("deadline-exceeded", "Merge request expired");
       }
 
       const existingDeleteAt = data.deleteAt as
-        | admin.firestore.Timestamp
+        | FirebaseFirestore.Timestamp
         | undefined;
-      const createdAt = data.createdAt as admin.firestore.Timestamp | undefined;
+      const createdAt = data.createdAt as
+        | FirebaseFirestore.Timestamp
+        | undefined;
       if (!existingDeleteAt?.toMillis?.()) {
         const createdAtMs = createdAt?.toMillis?.() ?? Date.now();
         const deleteAtMs = createdAtMs + REQUEST_DELETE_TTL_MS;
         tx.update(reqRef, {
-          deleteAt: admin.firestore.Timestamp.fromMillis(deleteAtMs),
+          deleteAt: Timestamp.fromMillis(deleteAtMs),
         });
       }
 
@@ -697,7 +700,7 @@ export const executeGuestMerge = onCall(
       tx.update(reqRef, {
         status: "processing",
         processingByUid: toUid,
-        processingStartedAt: admin.firestore.Timestamp.now(),
+        processingStartedAt: Timestamp.now(),
       });
 
       return { anonUid: fromUid, alreadyDone: false };
@@ -724,7 +727,7 @@ export const executeGuestMerge = onCall(
       await reqRef.update({
         status: "done",
         doneByUid: toUid,
-        doneAt: admin.firestore.Timestamp.now(),
+        doneAt: Timestamp.now(),
         result: {
           moved: { tags: 0, books: 0, records: 0 },
           deleted: {
@@ -823,7 +826,7 @@ export const executeGuestMerge = onCall(
       await reqRef.update({
         status: "done",
         doneByUid: toUid,
-        doneAt: admin.firestore.Timestamp.now(),
+        doneAt: Timestamp.now(),
         result,
       });
 
@@ -838,7 +841,7 @@ export const executeGuestMerge = onCall(
 
       await reqRef.update({
         status: "failed",
-        failedAt: admin.firestore.Timestamp.now(),
+        failedAt: Timestamp.now(),
         failedByUid: toUid,
         error: err instanceof Error ? err.message : String(err),
       });

@@ -61,6 +61,10 @@ Status: 🟩 完了（デプロイ済み）
 - [x] レート制限が動作し、超過時に UI が判定可能なエラーで復帰できる
 - [x] 将来の課金/プラン別クォータへ拡張しやすい（利用枠チェックが 1 箇所に集約されている）
 
+補足（動作確認）:
+
+- Firebase Emulator Suite（auth/firestore/functions）経由で成功系も確認済み（外部 OCR/Vertex AI まで到達）
+
 ## 作業内容
 
 ### 1) callable の追加
