@@ -14,8 +14,10 @@
     "test:rules:unit": "vitest run src/app/firebase/firestoreRules.test.ts",
     "test:rules": "firebase emulators:exec --only firestore \"npm run test:rules:unit\"",
     "test:rules:mac": "JAVA_HOME=$(/usr/libexec/java_home -v 21) PATH=\"$JAVA_HOME/bin:$PATH\" firebase emulators:exec --only firestore \"npm run test:rules:unit\"",
-    "test-storybook": "vitest --project=storybook --run",
-    "test-storybook:watch": "vitest --project=storybook"
+    "test-storybook": "test-storybook --config-dir .storybook --url http://127.0.0.1:6006 --maxWorkers=2",
+    "test-storybook:vitest": "vitest --project=storybook --run",
+    "test-storybook:watch": "npm run test-storybook:vitest:watch",
+    "test-storybook:vitest:watch": "vitest --project=storybook"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -84,6 +86,7 @@
     "@storybook/addon-vitest": "^10.1.10",
     "@storybook/react": "^10.1.10",
     "@storybook/react-vite": "^10.1.10",
+    "@storybook/test-runner": "^0.24.2",
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
     "@vitest/browser": "^3.2.4",
