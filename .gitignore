@@ -36,4 +36,8 @@ firestore-debug.log
 # misc
 coverage/
 
+# local temp files
+.tmp/
+.tmp_pr_body.md
+
 *storybook.log
