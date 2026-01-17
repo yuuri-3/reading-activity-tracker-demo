@@ -1,6 +1,7 @@
 import * as crypto from "node:crypto";
 
 import * as admin from "firebase-admin";
+import { GoogleAuth } from "google-auth-library";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 
@@ -79,6 +80,361 @@ function requireString(value: unknown, fieldName: string): string {
 function sha256Hex(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
+
+type OcrHandwrittenMemoInput = {
+  mimeType: string;
+  base64: string; // pure base64 (no data URL)
+};
+
+type OcrHandwrittenMemoResult = {
+  requestId: string;
+  text: string;
+  provider: {
+    name: "gemini";
+    model: string;
+    location: string;
+  };
+};
+
+type HttpsErrorDetails = Record<string, unknown>;
+
+const OCR_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
+const OCR_MAX_IMAGE_BYTES = 4_194_304;
+
+const OCR_REGION = "asia-northeast1";
+const OCR_VERTEX_LOCATION = "asia-northeast1";
+const OCR_GEMINI_MODEL =
+  process.env.OCR_GEMINI_MODEL?.trim() || "gemini-1.5-flash";
+
+const OCR_RATE_LIMITS = {
+  perMinute: 5,
+  perDay: 30,
+} as const;
+
+const OCR_QUOTA_COLLECTION = "ocrQuotaV1" as const;
+
+function getBooleanEnv(name: string): boolean | undefined {
+  const raw = process.env[name];
+  if (raw == null) return undefined;
+  const v = raw.trim().toLowerCase();
+  if (v === "1" || v === "true" || v === "yes" || v === "on") return true;
+  if (v === "0" || v === "false" || v === "no" || v === "off") return false;
+  return undefined;
+}
+
+function isRunningOnEmulator(): boolean {
+  return (
+    process.env.FUNCTIONS_EMULATOR === "true" ||
+    typeof process.env.FIREBASE_EMULATOR_HUB === "string"
+  );
+}
+
+function shouldRequireAppCheck(): boolean {
+  // Default: required on deployed environments; optional on emulator.
+  if (isRunningOnEmulator()) return false;
+  const override = getBooleanEnv("OCR_REQUIRE_APP_CHECK");
+  return override ?? true;
+}
+
+function requireAllowedMimeType(mimeType: string): void {
+  if (!OCR_ALLOWED_MIME_TYPES.has(mimeType)) {
+    throw new HttpsError("invalid-argument", "Unsupported mimeType", {
+      reason: "unsupported-mime-type",
+      allowed: Array.from(OCR_ALLOWED_MIME_TYPES),
+    } satisfies HttpsErrorDetails);
+  }
+}
+
+function requirePureBase64(base64: string): void {
+  if (base64.startsWith("data:")) {
+    throw new HttpsError("invalid-argument", "data URL is not allowed", {
+      reason: "data-url-not-allowed",
+    } satisfies HttpsErrorDetails);
+  }
+
+  // Keep it strict to avoid ambiguous decoding.
+  const b64 = base64.trim();
+  const isValid =
+    b64.length > 0 &&
+    b64.length % 4 === 0 &&
+    /^[A-Za-z0-9+/]+={0,2}$/.test(b64);
+  if (!isValid) {
+    throw new HttpsError("invalid-argument", "Invalid base64", {
+      reason: "invalid-base64",
+    } satisfies HttpsErrorDetails);
+  }
+}
+
+function decodeBase64ToBuffer(base64: string): Buffer {
+  requirePureBase64(base64);
+  const buf = Buffer.from(base64, "base64");
+  if (!buf.length) {
+    throw new HttpsError("invalid-argument", "Invalid base64", {
+      reason: "invalid-base64",
+    } satisfies HttpsErrorDetails);
+  }
+  return buf;
+}
+
+function getJstParts(now: Date): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+} {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
+  const parts = fmt.formatToParts(now);
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value ?? "0");
+
+  return {
+    year: get("year"),
+    month: get("month"),
+    day: get("day"),
+    hour: get("hour"),
+    minute: get("minute"),
+    second: get("second"),
+  };
+}
+
+function getJstBucketKeys(now: Date): { minuteKey: string; dayKey: string } {
+  const p = getJstParts(now);
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const dayKey = `${p.year}${pad2(p.month)}${pad2(p.day)}`;
+  const minuteKey = `${dayKey}${pad2(p.hour)}${pad2(p.minute)}`;
+  return { minuteKey, dayKey };
+}
+
+function computeRetryAfterSeconds(now: Date): number {
+  const nowMs = now.getTime();
+  const msToNextMinute = 60_000 - (nowMs % 60_000);
+
+  // JST has no DST; offset is always +09:00.
+  const p = getJstParts(now);
+  const jstMidnightUtcMs =
+    Date.UTC(p.year, p.month - 1, p.day, 0, 0, 0) - 9 * 60 * 60 * 1000;
+  const nextJstMidnightUtcMs = jstMidnightUtcMs + 24 * 60 * 60 * 1000;
+  const msToNextJstMidnight = Math.max(0, nextJstMidnightUtcMs - nowMs);
+
+  const ms = Math.min(msToNextMinute, msToNextJstMidnight || msToNextMinute);
+  return Math.max(1, Math.ceil(ms / 1000));
+}
+
+async function requireValidAppCheckToken(request: any): Promise<void> {
+  const rawHeaders = request?.rawRequest?.headers as
+    | Record<string, unknown>
+    | undefined;
+  const token =
+    (typeof rawHeaders?.["x-firebase-appcheck"] === "string"
+      ? (rawHeaders["x-firebase-appcheck"] as string)
+      : undefined) ||
+    (typeof rawHeaders?.["X-Firebase-AppCheck"] === "string"
+      ? (rawHeaders["X-Firebase-AppCheck"] as string)
+      : undefined);
+
+  if (!token) {
+    throw new HttpsError("permission-denied", "App Check required", {
+      reason: "app-check-required",
+    } satisfies HttpsErrorDetails);
+  }
+
+  try {
+    await admin.appCheck().verifyToken(token);
+  } catch {
+    throw new HttpsError("permission-denied", "Invalid App Check token", {
+      reason: "app-check-invalid",
+    } satisfies HttpsErrorDetails);
+  }
+}
+
+async function consumeOcrQuotaOrThrow(
+  db: FirebaseFirestore.Firestore,
+  uid: string,
+  now: Date
+): Promise<void> {
+  const { minuteKey, dayKey } = getJstBucketKeys(now);
+  const minuteRef = db
+    .collection(OCR_QUOTA_COLLECTION)
+    .doc(`${uid}_m_${minuteKey}`);
+  const dayRef = db.collection(OCR_QUOTA_COLLECTION).doc(`${uid}_d_${dayKey}`);
+
+  const nowMs = now.getTime();
+  const retryAfterSeconds = computeRetryAfterSeconds(now);
+
+  await db.runTransaction(async (tx) => {
+    const [minuteSnap, daySnap] = await Promise.all([
+      tx.get(minuteRef),
+      tx.get(dayRef),
+    ]);
+
+    const minuteCount = minuteSnap.exists
+      ? Number((minuteSnap.data() as any)?.count ?? 0)
+      : 0;
+    const dayCount = daySnap.exists
+      ? Number((daySnap.data() as any)?.count ?? 0)
+      : 0;
+
+    const nextMinute = minuteCount + 1;
+    const nextDay = dayCount + 1;
+
+    if (
+      nextMinute > OCR_RATE_LIMITS.perMinute ||
+      nextDay > OCR_RATE_LIMITS.perDay
+    ) {
+      throw new HttpsError("resource-exhausted", "Rate limit exceeded", {
+        reason: "rate-limit",
+        retryAfterSeconds,
+        limits: OCR_RATE_LIMITS,
+        buckets: { minute: minuteKey, day: dayKey },
+      } satisfies HttpsErrorDetails);
+    }
+
+    const tsNow = admin.firestore.Timestamp.fromMillis(nowMs);
+
+    // Keep docs for a while (can be used with Firestore TTL if enabled later).
+    const deleteAtMinute = admin.firestore.Timestamp.fromMillis(
+      nowMs + 8 * 24 * 60 * 60 * 1000
+    );
+    const deleteAtDay = admin.firestore.Timestamp.fromMillis(
+      nowMs + 40 * 24 * 60 * 60 * 1000
+    );
+
+    tx.set(
+      minuteRef,
+      {
+        uid,
+        scope: "minute",
+        bucket: minuteKey,
+        count: nextMinute,
+        updatedAt: tsNow,
+        deleteAt: deleteAtMinute,
+      },
+      { merge: true }
+    );
+
+    tx.set(
+      dayRef,
+      {
+        uid,
+        scope: "day",
+        bucket: dayKey,
+        count: nextDay,
+        updatedAt: tsNow,
+        deleteAt: deleteAtDay,
+      },
+      { merge: true }
+    );
+  });
+}
+
+type OcrProvider = {
+  name: "gemini";
+  extractTextFromImage(args: {
+    requestId: string;
+    projectId: string;
+    location: string;
+    model: string;
+    mimeType: string;
+    imageBase64: string;
+  }): Promise<string>;
+};
+
+const geminiProvider: OcrProvider = {
+  name: "gemini",
+  async extractTextFromImage({
+    requestId,
+    projectId,
+    location,
+    model,
+    mimeType,
+    imageBase64,
+  }): Promise<string> {
+    const auth = new GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    });
+    const client = await auth.getClient();
+    const accessToken = await client.getAccessToken();
+    const token =
+      typeof accessToken === "string"
+        ? accessToken
+        : (accessToken as any)?.token;
+    if (!token) {
+      throw new Error("Failed to acquire access token");
+    }
+
+    const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
+
+    const prompt =
+      "あなたはOCRです。画像内の手書き文字をできるだけ正確に文字起こししてください。" +
+      "\n- 推測や補完はしない\n- 余計な解説はしない\n- 文字起こし結果のみを返す";
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-Request-Id": requestId,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  mimeType,
+                  data: imageBase64,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0,
+        },
+      }),
+    });
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      // Keep the error message non-sensitive. Do not log image/text.
+      if (resp.status === 400) {
+        throw new HttpsError("invalid-argument", "Invalid image", {
+          reason: "provider-invalid-image",
+        } satisfies HttpsErrorDetails);
+      }
+      if (resp.status === 429) {
+        throw new HttpsError("resource-exhausted", "Provider rate limited", {
+          reason: "provider-rate-limit",
+        } satisfies HttpsErrorDetails);
+      }
+      // Do not include response body in thrown error to avoid leaking sensitive data into logs.
+      throw new Error(`Vertex AI error: ${resp.status}`);
+    }
+
+    const json = JSON.parse(text) as any;
+    const parts =
+      (json?.candidates?.[0]?.content?.parts as Array<any> | undefined) ?? [];
+    const out = parts
+      .map((p) => (typeof p?.text === "string" ? p.text : ""))
+      .join("")
+      .trim();
+    return out;
+  },
+};
 
 const REQUESTS_COLLECTION = "guestMergeRequests" as const;
 const REQUEST_TTL_MS = 15 * 60 * 1000;
@@ -491,6 +847,91 @@ export const executeGuestMerge = onCall(
         "internal",
         "Guest merge failed. Please try again later."
       );
+    }
+  }
+);
+
+export const ocrHandwrittenMemo = onCall(
+  {
+    region: OCR_REGION,
+    timeoutSeconds: 120,
+    memory: "1GiB",
+  },
+  async (request): Promise<OcrHandwrittenMemoResult> => {
+    requireAuth(request.auth);
+
+    const requestId = crypto.randomUUID();
+    const uid = request.auth.uid;
+
+    if (shouldRequireAppCheck()) {
+      await requireValidAppCheckToken(request);
+    }
+
+    const input = request.data as OcrHandwrittenMemoInput | undefined;
+    const mimeType = requireString(input?.mimeType, "mimeType");
+    const base64 = requireString(input?.base64, "base64");
+    requireAllowedMimeType(mimeType);
+
+    const buf = decodeBase64ToBuffer(base64);
+    if (buf.byteLength > OCR_MAX_IMAGE_BYTES) {
+      throw new HttpsError("invalid-argument", "Payload too large", {
+        reason: "payload-too-large",
+        maxBytes: OCR_MAX_IMAGE_BYTES,
+      } satisfies HttpsErrorDetails);
+    }
+
+    const db = admin.firestore();
+    const now = new Date();
+
+    // Rate-limit before calling the provider to prevent cost blow-ups.
+    await consumeOcrQuotaOrThrow(db, uid, now);
+
+    // Project ID should be available on deployed functions.
+    const projectId =
+      admin.app().options.projectId ||
+      process.env.GCLOUD_PROJECT ||
+      process.env.GCP_PROJECT;
+    if (!projectId) {
+      throw new HttpsError("internal", "Project ID not resolved");
+    }
+
+    logger.info("OCR request accepted", {
+      requestId,
+      uid,
+      mimeType,
+      bytes: buf.byteLength,
+    });
+
+    try {
+      const text = await geminiProvider.extractTextFromImage({
+        requestId,
+        projectId,
+        location: OCR_VERTEX_LOCATION,
+        model: OCR_GEMINI_MODEL,
+        mimeType,
+        imageBase64: base64,
+      });
+
+      return {
+        requestId,
+        text,
+        provider: {
+          name: geminiProvider.name,
+          model: OCR_GEMINI_MODEL,
+          location: OCR_VERTEX_LOCATION,
+        },
+      };
+    } catch (err) {
+      // Never log image base64 or extracted text.
+      const errInfo =
+        err instanceof Error
+          ? { name: err.name, message: err.message }
+          : { message: String(err) };
+      logger.error("OCR failed", { requestId, uid, err: errInfo });
+      if (err instanceof HttpsError) throw err;
+      throw new HttpsError("internal", "OCR failed. Please try again later.", {
+        requestId,
+      } satisfies HttpsErrorDetails);
     }
   }
 );

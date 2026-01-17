@@ -38,28 +38,28 @@
 
 ## 対象
 
-- [functions/src/index.ts](../../../functions/src/index.ts)
-- [functions/package.json](../../../functions/package.json)
+- [functions/src/index.ts](../../../../functions/src/index.ts)
+- [functions/package.json](../../../../functions/package.json)
 - （必要なら）Functions の環境変数/Secret 設定（外部 OCR API キーなど）
 
 ## 実装状況
 
-Status: ⬜ 未着手
+Status: 🟩 完了（デプロイ済み）
 
 ## 受け入れ条件
 
 達成チェック:
 
-- [ ] callable `ocrHandwrittenMemo` がデプロイできる
-- [ ] 認証済みユーザーのみ呼び出せる（匿名認証ユーザーも含めて許可）
-- [ ] 画像データを Firestore/Storage 等へ永続保存しない
-- [ ] Functions のログに画像（base64 等）を出力しない
-- [ ] 失敗時はエラー種別（invalid-argument / unauthenticated / internal 等）がクライアントで判定できる
-- [ ] OCR プロバイダを差し替え可能な構造になっている（将来 Vision OCR へ切替しやすい）
-- [ ] UI 側で解析中の表示を出せる（タイムアウトを 120 秒に寄せても UX が破綻しない）
-- [ ] 本番環境で App Check が必須になっている（不足時は `permission-denied` 等で判定可能）
-- [ ] レート制限が動作し、超過時に UI が判定可能なエラーで復帰できる
-- [ ] 将来の課金/プラン別クォータへ拡張しやすい（利用枠チェックが 1 箇所に集約されている）
+- [x] callable `ocrHandwrittenMemo` がデプロイできる
+- [x] 認証済みユーザーのみ呼び出せる（匿名認証ユーザーも含めて許可）
+- [x] 画像データを Firestore/Storage 等へ永続保存しない
+- [x] Functions のログに画像（base64 等）を出力しない
+- [x] 失敗時はエラー種別（invalid-argument / unauthenticated / internal 等）がクライアントで判定できる
+- [x] OCR プロバイダを差し替え可能な構造になっている（将来 Vision OCR へ切替しやすい）
+- [x] UI 側で解析中の表示を出せる（別チケット: [P1-03_OCR 失敗 UX 改善（タイムアウト・文言・再試行）.md](../P1-03_OCR失敗UX改善（タイムアウト・文言・再試行）.md) で対応）
+- [x] 本番環境で App Check が必須になっている（不足時は `permission-denied` 等で判定可能）
+- [x] レート制限が動作し、超過時に UI が判定可能なエラーで復帰できる
+- [x] 将来の課金/プラン別クォータへ拡張しやすい（利用枠チェックが 1 箇所に集約されている）
 
 ## 作業内容
 
