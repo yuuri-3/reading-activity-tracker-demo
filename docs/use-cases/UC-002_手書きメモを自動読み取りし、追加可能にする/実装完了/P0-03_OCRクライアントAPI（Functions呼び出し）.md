@@ -27,17 +27,17 @@
 
 ## 実装状況
 
-Status: ⬜ 未着手
+Status: ✅ 完了
 
 ## 受け入れ条件
 
 達成チェック:
 
-- [ ] `httpsCallable(functions, "ocrHandwrittenMemo")` を使って呼び出せる
-- [ ] 成功時に抽出テキストを受け取れる
-- [ ] 失敗時に UI が分岐可能なエラー形に整形できる（`code`/`class`/`message`/`reason?`/`retryAfterSeconds?`）
-- [ ] フラグ OFF では OCR 呼び出しが UI から到達不能である（既存 UX に影響しない）
-- [ ] フラグ OFF で API が直接呼ばれても Functions を呼ばず `{ ok: false, error: { reason: "disabled", ... } }` を返せる
+- [x] `httpsCallable(functions, "ocrHandwrittenMemo")` を使って呼び出せる
+- [x] 成功時に抽出テキストを受け取れる
+- [x] 失敗時に UI が分岐可能なエラー形に整形できる（`code`/`class`/`message`/`reason?`/`retryAfterSeconds?`）
+- [x] フラグ OFF では OCR 呼び出しが UI から到達不能である（既存 UX に影響しない）
+- [x] フラグ OFF で API が直接呼ばれても Functions を呼ばず `{ ok: false, error: { reason: "disabled", ... } }` を返せる
 
 エラー仕様（フロント側の正規化）:
 
