@@ -58,13 +58,15 @@ Status: ✅ 実装完了
 
 達成チェック:
 
-- [x] CI 上で `npm ci` → `npm run typecheck` → `npm run test-storybook` が動く（PR / main push）
-- [x] 品質ゲートに落ちた変更は原則デプロイされない（ブランチ保護の必須チェックとして運用する）
-- [x] 直 push / ブランチ保護の一時解除があり得る運用に備え、デプロイ用ワークフロー側にも `typecheck` を入れて「型エラー等の明確な事故」はデプロイ手前で確実に止まる
+- [x] CI 上で `npm ci` → `npm run typecheck` → `npm run test-storybook` が動く
+- [x] 品質ゲートに落ちた変更は原則デプロイされない（PR の必須チェックとして運用する）
+- [x] 直 push / ブランチ保護の一時解除があり得る運用の場合、デプロイ用ワークフロー側にも `typecheck` を入れ「型エラー等の明確な事故」はデプロイ手前で確実に止まる
+- [x] PR でも `typecheck` と `test-storybook` が実行され、早期に回帰検知できる
+- [x] ブランチ保護で品質ゲートを必須チェックにし、管理者のみ緊急時に一時的な override を許可する
 - [x] `npm run test-storybook` が Storybook test runner として実行される（Vitest の `--project=storybook` ではない）
 - [x] Storybook test runner に必要な Playwright Chromium の導入が CI に含まれている
 - [x] PR の品質ゲートは Secrets を必須にせず完走できる（外部サービス依存はモック/スタブで回避）
-- [x] 外部連携（本物の Firebase/Functions 等）まで含めた保証は本チケットの範囲外である（別チケットで扱う）
+- [x] 外部連携（本物の Firebase/Functions 等）まで含めた保証は本チケットの範囲外であることが明記されている
 
 ## 作業内容
 
