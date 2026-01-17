@@ -494,3 +494,10 @@ export const executeGuestMerge = onCall(
     }
   }
 );
+
+export const ocrHandwrittenMemo = onCall(
+  { region: "asia-northeast1" },
+  async () => {
+    throw new HttpsError("failed-precondition", "OCR is not available");
+  }
+);
