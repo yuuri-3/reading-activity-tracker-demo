@@ -4,6 +4,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { useAuth } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
 import { useApp } from "./context/AppContext";
+import { TimerProvider } from "./timer/TimerContext";
 import { TimerPage } from "./pages/TimerPage";
 import { BookCollectionView } from "./pages/BookCollectionView";
 import { RecordSingleView } from "./pages/RecordSingleView";
@@ -73,7 +74,7 @@ function toPathname(
   page: Page,
   recordsSubPage: RecordsSubPage,
   sanctumSubPage: SanctumSubPage,
-  ocrActive: boolean
+  ocrActive: boolean,
 ) {
   if (ocrActive) return "/ocr";
   if (page === "home") return "/";
@@ -105,11 +106,11 @@ function AppContent() {
 
   const [currentPage, setCurrentPage] = useState<Page>(initialRoute.page);
   const [recordsSubPage, setRecordsSubPage] = useState<RecordsSubPage>(
-    initialRoute.recordsSubPage
+    initialRoute.recordsSubPage,
   );
 
   const [sanctumSubPage, setSanctumSubPage] = useState<SanctumSubPage>(
-    initialRoute.sanctumSubPage
+    initialRoute.sanctumSubPage,
   );
 
   const [ocrActive, setOcrActive] = useState<boolean>(initialRoute.ocrActive);
@@ -117,13 +118,13 @@ function AppContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const nextPathname = joinWithBase(
-      toPathname(currentPage, recordsSubPage, sanctumSubPage, ocrActive)
+      toPathname(currentPage, recordsSubPage, sanctumSubPage, ocrActive),
     );
     if (window.location.pathname !== nextPathname) {
       window.history.pushState(
         null,
         "",
-        `${nextPathname}${window.location.search}`
+        `${nextPathname}${window.location.search}`,
       );
     }
   }, [currentPage, recordsSubPage, sanctumSubPage, ocrActive]);
@@ -236,13 +237,23 @@ function AppContent() {
   );
 }
 
+function AppProviders() {
+  const { user } = useAuth();
+
+  return (
+    <TimerProvider uid={user?.uid}>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </TimerProvider>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <AuthGate>
-        <AppProvider>
-          <AppContent />
-        </AppProvider>
+        <AppProviders />
       </AuthGate>
     </AuthProvider>
   );

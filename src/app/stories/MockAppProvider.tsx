@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AppContext } from "../context/AppContext";
 import type { Book, ReadingRecord, Tag, TimerState } from "../types";
+import { TimerProvider } from "../timer/TimerContext";
 
 export type MockAppProviderProps = {
-  children: ReactNode;
+  children?: ReactNode;
 
   initialBooks?: Book[];
   initialRecords?: ReadingRecord[];
@@ -25,15 +26,15 @@ export function MockAppProvider({
   initialSearchText,
   initialTimerSeconds = 0,
   initialTimerRunning = false,
-  timerTickMs = 100,
+  timerTickMs = 1000,
 }: MockAppProviderProps) {
   const [books, setBooks] = useState<Book[]>(() => initialBooks ?? []);
   const [records, setRecords] = useState<ReadingRecord[]>(
-    () => initialRecords ?? []
+    () => initialRecords ?? [],
   );
   const [tags, setTags] = useState<Tag[]>(() => initialTags ?? []);
   const [searchText, setSearchText] = useState(initialSearchText ?? "");
-  const [timerState, setTimerState] = useState<TimerState>(() => {
+  const initialTimerState = useMemo<TimerState>(() => {
     const startTime = initialTimerRunning ? Date.now() : null;
     return {
       isRunning: initialTimerRunning,
@@ -41,26 +42,9 @@ export function MockAppProvider({
       elapsedTime: initialTimerSeconds,
       pausedTime: initialTimerSeconds,
     };
-  });
+  }, [initialTimerRunning, initialTimerSeconds]);
 
   const [guestCreateNoticeOpen, setGuestCreateNoticeOpen] = useState(false);
-
-  useEffect(() => {
-    let interval: number | undefined;
-
-    if (timerState.isRunning && timerState.startTime) {
-      interval = window.setInterval(() => {
-        setTimerState((prev) => ({
-          ...prev,
-          elapsedTime: prev.pausedTime + (Date.now() - prev.startTime!) / 1000,
-        }));
-      }, timerTickMs);
-    }
-
-    return () => {
-      if (interval != null) window.clearInterval(interval);
-    };
-  }, [timerState.isRunning, timerState.startTime, timerTickMs]);
 
   const value = useMemo<
     NonNullable<React.ContextType<typeof AppContext>>
@@ -87,7 +71,7 @@ export function MockAppProvider({
 
     const updateTag = async (
       id: string,
-      updates: Partial<Pick<Tag, "text" | "description">>
+      updates: Partial<Pick<Tag, "text" | "description">>,
     ) => {
       setTags((prev) =>
         prev.map((t) =>
@@ -101,8 +85,8 @@ export function MockAppProvider({
                   ? { description: updates.description }
                   : {}),
               }
-            : t
-        )
+            : t,
+        ),
       );
     };
 
@@ -137,7 +121,7 @@ export function MockAppProvider({
 
     const updateBook = async (id: string, updates: Partial<Book>) => {
       setBooks((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, ...updates, id: b.id } : b))
+        prev.map((b) => (b.id === id ? { ...b, ...updates, id: b.id } : b)),
       );
     };
 
@@ -162,7 +146,7 @@ export function MockAppProvider({
     };
 
     const addRecord = async (
-      record: Omit<ReadingRecord, "id" | "createdAt">
+      record: Omit<ReadingRecord, "id" | "createdAt">,
     ) => {
       setRecords((prev) => [
         {
@@ -176,10 +160,10 @@ export function MockAppProvider({
 
     const updateRecord = async (
       id: string,
-      updates: Partial<ReadingRecord>
+      updates: Partial<ReadingRecord>,
     ) => {
       setRecords((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...updates, id: r.id } : r))
+        prev.map((r) => (r.id === id ? { ...r, ...updates, id: r.id } : r)),
       );
     };
 
@@ -207,32 +191,6 @@ export function MockAppProvider({
         .filter((r) => r.bookId === bookId)
         .reduce((total, r) => total + r.duration, 0);
 
-    const startTimer = () => {
-      setTimerState((prev) => ({
-        ...prev,
-        isRunning: true,
-        startTime: Date.now(),
-      }));
-    };
-
-    const pauseTimer = () => {
-      setTimerState((prev) => ({
-        ...prev,
-        isRunning: false,
-        startTime: null,
-        pausedTime: prev.elapsedTime,
-      }));
-    };
-
-    const resetTimer = () => {
-      setTimerState({
-        isRunning: false,
-        startTime: null,
-        elapsedTime: 0,
-        pausedTime: 0,
-      });
-    };
-
     return {
       books,
       addBook,
@@ -252,10 +210,6 @@ export function MockAppProvider({
       restoreRecord,
       getRecordsByBook,
       getTotalDurationByBook,
-      timerState,
-      startTimer,
-      pauseTimer,
-      resetTimer,
       searchText,
       setSearchText,
 
@@ -263,7 +217,15 @@ export function MockAppProvider({
       closeGuestCreateNotice: () => setGuestCreateNoticeOpen(false),
       dismissGuestCreateNotice: () => setGuestCreateNoticeOpen(false),
     };
-  }, [books, records, searchText, tags, timerState, guestCreateNoticeOpen]);
+  }, [books, records, searchText, tags, guestCreateNoticeOpen]);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <TimerProvider
+      persist={false}
+      tickMs={timerTickMs}
+      initialState={initialTimerState}
+    >
+      <AppContext.Provider value={value}>{children}</AppContext.Provider>
+    </TimerProvider>
+  );
 }
