@@ -2,9 +2,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -20,7 +18,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { Book, ReadingRecord, TimerState, BookMemo, Tag } from "../types";
+import { Book, ReadingRecord, BookMemo, Tag } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { getFirestoreDb } from "../firebase/firebase";
 
@@ -42,7 +40,7 @@ interface AppContextType {
   }) => Promise<string | null>;
   updateTag: (
     id: string,
-    updates: Partial<Pick<Tag, "text" | "description">>
+    updates: Partial<Pick<Tag, "text" | "description">>,
   ) => Promise<void>;
   deleteTag: (id: string) => Promise<void>;
   restoreTag: (tag: Tag) => Promise<void>;
@@ -56,12 +54,6 @@ interface AppContextType {
   getRecordsByBook: (bookId: string) => ReadingRecord[];
   getTotalDurationByBook: (bookId: string) => number;
 
-  // Timer
-  timerState: TimerState;
-  startTimer: () => void;
-  pauseTimer: () => void;
-  resetTimer: () => void;
-
   // Search
   searchText: string;
   setSearchText: (text: string) => void;
@@ -74,15 +66,6 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
-type PersistedTimerStateV1 = {
-  v: 1;
-  isRunning: boolean;
-  startTime: number | null;
-  pausedTime: number;
-};
-
-const TIMER_STORAGE_VERSION = 1 as const;
-
 type PersistedGuestCreateNoticeV1 = {
   v: 1;
   createdCount: number;
@@ -91,87 +74,14 @@ type PersistedGuestCreateNoticeV1 = {
 
 const GUEST_CREATE_NOTICE_STORAGE_VERSION = 1 as const;
 
-function getTimerStorageKey(uid: string | undefined) {
-  return `yomzoy:timerState:v${TIMER_STORAGE_VERSION}:${uid ?? "anon"}`;
-}
-
 function getGuestCreateNoticeStorageKey(uid: string | undefined) {
   return `yomzoy:guestCreateNotice:v${GUEST_CREATE_NOTICE_STORAGE_VERSION}:${
     uid ?? "anon"
   }`;
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function loadPersistedTimerState(storageKey: string): TimerState | null {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PersistedTimerStateV1>;
-    if (parsed.v !== TIMER_STORAGE_VERSION) return null;
-    if (typeof parsed.isRunning !== "boolean") return null;
-
-    const startTime = parsed.startTime ?? null;
-    const pausedTime = isFiniteNumber(parsed.pausedTime)
-      ? Math.max(0, parsed.pausedTime)
-      : 0;
-
-    const hasValidStartTime = isFiniteNumber(startTime) && startTime > 0;
-
-    if (parsed.isRunning && hasValidStartTime) {
-      const elapsedTime = pausedTime + (Date.now() - startTime) / 1000;
-      return {
-        isRunning: true,
-        startTime,
-        pausedTime,
-        elapsedTime: Math.max(0, elapsedTime),
-      };
-    }
-
-    // Paused/idle state.
-    return {
-      isRunning: false,
-      startTime: null,
-      pausedTime,
-      elapsedTime: pausedTime,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function savePersistedTimerState(storageKey: string, timerState: TimerState) {
-  if (typeof window === "undefined") return;
-
-  const isDefault =
-    !timerState.isRunning &&
-    timerState.startTime === null &&
-    timerState.pausedTime === 0;
-
-  try {
-    if (isDefault) {
-      window.localStorage.removeItem(storageKey);
-      return;
-    }
-
-    const payload: PersistedTimerStateV1 = {
-      v: TIMER_STORAGE_VERSION,
-      isRunning: timerState.isRunning,
-      startTime: timerState.isRunning ? timerState.startTime : null,
-      pausedTime: Math.max(0, timerState.pausedTime),
-    };
-    window.localStorage.setItem(storageKey, JSON.stringify(payload));
-  } catch {
-    // ignore (e.g. storage full / disabled)
-  }
-}
-
 function loadPersistedGuestCreateNotice(
-  storageKey: string
+  storageKey: string,
 ): PersistedGuestCreateNoticeV1 {
   if (typeof window === "undefined") {
     return {
@@ -217,7 +127,7 @@ function loadPersistedGuestCreateNotice(
 
 function savePersistedGuestCreateNotice(
   storageKey: string,
-  state: PersistedGuestCreateNoticeV1
+  state: PersistedGuestCreateNoticeV1,
 ) {
   if (typeof window === "undefined") return;
 
@@ -236,7 +146,7 @@ function shouldShowGuestCreateNotice(createdCount: number) {
 
 function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return Object.fromEntries(
-    Object.entries(obj).filter(([, value]) => value !== undefined)
+    Object.entries(obj).filter(([, value]) => value !== undefined),
   ) as Partial<T>;
 }
 
@@ -273,25 +183,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [searchText, setSearchText] = useState("");
-  const [timerState, setTimerState] = useState<TimerState>({
-    isRunning: false,
-    startTime: null,
-    elapsedTime: 0,
-    pausedTime: 0,
-  });
 
   const [guestCreateNoticeOpen, setGuestCreateNoticeOpen] = useState(false);
 
-  const timerStorageKey = useMemo(
-    () => getTimerStorageKey(user?.uid),
-    [user?.uid]
-  );
-
   const guestCreateNoticeStorageKey = useMemo(
     () => getGuestCreateNoticeStorageKey(user?.uid),
-    [user?.uid]
+    [user?.uid],
   );
-  const timerHydratingKeyRef = useRef<string | null>(null);
 
   const uid = user?.uid;
 
@@ -327,17 +225,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const booksQuery = query(
       collection(db, "users", uid, "books"),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const recordsQuery = query(
       collection(db, "users", uid, "records"),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const tagsQuery = query(
       collection(db, "users", uid, "tags"),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const unsubBooks = onSnapshot(
@@ -353,10 +251,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               memos: data.memos ?? [],
               createdAt: data.createdAt,
             };
-          })
+          }),
         );
       },
-      onSnapshotError
+      onSnapshotError,
     );
 
     const unsubRecords = onSnapshot(
@@ -366,12 +264,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           snapshot.docs.map((d) => {
             const data = d.data() as Omit<ReadingRecord, "id">;
             const tagIds: string[] | undefined = Array.isArray(
-              (data as unknown as { tagIds?: unknown }).tagIds
+              (data as unknown as { tagIds?: unknown }).tagIds,
             )
               ? (
                   (data as unknown as { tagIds?: unknown }).tagIds as unknown[]
                 ).filter(
-                  (v): v is string => typeof v === "string" && v.length > 0
+                  (v): v is string => typeof v === "string" && v.length > 0,
                 )
               : undefined;
 
@@ -385,10 +283,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               endTime: data.endTime,
               createdAt: data.createdAt,
             };
-          })
+          }),
         );
       },
-      onSnapshotError
+      onSnapshotError,
     );
 
     const unsubTags = onSnapshot(
@@ -416,10 +314,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               description,
               createdAt,
             } satisfies Tag;
-          })
+          }),
         );
       },
-      onSnapshotError
+      onSnapshotError,
     );
 
     return () => {
@@ -444,7 +342,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateTag = async (
     id: string,
-    updates: Partial<Pick<Tag, "text" | "description">>
+    updates: Partial<Pick<Tag, "text" | "description">>,
   ) => {
     if (!db || !uid) return;
     const current = tags.find((t) => t.id === id);
@@ -466,7 +364,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...(nextDescription !== current.description
           ? { description: nextDescription }
           : {}),
-      })
+      }),
     );
   };
 
@@ -485,56 +383,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         text: normalizeTagText(tag.text),
         description: tag.description ?? "",
         createdAt: tag.createdAt ?? new Date().toISOString(),
-      } as unknown as Record<string, unknown>)
+      } as unknown as Record<string, unknown>),
     );
   };
-
-  // Restore timer state from localStorage so reload doesn't reset measurement.
-  // Use layout effect to avoid a "reset to 0" paint before hydration.
-  useLayoutEffect(() => {
-    timerHydratingKeyRef.current = timerStorageKey;
-    const restored = loadPersistedTimerState(timerStorageKey);
-    if (restored) {
-      setTimerState(restored);
-    } else {
-      setTimerState({
-        isRunning: false,
-        startTime: null,
-        elapsedTime: 0,
-        pausedTime: 0,
-      });
-    }
-  }, [timerStorageKey]);
-
-  // Persist minimal timer fields (start/pause/reset only; not every tick).
-  useEffect(() => {
-    // If key changes, this effect might run for an intermediate render; ignore.
-    if (timerHydratingKeyRef.current !== timerStorageKey) return;
-    savePersistedTimerState(timerStorageKey, timerState);
-  }, [
-    timerStorageKey,
-    timerState.isRunning,
-    timerState.startTime,
-    timerState.pausedTime,
-  ]);
-
-  // Timer interval
-  useEffect(() => {
-    let interval: number | undefined;
-
-    if (timerState.isRunning && timerState.startTime) {
-      interval = window.setInterval(() => {
-        setTimerState((prev) => ({
-          ...prev,
-          elapsedTime: prev.pausedTime + (Date.now() - prev.startTime!) / 1000,
-        }));
-      }, 100);
-    }
-
-    return () => {
-      if (interval !== undefined) window.clearInterval(interval);
-    };
-  }, [timerState.isRunning, timerState.startTime]);
 
   // Book operations
   const addBook = async (book: Omit<Book, "id" | "createdAt">) => {
@@ -550,7 +401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (user?.isAnonymous) {
       const current = loadPersistedGuestCreateNotice(
-        guestCreateNoticeStorageKey
+        guestCreateNoticeStorageKey,
       );
       if (!current.dismissed) {
         const next: PersistedGuestCreateNoticeV1 = {
@@ -597,7 +448,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addRecord = async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
     if (!db || !uid) {
       throw new Error(
-        "ログイン情報の取得中です。少し待ってからもう一度お試しください"
+        "ログイン情報の取得中です。少し待ってからもう一度お試しください",
       );
     }
     const now = new Date().toISOString();
@@ -614,7 +465,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (user?.isAnonymous) {
       const current = loadPersistedGuestCreateNotice(
-        guestCreateNoticeStorageKey
+        guestCreateNoticeStorageKey,
       );
       if (!current.dismissed) {
         const next: PersistedGuestCreateNoticeV1 = {
@@ -646,7 +497,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateRecord = async (id: string, updates: Partial<ReadingRecord>) => {
     if (!db || !uid) {
       throw new Error(
-        "ログイン情報の取得中です。少し待ってからもう一度お試しください"
+        "ログイン情報の取得中です。少し待ってからもう一度お試しください",
       );
     }
     const { id: _id, ...rest } = updates;
@@ -661,7 +512,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     await updateDoc(
       doc(db, "users", uid, "records", id),
-      stripUndefined(nextRest)
+      stripUndefined(nextRest),
     );
   };
 
@@ -676,7 +527,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { id, ...rest } = record;
     await setDoc(
       doc(db, "users", uid, "records", id),
-      stripUndefined(rest as unknown as Record<string, unknown>)
+      stripUndefined(rest as unknown as Record<string, unknown>),
     );
   };
 
@@ -688,33 +539,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return records
       .filter((record) => record.bookId === bookId)
       .reduce((total, record) => total + record.duration, 0);
-  };
-
-  // Timer operations
-  const startTimer = () => {
-    setTimerState((prev) => ({
-      ...prev,
-      isRunning: true,
-      startTime: Date.now(),
-    }));
-  };
-
-  const pauseTimer = () => {
-    setTimerState((prev) => ({
-      ...prev,
-      isRunning: false,
-      startTime: null,
-      pausedTime: prev.elapsedTime,
-    }));
-  };
-
-  const resetTimer = () => {
-    setTimerState({
-      isRunning: false,
-      startTime: null,
-      elapsedTime: 0,
-      pausedTime: 0,
-    });
   };
 
   return (
@@ -738,10 +562,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         restoreRecord,
         getRecordsByBook,
         getTotalDurationByBook,
-        timerState,
-        startTimer,
-        pauseTimer,
-        resetTimer,
         searchText,
         setSearchText,
 

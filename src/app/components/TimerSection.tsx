@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
+import { useTimer } from "../timer/TimerContext";
 import { PrimaryButton } from "./PrimaryButton";
 import { Play, Pause, Square } from "lucide-react";
 import {
@@ -24,14 +25,8 @@ export function TimerSection({
   tagIds = [],
   onClearInputs,
 }: TimerSectionProps) {
-  const {
-    timerState,
-    startTimer,
-    pauseTimer,
-    resetTimer,
-    addRecord,
-    addBookMemo,
-  } = useApp();
+  const { addRecord, addBookMemo } = useApp();
+  const { timerState, startTimer, pauseTimer, resetTimer } = useTimer();
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const stopInFlightRef = useRef(false);
@@ -77,7 +72,7 @@ export function TimerSection({
     const startMs = measurementStartMsRef.current;
     if (startMs == null) return "";
     return `${formatDateTimeWithSeconds(
-      new Date(startMs).toISOString()
+      new Date(startMs).toISOString(),
     )}から計測開始`;
   };
 
