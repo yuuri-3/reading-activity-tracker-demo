@@ -10,6 +10,7 @@ import { BookCollectionView } from "./pages/BookCollectionView";
 import { RecordSingleView } from "./pages/RecordSingleView";
 import { SanctumPage } from "./pages/SanctumPage";
 import { TagManagementPage } from "./pages/TagManagementPage";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { TabBar, type Page } from "./components/TabBar";
 import { Dialog } from "./components/Dialog";
 import { Toast } from "./components/Toast";
@@ -18,7 +19,7 @@ import { isOcrHandwrittenMemoEnabled } from "./ocr/env";
 import { OcrHandwrittenMemoRootPage } from "./ocr/OcrHandwrittenMemoRootPage";
 
 type RecordsSubPage = "add" | null;
-type SanctumSubPage = "tags" | null;
+type SanctumSubPage = "tags" | "privacy" | null;
 
 type RouteState = {
   page: Page;
@@ -60,7 +61,9 @@ function parseRouteFromPath(pathname: string) {
     page === "records" && subRaw === "add" ? "add" : null;
 
   const sanctumSubPage: SanctumSubPage =
-    page === "sanctum" && subRaw === "tags" ? "tags" : null;
+    page === "sanctum" && (subRaw === "tags" || subRaw === "privacy")
+      ? (subRaw as SanctumSubPage)
+      : null;
 
   return {
     page,
@@ -184,6 +187,8 @@ function AppContent() {
               {currentPage === "sanctum" &&
                 (sanctumSubPage === "tags" ? (
                   <TagManagementPage />
+                ) : sanctumSubPage === "privacy" ? (
+                  <PrivacyPolicyPage />
                 ) : (
                   <SanctumPage />
                 ))}

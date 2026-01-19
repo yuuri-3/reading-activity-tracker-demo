@@ -40,6 +40,16 @@ Status: ⬜ 未着手
 
 - P0-04（同意）→ P0-03（OCR API）→ P0-02（callable）を利用して実行
 
+#### 2-a) （追加）同意ガードの接続
+
+- P0-04 で実装した「初回のみ同意ダイアログ」を、P0-05 の実導線（OCR 実行ボタン/開始アクション）に接続する
+  - 未同意: ダイアログ表示 → 「続行」で `consentAccepted=true` を保存 → OCR 実行
+  - 「キャンセル」: OCR 実行しない
+  - プライバシーポリシーリンク: `/sanctum/privacy` を新しいタブ/ブラウザで開く
+- 参照実装:
+  - `ocrHandwrittenMemoLocalState`（`consentAccepted`）
+  - `ocrHandwrittenMemoConsent`（同意判定/保存/URL 生成）
+
 ### 3) 編集 UI
 
 - テキスト入力で編集できる
