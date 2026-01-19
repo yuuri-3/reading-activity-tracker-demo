@@ -29,7 +29,11 @@ export const RegistBook: Story = {
     const canSubmit = useMemo(() => title.trim().length > 0, [title]);
 
     return (
-      <DialogStoryFrame open={open} setOpen={setOpen} reopenLabel="書籍登録を開く">
+      <DialogStoryFrame
+        open={open}
+        setOpen={setOpen}
+        reopenLabel="書籍登録を開く"
+      >
         <Dialog
           open={open}
           onOpenChange={setOpen}
@@ -45,7 +49,7 @@ export const RegistBook: Story = {
           trigger={
             <PrimaryButton
               className="px-3 py-2 text-sm"
-              icon={<IconAdd size={16} />}
+              icon={<IconAdd size={4} />}
             >
               書籍登録
             </PrimaryButton>

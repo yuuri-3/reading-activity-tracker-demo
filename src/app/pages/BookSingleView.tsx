@@ -39,7 +39,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
 
   const [isEditBookMemoOpen, setIsEditBookMemoOpen] = useState(false);
   const [editingBookMemoId, setEditingBookMemoId] = useState<string | null>(
-    null
+    null,
   );
   const [editingBookMemoText, setEditingBookMemoText] = useState("");
 
@@ -67,11 +67,11 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
 
   const lastActivityAt = (() => {
     const candidates = [book.createdAt, lastMemoAt, lastRecordEnd].filter(
-      Boolean
+      Boolean,
     ) as string[];
     if (candidates.length === 0) return new Date().toISOString();
     return candidates.reduce((latest, t) =>
-      new Date(t).getTime() > new Date(latest).getTime() ? t : latest
+      new Date(t).getTime() > new Date(latest).getTime() ? t : latest,
     );
   })();
 
@@ -98,11 +98,11 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     switch (segment) {
       case "reading":
         return recordItems.sort(
-          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
         );
       case "book":
         return memoItems.sort(
-          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
         );
       case "all":
       default:
@@ -155,7 +155,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     if (!editingBookMemoId) return;
     void updateBook(book.id, {
       memos: (book.memos ?? []).map((m) =>
-        m.id === editingBookMemoId ? { ...m, text: editingBookMemoText } : m
+        m.id === editingBookMemoId ? { ...m, text: editingBookMemoText } : m,
       ),
     });
     setIsEditBookMemoOpen(false);
@@ -194,7 +194,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
               onClick={onBack}
               className="inline-flex items-center gap-0.5 text-[14px] font-normal leading-5 text-foreground"
             >
-              <IconBack size={20} className="shrink-0" />
+              <IconBack size={5} />
               <span className="pb-[2px]">戻る</span>
             </button>
 

@@ -17,15 +17,19 @@
 ## 決定事項（方針 A）
 
 - 原則: アプリコード（`src/app/**`）では SVG アイコンコンポーネント（`src/app/components/icons/*`）を使用する
-- サイズ指定: アイコンのサイズは `size` props で統一する（`w-*` / `h-*` 等のクラスでアイコン自体のサイズを指定しない）
+- Props: 許容する props は `size` と `color` のみ（`className` 等は持たせない）
+- サイズ指定: アイコンのサイズは `size` props で統一し、Tailwind の spacing トークンを渡す（例: `size={6}` は `w-6 h-6` 相当。`w-*` / `h-*` 等のクラスでアイコン自体のサイズを指定しない）
 - 色指定: 基本は `currentColor`（親要素の文字色）で表現し、`color` props が渡された場合はそれを優先する
-- 置換の見た目: Figma 優先（`lucide-react` と完全一致は必須としない）
-- アイコンのソース: Figma に存在するものを実装する（Figma に無いアイコンが必要になった場合は、実装せずデザイナーに追加を依頼する）
-- アクセシビリティ: アイコンのみのボタン/リンクは、アイコンではなくボタン/リンク側に `aria-label` 等で名称を付与する（アイコンは装飾扱いで `aria-hidden` のまま）
+- 置換の見た目: `src/app/components/ui/**` を除き、Figma を完全再現する（`lucide-react` と一致させる必要はない）
+- アイコンのソース: Figma に存在するものを実装する（Figma に無いアイコンが必要になった場合は、勝手に作らずデザイナーに追加を依頼する）
+- アクセシビリティ: アイコン自体はラベルを持たせない（装飾扱いで `aria-hidden`）。アイコンボタン/リンク等は親（ボタン/リンク）側に `aria-label` 等で名称を付与する
 - 命名: アイコンコンポーネントは `Icon` + PascalCase（例: `IconClock`）で統一する（意味が明確な語を優先）
 - 例外: `src/app/components/ui/**` 内は当面 `lucide-react` を許容する（shadcn 由来のため）
 - 禁止: 上記例外を除き、新規の `lucide-react` import は禁止（既存の維持・置換のみ）
-- 抑止: `npm run check:lucide`（`scripts/check-lucide-imports.mjs`）で、例外パス以外の新規 `lucide-react` import を CI で検知する
+- 抑止: `npm run check:lucide`（`scripts/check-lucide-imports.mjs`）で、例外パス以外の `lucide-react` import を CI で検知して落とす（allowlist 方式）
+  - 許容されるのは `src/app/components/ui/**` と、このチケットの「受け入れ条件」に列挙した移行対象（既存の暫定許容）のみ
+  - 移行対象を追加する場合は「受け入れ条件（対象ファイル）」とスクリプトの allowlist をセットで更新する
+  - allowlist を増やすのは原則 NG（どうしても必要な場合は理由をチケットに残す）
 
 補足:
 
@@ -83,8 +87,12 @@ Status: 🚧 進行中
 
 ### 3) 最低限の抑止
 
-- 文字列検索ベースで「`src/app/components/ui/**` 以外に `lucide-react` が入ったら落とす」仕組みを作る
-  - 例: CI / pre-push で `src/app/**` を検索し、`src/app/components/ui/**` を除外して `lucide-react` が見つかったら失敗
+- 文字列検索ベース + allowlist 方式で「`src/app/components/ui/**` 以外に `lucide-react` が入ったら落とす」仕組みを作る
+  - CI で `npm run check:lucide` を実行し、`src/app/components/ui/**` 以外の `lucide-react` import を原則 NG にする
+  - 既存の暫定許容（段階移行中）のみ allowlist に登録し、それ以外は“新規追加”扱いとして検知する
+  - 例外運用が必要になった場合は、
+    - まずは SVG アイコンコンポーネント実装で解決できないか検討し、
+    - どうしても暫定許容が必要なら、このチケットの対象ファイル一覧と allowlist を更新して理由を残す
   - ESLint 導入などの大きな仕組み化は別チケットで検討（このチケットでは追加依存なしを優先）
 
 ## 別チケット候補

@@ -51,7 +51,7 @@ export function BookCollectionView() {
     (book) =>
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (book.author &&
-        book.author.toLowerCase().includes(searchQuery.toLowerCase()))
+        book.author.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   if (selectedBook) {
@@ -93,7 +93,7 @@ export function BookCollectionView() {
                     trigger={
                       <PrimaryButton
                         className="px-3 py-2 text-sm"
-                        icon={<IconAdd size={16} />}
+                        icon={<IconAdd size={4} />}
                       >
                         書籍登録
                       </PrimaryButton>
@@ -143,7 +143,7 @@ export function BookCollectionView() {
                       ? t
                       : latest;
                   },
-                  null
+                  null,
                 );
 
                 const lastMemoAt = (book.memos ?? []).reduce<string | null>(
@@ -154,7 +154,7 @@ export function BookCollectionView() {
                       ? t
                       : latest;
                   },
-                  null
+                  null,
                 );
 
                 const lastActivityAt = (() => {
@@ -166,7 +166,7 @@ export function BookCollectionView() {
                   return candidates.reduce((latest, t) =>
                     new Date(t).getTime() > new Date(latest).getTime()
                       ? t
-                      : latest
+                      : latest,
                   );
                 })();
 

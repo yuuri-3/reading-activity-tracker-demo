@@ -173,8 +173,8 @@ export function TagManagementPage({ initialTags }: TagManagementPageProps) {
                 text: name,
                 description: memoText,
               }
-            : t
-        )
+            : t,
+        ),
       );
     } else {
       void updateTag?.(id, { text: name, description: memoText });
@@ -238,7 +238,7 @@ export function TagManagementPage({ initialTags }: TagManagementPageProps) {
               navigate("/sanctum");
             }}
           >
-            <IconBack size={20} className="shrink-0" />
+            <IconBack size={5} />
             <span className="pb-[2px]">戻る</span>
           </a>
 
@@ -250,7 +250,7 @@ export function TagManagementPage({ initialTags }: TagManagementPageProps) {
             <PrimaryButton
               type="button"
               className="pl-3 pr-3.5 py-2 text-sm"
-              icon={<IconAdd size={16} />}
+              icon={<IconAdd size={4} />}
               onClick={handleOpenAddDialog}
             >
               タグを追加

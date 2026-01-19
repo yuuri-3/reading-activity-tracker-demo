@@ -1,18 +1,9 @@
+import { IconBase } from "./IconBase";
 import type { IconProps } from "./types";
 
-export function IconEdit({ className, size = 24, color }: IconProps) {
+export function IconEdit({ size = 6, color }: IconProps) {
   return (
-    <svg
-      className={className}
-      width={size}
-      height={size}
-      style={color ? { color } : undefined}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-      focusable="false"
-    >
+    <IconBase size={size} color={color} viewBox="0 0 24 24">
       {/* Figma: 24px frame with inner padding (~16px glyph). */}
       <g transform="translate(4 4) scale(0.9230769231)">
         <path
@@ -23,6 +14,6 @@ export function IconEdit({ className, size = 24, color }: IconProps) {
           strokeLinejoin="round"
         />
       </g>
-    </svg>
+    </IconBase>
   );
 }

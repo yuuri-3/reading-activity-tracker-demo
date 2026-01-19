@@ -19,28 +19,28 @@ export function TabBar({ currentPage, onChange }: TabBarProps) {
           label="計測"
           isActive={currentPage === "home"}
           onClick={() => onChange("home")}
-          icon={<IconTimer size={24} color="currentColor" />}
+          icon={<IconTimer />}
         />
 
         <TabBarItem
           label="記録"
           isActive={currentPage === "records"}
           onClick={() => onChange("records")}
-          icon={<IconRecord size={24} color="currentColor" />}
+          icon={<IconRecord />}
         />
 
         <TabBarItem
           label="本棚"
           isActive={currentPage === "books"}
           onClick={() => onChange("books")}
-          icon={<IconBookshelf size={24} color="currentColor" />}
+          icon={<IconBookshelf />}
         />
 
         <TabBarItem
           label="書斎"
           isActive={currentPage === "sanctum"}
           onClick={() => onChange("sanctum")}
-          icon={<IconLamp size={24} color="currentColor" />}
+          icon={<IconLamp />}
         />
       </div>
 
