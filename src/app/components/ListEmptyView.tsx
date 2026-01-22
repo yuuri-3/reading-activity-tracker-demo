@@ -1,5 +1,6 @@
-import { BookOpen } from "lucide-react";
 import * as React from "react";
+
+import { IconBook } from "./icons/IconBook";
 
 type ListEmptyViewProps = {
   icon?: React.ReactNode;
@@ -32,7 +33,9 @@ export function ListEmptyView({
     >
       <div className="flex flex-col items-center gap-4">
         {icon === undefined ? (
-          <BookOpen className="size-12 text-muted-foreground" />
+          <div className="text-muted-foreground">
+            <IconBook size={12} />
+          </div>
         ) : (
           icon
         )}

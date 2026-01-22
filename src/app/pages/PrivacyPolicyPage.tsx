@@ -16,7 +16,9 @@ export function PrivacyPolicyPage() {
               className="inline-flex items-center gap-0.5 text-[14px] font-normal leading-5 text-foreground"
               onClick={() => navigate("/sanctum")}
             >
-              <IconBack size={20} className="shrink-0" />
+              <span className="shrink-0">
+                <IconBack size={5} />
+              </span>
               <span className="pb-[2px]">戻る</span>
             </button>
           }

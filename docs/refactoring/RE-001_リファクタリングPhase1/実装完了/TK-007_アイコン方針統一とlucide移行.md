@@ -10,7 +10,7 @@
 
 ## 対象
 
-- 既存利用箇所（例）: [src/app/pages/BookCollectionView.tsx](../../../src/app/pages/BookCollectionView.tsx), [src/app/pages/RecordSingleView.tsx](../../../src/app/pages/RecordSingleView.tsx), [src/app/components/TimerSection.tsx](../../../src/app/components/TimerSection.tsx)
+- 既存利用箇所（例）: [src/app/pages/BookCollectionView.tsx](../../../../src/app/pages/BookCollectionView.tsx), [src/app/pages/RecordSingleView.tsx](../../../../src/app/pages/RecordSingleView.tsx), [src/app/components/TimerSection.tsx](../../../../src/app/components/TimerSection.tsx)
 - アイコン実装先（新設 or 既存整理）: `src/app/components/icons/*`
 - 運用ルール: `copilot-instructions.md`（既存ルールの補強）, README 等
 
@@ -37,13 +37,13 @@
 
 ## 実装状況
 
-Status: 🚧 進行中
+Status: ✅ 完了
 
 ## 受け入れ条件
 
 - [x] `lucide-react` の使用方針（方針 A）がこのチケット内に明記されている
 - [x] 例外（`src/app/components/ui/**` のみ許容）が明記されている
-- [ ] 次のファイル群から `lucide-react` import が除去され、`src/app/components/icons/*` へ置換されている
+- [x] 次のファイル群から `lucide-react` import が除去され、`src/app/components/icons/*` へ置換されている
   - `src/app/pages/BookCollectionView.tsx`
   - `src/app/pages/BookSingleView.tsx`
   - `src/app/pages/RecordSingleView.tsx`
@@ -59,18 +59,18 @@ Status: 🚧 進行中
 
 このチケットのスコープ内（`src/app/components/ui/**` を除く）で、現在 `lucide-react` から import されているアイコンは以下。
 
-| 旧（lucide） | 新（SVG コンポーネント）         | 主な使用箇所（例）                               |
-| ------------ | -------------------------------- | ------------------------------------------------ |
-| `BookOpen`   | `IconBookOpen`                   | `BookCollectionView`, `ListEmptyView`            |
-| `Calendar`   | `IconCalendar`                   | `BookSingleView`, `ListCard`                     |
-| `Clock`      | `IconClock`                      | `BookSingleView`, `RecordSingleView`, `ListCard` |
-| `FileText`   | `IconFileText`                   | `BookSingleView`, `ListCard`                     |
-| `Play`       | `IconPlay`                       | `TimerSection`, `PrimaryButton.stories`          |
-| `Pause`      | `IconPause`                      | `TimerSection`                                   |
-| `Square`     | `IconStop`（用途: 停止）         | `TimerSection`                                   |
-| `Check`      | `IconCheck`                      | `TagMultiSelectInput`                            |
-| `X`          | `IconClose`（用途: 解除/閉じる） | `TagMultiSelectInput`                            |
-| `Search`     | `IconSearch`                     | `BookListSearchField`                            |
+| 旧（lucide） | 新（SVG コンポーネント）                 | 主な使用箇所（例）                               |
+| ------------ | ---------------------------------------- | ------------------------------------------------ |
+| `BookOpen`   | `IconBook`                               | `BookCollectionView`, `ListEmptyView`            |
+| `Calendar`   | `IconBookRibbon`（Figma: `book_ribbon`） | `BookSingleView`, `ListCard`                     |
+| `Clock`      | `IconClock`                              | `BookSingleView`, `RecordSingleView`, `ListCard` |
+| `FileText`   | `IconNoteStack`（Figma: `note_stack`）   | `BookSingleView`, `ListCard`                     |
+| `Play`       | `IconStart`（Figma: `Start`）            | `TimerSection`, `PrimaryButton.stories`          |
+| `Pause`      | `IconPause`                              | `TimerSection`                                   |
+| `Square`     | `IconStop`（用途: 停止）                 | `TimerSection`                                   |
+| `Check`      | `IconCheck`（Figma: `Check`）            | `TagMultiSelectInput`                            |
+| `X`          | `IconClose`（Figma: `Close`）            | `TagMultiSelectInput`                            |
+| `Search`     | `IconSearch`                             | `BookListSearchField`                            |
 
 ## 作業内容
 
@@ -97,8 +97,8 @@ Status: 🚧 進行中
 
 ## 別チケット候補
 
-- `src/app/components/ui/**` の整理（未使用削除）: [TK-014](./TK-014_UI依存とcomponents_ui棚卸し整理.md)
-- `src/app/components/ui/**` 内の `lucide-react` 置換: [TK-025](./TK-025_components_uiのlucide-react置換.md)
+- `src/app/components/ui/**` の整理（未使用削除）: [TK-014](../TK-014_UI依存とcomponents_ui棚卸し整理.md)
+- `src/app/components/ui/**` 内の `lucide-react` 置換: [TK-025](../TK-025_components_uiのlucide-react置換.md)
 
 ## 非ゴール
 

@@ -1,10 +1,12 @@
 import * as React from "react";
-import { Calendar, Clock, FileText } from "lucide-react";
 
 import { cn } from "./ui/utils";
 import { Tag } from "./Tag";
 import { formatDateTime, formatDurationHms } from "../utils/format";
 import { linkifyReactNode } from "../utils/linkify";
+import { IconClock } from "./icons/IconClock";
+import { IconBookRibbon } from "./icons/IconBookRibbon";
+import { IconNoteStack } from "./icons/IconNoteStack";
 
 type Shadow = "md" | "sm";
 
@@ -79,7 +81,7 @@ function ListCardFrame<TAs extends React.ElementType = "div">({
           : "[box-shadow:var(--shadow-neumorphism-sm)]",
         "p-4",
         isButton && "w-full text-left hover:bg-accent transition-colors",
-        className
+        className,
       )}
       {...(componentProps as any)}
     />
@@ -147,7 +149,7 @@ export function ListCard(props: ListCardProps) {
 
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-1 text-muted-foreground">
-                <Calendar className="size-4" />
+                <IconBookRibbon size={4} />
                 <p className="text-[13px] leading-5 tabular-nums">
                   {formatDateTime(lastActivityAt)}
                 </p>
@@ -155,14 +157,14 @@ export function ListCard(props: ListCardProps) {
 
               <div className="flex items-center gap-2.5 text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <FileText className="size-4" />
+                  <IconNoteStack size={4} />
                   <p className="text-[13px] leading-5 tabular-nums">
                     {notesCount} notes
                   </p>
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <Clock className="size-4" />
+                  <IconClock size={4} />
                   <p className="text-[13px] leading-5 tabular-nums">
                     {formatDurationHms(totalDurationSeconds)}
                   </p>

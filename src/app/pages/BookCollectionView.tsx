@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { BookOpen } from "lucide-react";
-
 import { useApp } from "../context/AppContext";
 import type { Book } from "../types";
 
@@ -13,6 +11,7 @@ import { PrimaryButton } from "../components/PrimaryButton";
 import { FieldItem } from "../components/FieldItem";
 import { Input } from "../components/ui/input";
 import { IconAdd } from "../components/icons/IconAdd";
+import { IconBook } from "../components/icons/IconBook";
 import { BookSingleView } from "./BookSingleView";
 
 export function BookCollectionView() {
@@ -124,7 +123,9 @@ export function BookCollectionView() {
             </div>
           ) : filteredBooks.length === 0 ? (
             <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
-              <BookOpen className="size-12 mb-4 text-muted-foreground" />
+              <div className="mb-4 text-muted-foreground">
+                <IconBook size={12} />
+              </div>
               <p className="text-muted-foreground">
                 該当する書籍が見つかりません
               </p>

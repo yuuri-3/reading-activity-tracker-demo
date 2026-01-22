@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useApp } from "../context/AppContext";
 import { useTimer } from "../timer/TimerContext";
 import { PrimaryButton } from "./PrimaryButton";
-import { Play, Pause, Square } from "lucide-react";
+import { IconStart } from "./icons/IconStart";
+import { IconPause } from "./icons/IconPause";
+import { IconStop } from "./icons/IconStop";
 import {
   formatDateTimeWithSeconds,
   formatDurationHmsParts,
@@ -197,7 +199,7 @@ export function TimerSection({
                     animate={{ opacity: isStarting ? 0 : 1 }}
                     transition={{ duration: 0.1 }}
                   >
-                    <Play />
+                    <IconStart size={4} />
                   </motion.span>
                 }
               >
@@ -233,7 +235,7 @@ export function TimerSection({
                   onClick={pauseTimer}
                   disabled={isStopping}
                   className="w-full"
-                  icon={<Pause />}
+                  icon={<IconPause size={4} />}
                 >
                   一時停止
                 </PrimaryButton>
@@ -255,7 +257,7 @@ export function TimerSection({
                   }}
                   disabled={isStopping}
                   className="w-full"
-                  icon={<Square />}
+                  icon={<IconStop size={4} />}
                 >
                   計測終了
                 </PrimaryButton>

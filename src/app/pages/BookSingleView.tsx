@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 
-import { Calendar, Clock, FileText } from "lucide-react";
-
 import { useApp } from "../context/AppContext";
 import type { Book } from "../types";
 import { ListCard } from "../components/ListCard";
@@ -14,6 +12,9 @@ import { formatDateTime, formatDurationHms } from "../utils/format";
 import { toast } from "sonner";
 import { Tag as TagChip } from "../components/Tag";
 import { IconBack } from "../components/icons/IconBack";
+import { IconClock } from "../components/icons/IconClock";
+import { IconBookRibbon } from "../components/icons/IconBookRibbon";
+import { IconNoteStack } from "../components/icons/IconNoteStack";
 
 export type BookSingleViewProps = {
   book: Book;
@@ -205,7 +206,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                 </h1>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className="size-4" />
+                    <IconBookRibbon size={4} />
                     <p className="text-[13px] leading-5 tabular-nums">
                       {formatDateTime(lastActivityAt)}
                     </p>
@@ -213,14 +214,14 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
 
                   <div className="flex items-center gap-2.5 text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <FileText className="size-4" />
+                      <IconNoteStack size={4} />
                       <p className="text-[13px] leading-5 tabular-nums">
                         {memos.length} notes
                       </p>
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <Clock className="size-4" />
+                      <IconClock size={4} />
                       <p className="text-[13px] leading-5 tabular-nums">
                         {formatDurationHms(totalDuration)}
                       </p>

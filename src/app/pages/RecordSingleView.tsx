@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { Clock } from "lucide-react";
 import { toast } from "sonner";
 
 import { useApp } from "../context/AppContext";
@@ -30,6 +29,7 @@ import type { Book, BookMemo, ReadingRecord } from "../types";
 import { Tag } from "../components/Tag";
 import { useElementScrollRestoration } from "../utils/useElementScrollRestoration";
 import { DialogFormPattern } from "../components/DialogFormPattern";
+import { IconClock } from "../components/icons/IconClock";
 
 type RecordsSegment = "all" | "reading" | "book";
 
@@ -767,9 +767,7 @@ export function RecordSingleView({
         <div ref={scrollContainerRef} className="max-w-2xl mx-auto">
           <Header
             pageTitle="記録"
-            icon={
-              <IconRecord size={7} color="var(--muted-foreground)" />
-            }
+            icon={<IconRecord size={7} color="var(--muted-foreground)" />}
             action={addRecordButton}
             searchQuery={searchQuery}
             onSearchQueryChange={handleSearchQueryChange}
@@ -785,7 +783,7 @@ export function RecordSingleView({
           <div className="px-6 pt-2 pb-28">
             <div className="pb-6">
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="size-4" />
+                <IconClock size={4} />
                 <p className="text-sm">今月の合計時間</p>
               </div>
               <p className="mt-1 text-[28px] leading-8 font-medium tabular-nums text-foreground">

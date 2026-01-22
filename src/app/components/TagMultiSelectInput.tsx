@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, X } from "lucide-react";
+
+import { IconCheck } from "./icons/IconCheck";
+import { IconClose } from "./icons/IconClose";
 
 import { cn } from "./ui/utils";
 import { Badge } from "./ui/badge";
@@ -76,7 +78,7 @@ export function TagMultiSelectInput({
     if (!query) return normalizedOptions;
     const q = query.toLocaleLowerCase();
     return normalizedOptions.filter((t) =>
-      t.text.toLocaleLowerCase().includes(q)
+      t.text.toLocaleLowerCase().includes(q),
     );
   }, [normalizedOptions, query]);
 
@@ -248,12 +250,12 @@ export function TagMultiSelectInput({
                     type="button"
                     className={cn(
                       "flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent",
-                      selected && "bg-accent"
+                      selected && "bg-accent",
                     )}
                     onClick={() => toggleTagId(tag.id)}
                   >
                     <span className="inline-flex size-4 items-center justify-center">
-                      {selected ? <Check className="size-4" /> : null}
+                      {selected ? <IconCheck size={4} /> : null}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{tag.text}</span>
                   </button>
@@ -277,7 +279,7 @@ export function TagMultiSelectInput({
                   onClick={() => removeTag(tagId)}
                   aria-label={`${label} を削除`}
                 >
-                  <X className="size-3" />
+                  <IconClose size={3} />
                 </button>
               </Badge>
             );
