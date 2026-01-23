@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 
-import { Calendar, Clock, FileText } from "lucide-react";
-
 import { useApp } from "../context/AppContext";
 import type { Book } from "../types";
 import { ListCard } from "../components/ListCard";
@@ -14,6 +12,9 @@ import { formatDateTime, formatDurationHms } from "../utils/format";
 import { toast } from "sonner";
 import { Tag as TagChip } from "../components/Tag";
 import { IconBack } from "../components/icons/IconBack";
+import { IconClock } from "../components/icons/IconClock";
+import { IconBookRibbon } from "../components/icons/IconBookRibbon";
+import { IconNoteStack } from "../components/icons/IconNoteStack";
 
 export type BookSingleViewProps = {
   book: Book;
@@ -39,7 +40,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
 
   const [isEditBookMemoOpen, setIsEditBookMemoOpen] = useState(false);
   const [editingBookMemoId, setEditingBookMemoId] = useState<string | null>(
-    null
+    null,
   );
   const [editingBookMemoText, setEditingBookMemoText] = useState("");
 
@@ -67,11 +68,11 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
 
   const lastActivityAt = (() => {
     const candidates = [book.createdAt, lastMemoAt, lastRecordEnd].filter(
-      Boolean
+      Boolean,
     ) as string[];
     if (candidates.length === 0) return new Date().toISOString();
     return candidates.reduce((latest, t) =>
-      new Date(t).getTime() > new Date(latest).getTime() ? t : latest
+      new Date(t).getTime() > new Date(latest).getTime() ? t : latest,
     );
   })();
 
@@ -98,11 +99,11 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     switch (segment) {
       case "reading":
         return recordItems.sort(
-          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
         );
       case "book":
         return memoItems.sort(
-          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
         );
       case "all":
       default:
@@ -155,7 +156,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     if (!editingBookMemoId) return;
     void updateBook(book.id, {
       memos: (book.memos ?? []).map((m) =>
-        m.id === editingBookMemoId ? { ...m, text: editingBookMemoText } : m
+        m.id === editingBookMemoId ? { ...m, text: editingBookMemoText } : m,
       ),
     });
     setIsEditBookMemoOpen(false);
@@ -194,7 +195,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
               onClick={onBack}
               className="inline-flex items-center gap-0.5 text-[14px] font-normal leading-5 text-foreground"
             >
-              <IconBack size={20} className="shrink-0" />
+              <IconBack size={5} />
               <span className="pb-[2px]">戻る</span>
             </button>
 
@@ -205,7 +206,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                 </h1>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className="size-4" />
+                    <IconBookRibbon size={4} />
                     <p className="text-[13px] leading-5 tabular-nums">
                       {formatDateTime(lastActivityAt)}
                     </p>
@@ -213,14 +214,14 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
 
                   <div className="flex items-center gap-2.5 text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <FileText className="size-4" />
+                      <IconNoteStack size={4} />
                       <p className="text-[13px] leading-5 tabular-nums">
                         {memos.length} notes
                       </p>
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <Clock className="size-4" />
+                      <IconClock size={4} />
                       <p className="text-[13px] leading-5 tabular-nums">
                         {formatDurationHms(totalDuration)}
                       </p>

@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { BookOpen } from "lucide-react";
-
 import { useApp } from "../context/AppContext";
 import type { Book } from "../types";
 
@@ -13,6 +11,7 @@ import { PrimaryButton } from "../components/PrimaryButton";
 import { FieldItem } from "../components/FieldItem";
 import { Input } from "../components/ui/input";
 import { IconAdd } from "../components/icons/IconAdd";
+import { IconBook } from "../components/icons/IconBook";
 import { BookSingleView } from "./BookSingleView";
 
 export function BookCollectionView() {
@@ -51,7 +50,7 @@ export function BookCollectionView() {
     (book) =>
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (book.author &&
-        book.author.toLowerCase().includes(searchQuery.toLowerCase()))
+        book.author.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   if (selectedBook) {
@@ -93,7 +92,7 @@ export function BookCollectionView() {
                     trigger={
                       <PrimaryButton
                         className="px-3 py-2 text-sm"
-                        icon={<IconAdd size={16} />}
+                        icon={<IconAdd size={4} />}
                       >
                         書籍登録
                       </PrimaryButton>
@@ -124,7 +123,9 @@ export function BookCollectionView() {
             </div>
           ) : filteredBooks.length === 0 ? (
             <div className="min-h-full flex flex-col items-center justify-center py-12 text-center">
-              <BookOpen className="size-12 mb-4 text-muted-foreground" />
+              <div className="mb-4 text-muted-foreground">
+                <IconBook size={12} />
+              </div>
               <p className="text-muted-foreground">
                 該当する書籍が見つかりません
               </p>
@@ -143,7 +144,7 @@ export function BookCollectionView() {
                       ? t
                       : latest;
                   },
-                  null
+                  null,
                 );
 
                 const lastMemoAt = (book.memos ?? []).reduce<string | null>(
@@ -154,7 +155,7 @@ export function BookCollectionView() {
                       ? t
                       : latest;
                   },
-                  null
+                  null,
                 );
 
                 const lastActivityAt = (() => {
@@ -166,7 +167,7 @@ export function BookCollectionView() {
                   return candidates.reduce((latest, t) =>
                     new Date(t).getTime() > new Date(latest).getTime()
                       ? t
-                      : latest
+                      : latest,
                   );
                 })();
 

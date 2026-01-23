@@ -53,7 +53,7 @@ export function TagListItem({
               className="transition-colors hover:text-foreground"
               onClick={onEdit}
             >
-              <IconEdit size={20} />
+              <IconEdit size={5} />
             </button>
             <button
               type="button"
@@ -61,7 +61,7 @@ export function TagListItem({
               className="transition-colors hover:text-foreground"
               onClick={onDelete}
             >
-              <IconDelete size={20} />
+              <IconDelete size={5} />
             </button>
           </div>
         </div>

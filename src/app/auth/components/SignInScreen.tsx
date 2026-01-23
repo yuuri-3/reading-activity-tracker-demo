@@ -57,7 +57,7 @@ export function SignInScreen({
               </button>
 
               <div className="flex flex-col items-center gap-1">
-                <IconInfo size={20} color="#7a8a9d" />
+                <IconInfo size={5} color="#7a8a9d" />
                 <p className="text-[11px] leading-[1.5] text-[#7a8a9d] text-center whitespace-pre-line">
                   {
                     "ログインせずに利用している間は、\n機種変更時などに保存データが消失します。"

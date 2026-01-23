@@ -53,9 +53,9 @@ function HeaderSimple({ pageTitle = "本棚", icon, action }: HeaderSimpleProps)
     <div className="sticky top-0 z-30 flex flex-col gap-6 px-6 pt-8 pb-4 backdrop-blur-lg bg-[rgba(232,237,242,0.9)] supports-[backdrop-filter]:bg-[rgba(232,237,242,0.75)]">
       <div className="flex items-center justify-between h-9">
         <div className="flex items-center gap-1">
-          <span className="shrink-0 text-muted-foreground">
+          <span className="text-muted-foreground">
             {icon === undefined ? (
-              <IconBookshelf size={28} color="currentColor" />
+              <IconBookshelf size={7} />
             ) : (
               icon
             )}
@@ -95,7 +95,7 @@ function HeaderDefault({
         { value: "reading", text: "記録メモ" },
         { value: "book", text: "書籍メモ" },
       ],
-    [segmentedControlItems]
+    [segmentedControlItems],
   );
 
   const isSegmentedControlled =
@@ -137,11 +137,7 @@ function HeaderDefault({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           {icon === undefined ? (
-            <IconBookshelf
-              className="shrink-0"
-              size={28}
-              color="var(--muted-foreground)"
-            />
+            <IconBookshelf size={7} color="var(--muted-foreground)" />
           ) : (
             icon
           )}
@@ -165,7 +161,7 @@ function HeaderDefault({
             trigger={
               <PrimaryButton
                 className="px-3 py-2 text-sm"
-                icon={<IconAdd size={16} />}
+                icon={<IconAdd size={4} />}
               >
                 {buttonLabel}
               </PrimaryButton>

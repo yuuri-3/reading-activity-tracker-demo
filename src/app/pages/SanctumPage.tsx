@@ -65,7 +65,7 @@ export function SanctumPage() {
   const showFullScreenLoading = isLinking || isFallbackMigrating;
 
   const pendingFallbackAccountMismatchRef = useRef(
-    pendingFallbackAccountMismatch
+    pendingFallbackAccountMismatch,
   );
   useEffect(() => {
     pendingFallbackAccountMismatchRef.current = pendingFallbackAccountMismatch;
@@ -98,7 +98,7 @@ export function SanctumPage() {
         <Header
           variant="simple"
           pageTitle="書斎"
-          icon={<IconLamp size={28} />}
+          icon={<IconLamp size={7} />}
           action={
             <div className="h-9 w-[97px] overflow-hidden">
               <LogoYomzoy className="h-full w-full" />
@@ -173,7 +173,7 @@ export function SanctumPage() {
                         void signOut();
                       }}
                     >
-                      <IconLogout size={24} />
+                      <IconLogout />
                       ログアウト
                     </button>
                   </div>
@@ -195,20 +195,24 @@ export function SanctumPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <IconTag size={20} className="text-muted-foreground" />
+                    <span className="text-muted-foreground">
+                      <IconTag size={5} />
+                    </span>
                     <p className="text-base leading-6 text-foreground">
                       タグ管理
                     </p>
                   </div>
 
-                  <IconForward size={20} className="text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    <IconForward size={5} />
+                  </span>
                 </div>
               </a>
             </section>
 
             <section className="flex flex-col gap-4">
               <div className="flex items-center gap-1.5 text-muted-foreground">
-                <IconSparkle size={24} />
+                <IconSparkle />
                 <p className="text-sm leading-5">Coming soon</p>
               </div>
 
@@ -252,7 +256,7 @@ export function SanctumPage() {
                     const code = (err as { code?: unknown })?.code;
                     if (code === "auth/requires-recent-login") {
                       toast.error(
-                        "安全のため再ログインが必要です。再ログインしてください。"
+                        "安全のため再ログインが必要です。再ログインしてください。",
                       );
                       try {
                         await signOut();
@@ -278,7 +282,7 @@ export function SanctumPage() {
                   type="button"
                   className="flex items-center gap-1.5 py-3 text-sm text-destructive"
                 >
-                  <IconDelete size={24} />
+                  <IconDelete />
                   アカウントを削除
                 </button>
               }

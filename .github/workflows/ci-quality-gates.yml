@@ -45,6 +45,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check lucide-react usage policy
+        run: npm run check:lucide
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:

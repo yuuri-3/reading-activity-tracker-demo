@@ -37,6 +37,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check lucide-react usage policy
+        run: npm run check:lucide
+
       - name: Build
         env:
           VITE_BASE: /

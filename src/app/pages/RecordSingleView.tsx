@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { Clock } from "lucide-react";
 import { toast } from "sonner";
 
 import { useApp } from "../context/AppContext";
@@ -30,6 +29,7 @@ import type { Book, BookMemo, ReadingRecord } from "../types";
 import { Tag } from "../components/Tag";
 import { useElementScrollRestoration } from "../utils/useElementScrollRestoration";
 import { DialogFormPattern } from "../components/DialogFormPattern";
+import { IconClock } from "../components/icons/IconClock";
 
 type RecordsSegment = "all" | "reading" | "book";
 
@@ -53,7 +53,7 @@ type SearchItem =
 function toDayKey(date: Date) {
   const pad2 = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(
-    date.getDate()
+    date.getDate(),
   )}`;
 }
 
@@ -75,7 +75,7 @@ function highlightText(text: string, query: string): ReactNode {
         className="bg-[var(--search-highlight)] text-[var(--search-highlight-foreground)] rounded-[2px] px-0.5"
       >
         {text.slice(idx, idx + q.length)}
-      </mark>
+      </mark>,
     );
     start = idx + q.length;
   }
@@ -88,9 +88,9 @@ function highlightText(text: string, query: string): ReactNode {
 function toLocalDateTimeInputValue(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate()
+    date.getDate(),
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
-    date.getSeconds()
+    date.getSeconds(),
   )}`;
 }
 
@@ -214,10 +214,10 @@ export function RecordSingleView({
   const [bookMemo, setBookMemo] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [startAt, setStartAt] = useState(
-    () => getDefaultAddRecordDateTimeValues().startAt
+    () => getDefaultAddRecordDateTimeValues().startAt,
   );
   const [endAt, setEndAt] = useState(
-    () => getDefaultAddRecordDateTimeValues().endAt
+    () => getDefaultAddRecordDateTimeValues().endAt,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -363,7 +363,7 @@ export function RecordSingleView({
       }
     } catch (err) {
       setSaveError(
-        err instanceof Error ? err.message : "記録の追加に失敗しました"
+        err instanceof Error ? err.message : "記録の追加に失敗しました",
       );
       setIsSaving(false);
     }
@@ -410,7 +410,7 @@ export function RecordSingleView({
         const tagTexts = getRecordTagItems(record).map((t) => t.text);
         const matchedMemo = memoText.includes(normalizedQuery);
         const matchedTags = tagTexts.some((t) =>
-          t.trim().toLowerCase().includes(normalizedQuery)
+          t.trim().toLowerCase().includes(normalizedQuery),
         );
 
         if (!matchedMemo && !matchedTags) return null;
@@ -475,7 +475,7 @@ export function RecordSingleView({
       const date = new Date(
         start.getFullYear(),
         start.getMonth(),
-        start.getDate()
+        start.getDate(),
       );
       const dateLabel = new Intl.DateTimeFormat("ja-JP", {
         year: "numeric",
@@ -508,7 +508,7 @@ export function RecordSingleView({
           .sort(
             (a, b) =>
               new Date(b!.startTime).getTime() -
-              new Date(a!.startTime).getTime()
+              new Date(a!.startTime).getTime(),
           ) as ReadingRecord[];
         return { ...g, items };
       });
@@ -606,7 +606,7 @@ export function RecordSingleView({
         ...g,
         items: g.items.sort(
           (a, b) =>
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
         ),
       }));
   }, [bookMemoSearchItems, isSearchActive, recordSearchItems, selectedSegment]);
@@ -614,7 +614,7 @@ export function RecordSingleView({
   const addRecordButton = (
     <PrimaryButton
       className="px-3 py-2 text-sm"
-      icon={<IconAdd size={16} />}
+      icon={<IconAdd size={4} />}
       type="button"
       onClick={handleOpenAddDialog}
     >
@@ -767,13 +767,7 @@ export function RecordSingleView({
         <div ref={scrollContainerRef} className="max-w-2xl mx-auto">
           <Header
             pageTitle="記録"
-            icon={
-              <IconRecord
-                className="shrink-0"
-                size={28}
-                color="var(--muted-foreground)"
-              />
-            }
+            icon={<IconRecord size={7} color="var(--muted-foreground)" />}
             action={addRecordButton}
             searchQuery={searchQuery}
             onSearchQueryChange={handleSearchQueryChange}
@@ -789,7 +783,7 @@ export function RecordSingleView({
           <div className="px-6 pt-2 pb-28">
             <div className="pb-6">
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="size-4" />
+                <IconClock size={4} />
                 <p className="text-sm">今月の合計時間</p>
               </div>
               <p className="mt-1 text-[28px] leading-8 font-medium tabular-nums text-foreground">
@@ -801,7 +795,7 @@ export function RecordSingleView({
               <div className="min-h-full flex items-start justify-center">
                 <ListEmptyView
                   icon={
-                    <IconRecord size={48} color="var(--muted-foreground)" />
+                    <IconRecord size={12} color="var(--muted-foreground)" />
                   }
                   message="記録登録されていません"
                   submessage={
@@ -862,7 +856,7 @@ export function RecordSingleView({
                                     bookName={item.book.title}
                                     bookNote={highlightText(
                                       item.memo.text,
-                                      searchQuery
+                                      searchQuery,
                                     )}
                                   />
                                 );

@@ -1,6 +1,5 @@
-import { Search } from "lucide-react";
-
 import { Input } from "../ui/input";
+import { IconSearch } from "../icons/IconSearch";
 
 export type BookListSearchFieldProps = {
   value: string;
@@ -15,7 +14,9 @@ export function BookListSearchField({
 }: BookListSearchFieldProps) {
   return (
     <div className="relative w-full">
-      <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <IconSearch size={4} />
+      </span>
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
