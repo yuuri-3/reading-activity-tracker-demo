@@ -6,6 +6,7 @@ import { GuestCreateNoticeProvider } from "../context/GuestCreateNoticeContext";
 import { SearchProvider } from "../context/SearchContext";
 import type { Book, ReadingRecord, Tag, TimerState } from "../types";
 import { TimerProvider } from "../timer/TimerContext";
+import { MockAuthProvider } from "../auth/AuthContext";
 
 export type MockAppProviderProps = {
   children?: ReactNode;
@@ -219,16 +220,18 @@ export function MockAppProvider({
   }, [books, records, tags]);
 
   return (
-    <TimerProvider
-      persist={false}
-      tickMs={timerTickMs}
-      initialState={initialTimerState}
-    >
-      <GuestCreateNoticeProvider user={null}>
-        <SearchProvider initialSearchText={initialSearchText}>
-          <AppContext.Provider value={value}>{children}</AppContext.Provider>
-        </SearchProvider>
-      </GuestCreateNoticeProvider>
-    </TimerProvider>
+    <MockAuthProvider user={null}>
+      <TimerProvider
+        persist={false}
+        tickMs={timerTickMs}
+        initialState={initialTimerState}
+      >
+        <GuestCreateNoticeProvider user={null}>
+          <SearchProvider initialSearchText={initialSearchText}>
+            <AppContext.Provider value={value}>{children}</AppContext.Provider>
+          </SearchProvider>
+        </GuestCreateNoticeProvider>
+      </TimerProvider>
+    </MockAuthProvider>
   );
 }
