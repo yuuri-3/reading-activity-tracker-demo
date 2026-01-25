@@ -40,7 +40,7 @@ function parseRouteFromPath(pathname: string) {
 
   const [pageRaw, subRaw] = path.split("/");
 
-  if (isOcrHandwrittenMemoEnabled() && pageRaw === "ocr") {
+  if (isOcrHandwrittenMemoEnabled() && pageRaw === "ocr" && subRaw === "edit") {
     return {
       page: "home" as Page,
       recordsSubPage: null,
@@ -79,7 +79,7 @@ function toPathname(
   sanctumSubPage: SanctumSubPage,
   ocrActive: boolean,
 ) {
-  if (ocrActive) return "/ocr";
+  if (ocrActive) return "/ocr/edit";
   if (page === "home") return "/";
   if (page === "records" && recordsSubPage) return `/records/${recordsSubPage}`;
   if (page === "sanctum" && sanctumSubPage) return `/sanctum/${sanctumSubPage}`;
@@ -176,7 +176,14 @@ function AppContent() {
             />
           ) : (
             <>
-              {currentPage === "home" ? <TimerPage /> : null}
+              {currentPage === "home" ? (
+                <TimerPage
+                  showOcrEntry={isOcrHandwrittenMemoEnabled()}
+                  onOpenOcr={() => {
+                    setOcrActive(true);
+                  }}
+                />
+              ) : null}
               {currentPage === "books" && <BookCollectionView />}
               {currentPage === "records" && (
                 <RecordSingleView

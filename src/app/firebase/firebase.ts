@@ -1,6 +1,11 @@
 /// <reference types="vite/client" />
 
 import { initializeApp, type FirebaseApp } from "firebase/app";
+import {
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+  type AppCheck,
+} from "firebase/app-check";
 import { GoogleAuthProvider, getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getFunctions, type Functions } from "firebase/functions";
@@ -20,6 +25,7 @@ let cachedAuth: Auth | null = null;
 let cachedDb: Firestore | null = null;
 let cachedFunctions: Functions | null = null;
 let cachedGoogleProvider: GoogleAuthProvider | null = null;
+let cachedAppCheck: AppCheck | null = null;
 
 function getEnvConfig(): FirebaseConfig {
   const config: FirebaseConfig = {
@@ -39,7 +45,7 @@ function getEnvConfig(): FirebaseConfig {
     !config.appId
   ) {
     throw new Error(
-      "Firebase設定が不足しています。VITE_FIREBASE_API_KEY / VITE_FIREBASE_AUTH_DOMAIN / VITE_FIREBASE_PROJECT_ID / VITE_FIREBASE_APP_ID を設定してください。"
+      "Firebase設定が不足しています。VITE_FIREBASE_API_KEY / VITE_FIREBASE_AUTH_DOMAIN / VITE_FIREBASE_PROJECT_ID / VITE_FIREBASE_APP_ID を設定してください。",
     );
   }
 
@@ -49,6 +55,15 @@ function getEnvConfig(): FirebaseConfig {
 export function getFirebaseApp(): FirebaseApp {
   if (!cachedApp) {
     cachedApp = initializeApp(getEnvConfig());
+    if (!cachedAppCheck) {
+      const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+      if (appCheckSiteKey) {
+        cachedAppCheck = initializeAppCheck(cachedApp, {
+          provider: new ReCaptchaV3Provider(appCheckSiteKey),
+          isTokenAutoRefreshEnabled: true,
+        });
+      }
+    }
   }
   return cachedApp;
 }
@@ -72,7 +87,7 @@ export function getFirestoreDb(): Firestore {
 
 export function getFirebaseFunctions(): Functions {
   if (!cachedFunctions) {
-    cachedFunctions = getFunctions(getFirebaseApp());
+    cachedFunctions = getFunctions(getFirebaseApp(), "asia-northeast1");
   }
   return cachedFunctions;
 }

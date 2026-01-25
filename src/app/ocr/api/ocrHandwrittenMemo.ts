@@ -25,6 +25,7 @@ export type OcrHandwrittenMemoError = {
   message: string;
   reason?: string;
   retryAfterSeconds?: number;
+  requestId?: string;
 };
 
 export type OcrHandwrittenMemoResult =
@@ -58,7 +59,17 @@ function pickRetryAfterSeconds(details: unknown): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-function buildMessage(code?: string, reason?: string): string {
+function pickRequestId(details: unknown): string | undefined {
+  if (!details || typeof details !== "object") return undefined;
+  const raw = (details as any).requestId;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : undefined;
+}
+
+function buildMessage(
+  code?: string,
+  reason?: string,
+  requestId?: string,
+): string {
   const c = code ? normalizeCallableErrorCode(code) : undefined;
 
   // Prefer reason-specific hints when we can.
@@ -91,7 +102,9 @@ function buildMessage(code?: string, reason?: string): string {
   }
 
   if (c === "internal") {
-    return "サーバー側でエラーが発生しました。時間をおいてお試しください。";
+    return requestId
+      ? `サーバー側でエラーが発生しました。時間をおいてお試しください。（ID: ${requestId}）`
+      : "サーバー側でエラーが発生しました。時間をおいてお試しください。";
   }
 
   return c ? `OCRに失敗しました（${c}）。` : "OCRに失敗しました。";
@@ -106,13 +119,15 @@ function normalizeOcrCallableError(err: unknown): OcrHandwrittenMemoError {
   const details = asAny?.details;
   const reason = pickReason(details);
   const retryAfterSeconds = pickRetryAfterSeconds(details);
+  const requestId = pickRequestId(details);
 
   return {
     code,
     class: cls,
-    message: buildMessage(rawCode, reason),
+    message: buildMessage(rawCode, reason, requestId),
     reason,
     retryAfterSeconds,
+    requestId,
   };
 }
 
