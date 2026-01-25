@@ -38,7 +38,7 @@ interface AppContextType {
   updateBook: (id: string, book: Partial<Book>) => Promise<void>;
   deleteBook: (id: string) => Promise<void>;
   getBook: (id: string) => Book | undefined;
-  addBookMemo: (bookId: string, memoText: string) => void;
+  addBookMemo: (bookId: string, memoText: string, createdAt?: string) => void;
 
   // Tags
   tags: Tag[];
@@ -298,13 +298,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const addBookMemo = useCallback(
-    (bookId: string, memoText: string) => {
+    (bookId: string, memoText: string, createdAt?: string) => {
       const book = getBook(bookId);
       if (book) {
+        const fallbackCreatedAt = new Date().toISOString();
+        const createdAtValue = createdAt?.trim() || fallbackCreatedAt;
         const newMemo: BookMemo = {
           id: Date.now().toString(),
           text: memoText,
-          createdAt: new Date().toISOString(),
+          createdAt: createdAtValue,
         };
         void updateBook(bookId, { memos: [...(book.memos || []), newMemo] });
       }

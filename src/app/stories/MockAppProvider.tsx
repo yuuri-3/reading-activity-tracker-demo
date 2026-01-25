@@ -129,16 +129,22 @@ export function MockAppProvider({
       setRecords((prev) => prev.filter((r) => r.bookId !== id));
     };
 
-    const addBookMemo = (bookId: string, memoText: string) => {
+    const addBookMemo = (
+      bookId: string,
+      memoText: string,
+      createdAt?: string,
+    ) => {
       const target = getBook(bookId);
       if (!target) return;
+      const fallbackCreatedAt = new Date().toISOString();
+      const createdAtValue = createdAt?.trim() || fallbackCreatedAt;
       void updateBook(bookId, {
         memos: [
           ...(target.memos ?? []),
           {
             id: Date.now().toString(),
             text: memoText,
-            createdAt: new Date().toISOString(),
+            createdAt: createdAtValue,
           },
         ],
       });
