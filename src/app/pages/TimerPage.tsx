@@ -25,6 +25,11 @@ type PersistedTimerInputsV1 = {
   tagIds: string[];
 };
 
+type TimerPageProps = {
+  showOcrEntry?: boolean;
+  onOpenOcr?: () => void;
+};
+
 const TIMER_INPUTS_STORAGE_VERSION = 1 as const;
 
 function getTimerInputsStorageKey(uid: string | undefined) {
@@ -96,7 +101,7 @@ function getDefaultTimerInputs() {
   };
 }
 
-export function TimerPage() {
+export function TimerPage({ showOcrEntry, onOpenOcr }: TimerPageProps) {
   const { books, tags, createTag } = useApp();
   const { user } = useAuth();
   const storageKey = useMemo(
