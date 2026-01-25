@@ -128,7 +128,14 @@ function AppContent() {
             />
           ) : (
             <>
-              {currentPage === "home" ? <TimerPage /> : null}
+              {currentPage === "home" ? (
+                <TimerPage
+                  showOcrEntry={isOcrHandwrittenMemoEnabled()}
+                  onOpenOcr={() => {
+                    setOcrActive(true);
+                  }}
+                />
+              ) : null}
               {currentPage === "books" && <BookCollectionView />}
               {currentPage === "records" && (
                 <RecordSingleView

@@ -1,9 +1,9 @@
 type OcrEnv = {
-  VITE_ENABLE_OCR_HANDWRITTEN_MEMO?: string;
+  VITE_FEATURE_OCR?: string;
 };
 
 export function isOcrHandwrittenMemoEnabled(
-  env: OcrEnv = import.meta.env
+  env: OcrEnv = import.meta.env,
 ): boolean {
-  return env.VITE_ENABLE_OCR_HANDWRITTEN_MEMO === "true";
+  return env.VITE_FEATURE_OCR === "1";
 }
