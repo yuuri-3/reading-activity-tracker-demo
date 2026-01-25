@@ -48,6 +48,15 @@ import {
 import { checkGuestMergeBackend } from "../firebase/guestMergeBackend";
 import { getCallableErrorCode } from "../firebase/functionsError";
 import {
+  decideGuestMergeStrategy,
+  formatGuestMergeExecuteErrorMessage,
+  isBackendGuestMergeEnabled,
+  normalizePrepareGuestMergeResult,
+  normalizePreviewGuestMergeCounts,
+  type PrepareGuestMergeResult,
+} from "./guestMerge/guestMergeLogic";
+import { normalizeMigratingDocData } from "./guestMerge/normalizeMigratingDocData";
+import {
   ACCOUNT_DELETION_SUBCOLLECTIONS,
   deleteFirestoreUserDataForAccountDeletion,
 } from "./accountDeletion";
@@ -61,12 +70,12 @@ export async function deleteAccountImpl(args: {
   ) => Promise<void>;
   deleteUserDoc: (
     db: ReturnType<typeof getFirestoreDb>,
-    uid: string
+    uid: string,
   ) => Promise<void>;
   deleteAuthUser: (user: User) => Promise<void>;
   cleanupLocalStorageForUid: (
     targetUid: string,
-    options: { guestCreateNotice?: boolean; timerState?: boolean }
+    options: { guestCreateNotice?: boolean; timerState?: boolean },
   ) => void;
 }) {
   const currentUser = args.auth.currentUser;
@@ -100,17 +109,6 @@ type SecondaryAppAuthAndDb = Awaited<
   ReturnType<typeof createSecondaryAppAuthAndDb>
 >;
 
-type PrepareGuestMergeCallableResult = {
-  requestId: string;
-  secret: string;
-  expiresAt: string;
-};
-
-type PreviewGuestMergeCallableResult = {
-  anonUid: string;
-  counts: { tags: number; books: number; records: number };
-};
-
 async function createSecondaryAppAuthAndDb() {
   const primaryApp = getFirebaseApp();
   const name = `yomzoy-secondary-${Date.now()}-${Math.random()}`;
@@ -129,7 +127,7 @@ async function createSecondaryAppAuthAndDb() {
 async function readUserSubcollectionDocs(
   db: ReturnType<typeof getFirestoreDb>,
   uid: string,
-  subcollection: "tags" | "books" | "records"
+  subcollection: "tags" | "books" | "records",
 ): Promise<FirestoreDocSnapshot[]> {
   const snap = await getDocs(collection(db, "users", uid, subcollection));
   return snap.docs.map((d) => {
@@ -141,178 +139,11 @@ async function readUserSubcollectionDocs(
   });
 }
 
-function toIsoStringMaybe(value: unknown): string | null {
-  if (!value) return null;
-  if (typeof value === "string") {
-    const t = new Date(value);
-    return Number.isNaN(t.getTime()) ? null : t.toISOString();
-  }
-  if (value instanceof Date) return value.toISOString();
-
-  const asAny = value as any;
-  if (asAny && typeof asAny.toDate === "function") {
-    try {
-      const d = asAny.toDate();
-      return d instanceof Date ? d.toISOString() : null;
-    } catch {
-      return null;
-    }
-  }
-  if (typeof asAny?.seconds === "number") {
-    const ms = asAny.seconds * 1000;
-    const d = new Date(ms);
-    return Number.isNaN(d.getTime()) ? null : d.toISOString();
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    // heuristics: milliseconds epoch (>= 10^12) else seconds.
-    const ms = value >= 1_000_000_000_000 ? value : value * 1000;
-    const d = new Date(ms);
-    return Number.isNaN(d.getTime()) ? null : d.toISOString();
-  }
-  return null;
-}
-
-function normalizeString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
-
-function normalizeStringArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const filtered = value.filter(
-    (v): v is string => typeof v === "string" && v.trim().length > 0
-  );
-  return filtered.length > 0 ? filtered : undefined;
-}
-
-function normalizeNumber(value: unknown, fallback = 0): number {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function normalizeMigratingDocData(
-  subcollection: "tags" | "books" | "records",
-  data: FirestoreDocData,
-  id: string
-): FirestoreDocData {
-  const nowIso = new Date().toISOString();
-
-  if (subcollection === "tags") {
-    const createdAt =
-      toIsoStringMaybe((data as any).createdAt) ||
-      toIsoStringMaybe((data as any).created_at) ||
-      nowIso;
-    const text = normalizeString((data as any).text, "").trim();
-    const description = normalizeString((data as any).description, "");
-    return {
-      ...data,
-      text,
-      description,
-      createdAt,
-    };
-  }
-
-  if (subcollection === "books") {
-    const createdAt =
-      toIsoStringMaybe((data as any).createdAt) ||
-      toIsoStringMaybe((data as any).created_at) ||
-      nowIso;
-    const title = normalizeString((data as any).title, "");
-    const author = normalizeString((data as any).author, "");
-
-    const rawMemos = Array.isArray((data as any).memos)
-      ? (data as any).memos
-      : [];
-    const memos = rawMemos
-      .map((m: any, idx: number) => {
-        if (!m || typeof m !== "object") return null;
-        const memoId = normalizeString(m.id, String(idx));
-        const text = normalizeString(m.text, "");
-        const createdAt =
-          toIsoStringMaybe(m.createdAt) ||
-          toIsoStringMaybe(m.created_at) ||
-          nowIso;
-        return { id: memoId, text, createdAt };
-      })
-      .filter(Boolean);
-
-    return {
-      ...data,
-      title,
-      ...(author ? { author } : {}),
-      memos,
-      createdAt,
-    };
-  }
-
-  // records
-  const createdAt =
-    toIsoStringMaybe((data as any).createdAt) ||
-    toIsoStringMaybe((data as any).created_at) ||
-    nowIso;
-
-  const memo = normalizeString((data as any).memo, "");
-  const bookIdRaw =
-    (data as any).bookId ?? (data as any).book_id ?? (data as any).bookID;
-  const bookId = typeof bookIdRaw === "string" ? bookIdRaw : undefined;
-
-  const tagIds =
-    normalizeStringArray((data as any).tagIds) ||
-    normalizeStringArray((data as any).tag_ids) ||
-    normalizeStringArray((data as any).tags);
-
-  let startTime =
-    toIsoStringMaybe((data as any).startTime) ||
-    toIsoStringMaybe((data as any).startAt) ||
-    toIsoStringMaybe((data as any).start_time) ||
-    toIsoStringMaybe((data as any).startedAt);
-  let endTime =
-    toIsoStringMaybe((data as any).endTime) ||
-    toIsoStringMaybe((data as any).endAt) ||
-    toIsoStringMaybe((data as any).end_time) ||
-    toIsoStringMaybe((data as any).endedAt);
-
-  let duration = normalizeNumber((data as any).duration, 0);
-  duration = Math.max(0, Math.floor(duration));
-
-  // Fill missing times best-effort so UI can display them.
-  if (!startTime && endTime && duration > 0) {
-    const end = new Date(endTime);
-    if (!Number.isNaN(end.getTime())) {
-      startTime = new Date(end.getTime() - duration * 1000).toISOString();
-    }
-  }
-  if (!endTime && startTime && duration > 0) {
-    const start = new Date(startTime);
-    if (!Number.isNaN(start.getTime())) {
-      endTime = new Date(start.getTime() + duration * 1000).toISOString();
-    }
-  }
-  if (!startTime && !endTime) {
-    // fallback: at least make it show up in grouped list
-    startTime = createdAt;
-    endTime = createdAt;
-  }
-
-  return {
-    ...data,
-    memo,
-    duration,
-    createdAt,
-    startTime,
-    endTime,
-    ...(bookId ? { bookId } : {}),
-    ...(tagIds ? { tagIds } : {}),
-    _migratedFromAnon: true,
-    _migratedFromAnonId: id,
-  };
-}
-
 async function writeUserSubcollectionDocsMerge(
   db: ReturnType<typeof getFirestoreDb>,
   uid: string,
   subcollection: "tags" | "books" | "records",
-  docs: FirestoreDocSnapshot[]
+  docs: FirestoreDocSnapshot[],
 ) {
   if (docs.length === 0) return;
 
@@ -373,7 +204,7 @@ function cleanupLocalStorageForUid(
   options: {
     guestCreateNotice?: boolean;
     timerState?: boolean;
-  }
+  },
 ) {
   if (typeof window === "undefined") return;
 
@@ -424,7 +255,7 @@ function getErrorEmail(err: unknown): string | undefined {
         const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
         const padded = base64.padEnd(
           base64.length + ((4 - (base64.length % 4)) % 4),
-          "="
+          "=",
         );
         const json = globalThis.atob ? globalThis.atob(padded) : "";
         if (json) {
@@ -462,7 +293,7 @@ function replacePathname(pathname: string) {
     window.history.replaceState(
       null,
       "",
-      `${nextPathname}${window.location.search}`
+      `${nextPathname}${window.location.search}`,
     );
   } catch {
     // ignore
@@ -632,7 +463,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       AuthContextValue["pendingFallbackMigration"]
     >["reasonCode"];
     // Backend merge support (ideal flow)
-    mergeRequest?: PrepareGuestMergeCallableResult;
+    mergeRequest?: PrepareGuestMergeResult;
     linkErrorCredential?: OAuthCredential | null;
 
     // Legacy client-side migration data (fallback)
@@ -680,7 +511,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
           setRedirectFlag(false);
           setError(
-            err instanceof Error ? err.message : "Googleログインに失敗しました"
+            err instanceof Error ? err.message : "Googleログインに失敗しました",
           );
         }
       })();
@@ -692,7 +523,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!auth.currentUser && getRedirectFlag()) {
             setRedirectFlag(false);
             setError(
-              "ログインが完了しませんでした（iOSのSafari設定やアプリ内ブラウザが原因のことがあります）。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。"
+              "ログインが完了しませんでした（iOSのSafari設定やアプリ内ブラウザが原因のことがあります）。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。",
             );
           }
         }, 4000);
@@ -707,11 +538,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (err) => {
           setError(err.message || "ログイン状態の取得に失敗しました");
           setLoading(false);
-        }
+        },
       );
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Firebaseの初期化に失敗しました"
+        err instanceof Error ? err.message : "Firebaseの初期化に失敗しました",
       );
       setLoading(false);
     }
@@ -749,7 +580,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // This makes AuthGate show the existing loading UI during sign-in.
         } catch (err) {
           setError(
-            err instanceof Error ? err.message : "匿名ログインに失敗しました"
+            err instanceof Error ? err.message : "匿名ログインに失敗しました",
           );
           setLoading(false);
         }
@@ -791,7 +622,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // iOS/アプリ内ブラウザでありがちなredirect状態欠落
               if (isMissingInitialStateError(err)) {
                 setError(
-                  "ログイン状態の受け渡しに失敗しました。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。"
+                  "ログイン状態の受け渡しに失敗しました。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。",
                 );
                 return;
               }
@@ -812,7 +643,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setError(
                     redirectErr instanceof Error
                       ? redirectErr.message
-                      : "Googleログインに失敗しました"
+                      : "Googleログインに失敗しました",
                   );
                   return;
                 }
@@ -826,60 +657,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               ) {
                 // Ideal flow: account was selected already, but linking failed because it belongs to an existing user.
                 // Show a confirmation dialog and (on OK) migrate via backend without a second account picker.
-                const enableBackendMerge =
-                  (import.meta as any)?.env?.VITE_ENABLE_BACKEND_GUEST_MERGE ===
-                  "true";
+                const enableBackendMerge = isBackendGuestMergeEnabled(
+                  (import.meta as any)?.env?.VITE_ENABLE_BACKEND_GUEST_MERGE,
+                );
 
                 const anonUid = currentUser.uid;
                 const expectedEmail = getErrorEmail(err);
                 const linkErrorCredential =
                   (GoogleAuthProvider.credentialFromError(
-                    err
+                    err,
                   ) as OAuthCredential | null) ?? null;
 
                 if (enableBackendMerge) {
                   try {
                     const backend = await checkGuestMergeBackend();
-                    if (backend.status !== "available") {
+                    const strategy = decideGuestMergeStrategy({
+                      flagEnabled: enableBackendMerge,
+                      backendStatus: backend.status,
+                    });
+                    if (strategy !== "backend") {
                       throw new Error("BACKEND_MERGE_UNAVAILABLE");
                     }
 
                     const functions = getFirebaseFunctions();
                     const prepare = httpsCallable(
                       functions,
-                      "prepareGuestMerge"
+                      "prepareGuestMerge",
                     );
                     const preparedRaw = await prepare({});
-                    const prepared = (preparedRaw.data ?? {}) as any;
-                    const mergeRequest: PrepareGuestMergeCallableResult = {
-                      requestId: String(prepared.requestId ?? ""),
-                      secret: String(prepared.secret ?? ""),
-                      expiresAt: String(prepared.expiresAt ?? ""),
-                    };
-                    if (!mergeRequest.requestId || !mergeRequest.secret) {
-                      throw new Error("統合準備に失敗しました");
-                    }
+                    const mergeRequest = normalizePrepareGuestMergeResult(
+                      preparedRaw.data,
+                    );
 
                     // Fetch counts from backend so we don't have to read all docs client-side.
                     let counts = { tags: 0, books: 0, records: 0 };
                     try {
                       const preview = httpsCallable(
                         functions,
-                        "previewGuestMerge"
+                        "previewGuestMerge",
                       );
                       const previewRaw = await preview({
                         requestId: mergeRequest.requestId,
                         secret: mergeRequest.secret,
                       });
-                      const previewData = (previewRaw.data ??
-                        {}) as PreviewGuestMergeCallableResult;
-                      if (previewData?.counts) {
-                        counts = {
-                          tags: Number(previewData.counts.tags ?? 0),
-                          books: Number(previewData.counts.books ?? 0),
-                          records: Number(previewData.counts.records ?? 0),
-                        };
-                      }
+                      counts = normalizePreviewGuestMergeCounts(
+                        previewRaw.data,
+                      );
                     } catch {
                       // If preview fails, still allow migration (counts will be unknown/0).
                     }
@@ -909,7 +732,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                       setError(
                         migrationErr instanceof Error
                           ? migrationErr.message
-                          : "統合準備に失敗しました"
+                          : "統合準備に失敗しました",
                       );
                       return;
                     }
@@ -947,7 +770,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setError(
                     migrationErr instanceof Error
                       ? migrationErr.message
-                      : "データ移行に失敗しました"
+                      : "データ移行に失敗しました",
                   );
                   return;
                 }
@@ -956,7 +779,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setError(
                 err instanceof Error
                   ? err.message
-                  : "Googleログインに失敗しました"
+                  : "Googleログインに失敗しました",
               );
               return;
             }
@@ -970,7 +793,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // iOS/アプリ内ブラウザでありがちなredirect状態欠落
           if (isMissingInitialStateError(err)) {
             setError(
-              "ログイン状態の受け渡しに失敗しました。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。"
+              "ログイン状態の受け渡しに失敗しました。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。",
             );
             return;
           }
@@ -991,14 +814,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setError(
                 redirectErr instanceof Error
                   ? redirectErr.message
-                  : "Googleログインに失敗しました"
+                  : "Googleログインに失敗しました",
               );
               return;
             }
           }
 
           setError(
-            err instanceof Error ? err.message : "Googleログインに失敗しました"
+            err instanceof Error ? err.message : "Googleログインに失敗しました",
           );
         }
       },
@@ -1025,7 +848,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const migratingToastId = toast.message(
           "ゲストデータを移行しています…",
-          { duration: Infinity }
+          { duration: Infinity },
         );
 
         try {
@@ -1035,9 +858,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // Ideal flow (backend merge): reuse the credential from the failed link attempt so we don't show
           // the Google account picker again.
-          const enableBackendMerge =
-            (import.meta as any)?.env?.VITE_ENABLE_BACKEND_GUEST_MERGE ===
-            "true";
+          const enableBackendMerge = isBackendGuestMergeEnabled(
+            (import.meta as any)?.env?.VITE_ENABLE_BACKEND_GUEST_MERGE,
+          );
           if (enableBackendMerge && pending.mergeRequest) {
             try {
               const functions = getFirebaseFunctions();
@@ -1072,11 +895,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return true;
             } catch (err) {
               const code = getCallableErrorCode(err);
-              setError(
-                code
-                  ? `統合に失敗しました（${code}）。もう一度お試しください。`
-                  : "統合に失敗しました。もう一度お試しください。"
-              );
+              setError(formatGuestMergeExecuteErrorMessage(code));
               toast.dismiss(migratingToastId);
               return false;
             }
@@ -1096,7 +915,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // ※ ここは必ずpopup（アカウント選択が表示される）
             const secondaryResult = await signInWithPopup(
               secondary.auth,
-              provider
+              provider,
             );
 
             nextUid = secondaryResult.user.uid;
@@ -1136,26 +955,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               secondary.db,
               nextUid,
               "tags",
-              pending.anonTags
+              pending.anonTags,
             );
             await writeUserSubcollectionDocsMerge(
               secondary.db,
               nextUid,
               "books",
-              pending.anonBooks
+              pending.anonBooks,
             );
             await writeUserSubcollectionDocsMerge(
               secondary.db,
               nextUid,
               "records",
-              pending.anonRecords
+              pending.anonRecords,
             );
           } catch (popupErr) {
             const popupCode = getErrorCode(popupErr);
 
             if (isMissingInitialStateError(popupErr)) {
               setError(
-                "ログイン状態の受け渡しに失敗しました。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。"
+                "ログイン状態の受け渡しに失敗しました。\n\n対処: Safariで開く／iOS設定→Safari→『サイト越えトラッキングを防ぐ』をOFFにする、を試してください。",
               );
               toast.dismiss(migratingToastId);
               return false;
@@ -1170,7 +989,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   "auth/operation-not-supported-in-this-environment")
             ) {
               setError(
-                "この環境ではGoogleログインを開始できませんでした。\n\n対処: Safariで開く／ポップアップを許可する、を試してください。"
+                "この環境ではGoogleログインを開始できませんでした。\n\n対処: Safariで開く／ポップアップを許可する、を試してください。",
               );
               toast.dismiss(migratingToastId);
               return false;
@@ -1179,7 +998,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(
               popupErr instanceof Error
                 ? popupErr.message
-                : "Googleログインに失敗しました"
+                : "Googleログインに失敗しました",
             );
             toast.dismiss(migratingToastId);
             return false;
@@ -1220,7 +1039,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // ignore
               }
               setError(
-                "ログインしたアカウントが統合先と一致しませんでした。統合先と同じGoogleアカウントでログインして、もう一度お試しください。"
+                "ログインしたアカウントが統合先と一致しませんでした。統合先と同じGoogleアカウントでログインして、もう一度お試しください。",
               );
               return false;
             }
@@ -1265,7 +1084,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(
               code
                 ? `Googleログインに失敗しました（${code}）。もう一度お試しください。`
-                : "Googleログインに失敗しました。もう一度お試しください。"
+                : "Googleログインに失敗しました。もう一度お試しください。",
             );
             return false;
           }
@@ -1282,7 +1101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 db,
                 "users",
                 pending.anonUid,
-                "records"
+                "records",
               );
               await deleteCollectionDocs(db, "users", pending.anonUid, "books");
               await deleteCollectionDocs(db, "users", pending.anonUid, "tags");
@@ -1321,7 +1140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const finalUid = auth.currentUser?.uid ?? "";
             if (nextUid && finalUid && nextUid !== finalUid) {
               setError(
-                "ログイン状態の切り替えに失敗しました（統合先と異なるアカウントでログインしています）。一度ログアウトして、統合先のGoogleアカウントでログインしてください。"
+                "ログイン状態の切り替えに失敗しました（統合先と異なるアカウントでログインしています）。一度ログアウトして、統合先のGoogleアカウントでログインしてください。",
               );
               return false;
             }
@@ -1330,7 +1149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(
               code
                 ? `Googleログインに失敗しました（${code}）。もう一度お試しください。`
-                : "Googleログインに失敗しました。もう一度お試しください。"
+                : "Googleログインに失敗しました。もう一度お試しください。",
             );
             return false;
           }
@@ -1344,7 +1163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           if (!cleanupSucceeded) {
             toast.message(
-              "ゲストアカウントの削除に一部失敗しました（データは移行済みです）"
+              "ゲストアカウントの削除に一部失敗しました（データは移行済みです）",
             );
           }
 
@@ -1355,7 +1174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setError(
             migrationErr instanceof Error
               ? migrationErr.message
-              : "データ移行に失敗しました"
+              : "データ移行に失敗しました",
           );
           return false;
         } finally {
@@ -1376,7 +1195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const migratingToastId = toast.message(
           "ゲストデータを移行しています…",
-          { duration: Infinity }
+          { duration: Infinity },
         );
 
         const { secondary, nextUid, googleCredential, selectedEmail } = stored;
@@ -1391,19 +1210,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             secondary.db,
             nextUid,
             "tags",
-            pending.anonTags
+            pending.anonTags,
           );
           await writeUserSubcollectionDocsMerge(
             secondary.db,
             nextUid,
             "books",
-            pending.anonBooks
+            pending.anonBooks,
           );
           await writeUserSubcollectionDocsMerge(
             secondary.db,
             nextUid,
             "records",
-            pending.anonRecords
+            pending.anonRecords,
           );
 
           // 以降は通常のフォールバック移行と同じ（ログイン切替→削除→ログイン復帰）
@@ -1429,7 +1248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // ignore
               }
               setError(
-                "ログインしたアカウントが統合先と一致しませんでした。統合先と同じGoogleアカウントでログインして、もう一度お試しください。"
+                "ログインしたアカウントが統合先と一致しませんでした。統合先と同じGoogleアカウントでログインして、もう一度お試しください。",
               );
               toast.dismiss(migratingToastId);
               return false;
@@ -1448,7 +1267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // ignore
               }
               setError(
-                "ログインしたアカウントが移行先と異なります。移行先と同じアカウントでログインしてください。"
+                "ログインしたアカウントが移行先と異なります。移行先と同じアカウントでログインしてください。",
               );
               toast.dismiss(migratingToastId);
               return false;
@@ -1466,7 +1285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(
               code
                 ? `Googleログインに失敗しました（${code}）。もう一度お試しください。`
-                : "Googleログインに失敗しました。もう一度お試しください。"
+                : "Googleログインに失敗しました。もう一度お試しください。",
             );
             toast.dismiss(migratingToastId);
             return false;
@@ -1484,7 +1303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   db,
                   "users",
                   pending.anonUid,
-                  subcollection
+                  subcollection,
                 );
               }
               try {
@@ -1522,7 +1341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const finalUid = auth.currentUser?.uid ?? "";
             if (nextUid && finalUid && nextUid !== finalUid) {
               setError(
-                "ログイン状態の切り替えに失敗しました（統合先と異なるアカウントでログインしています）。一度ログアウトして、統合先のGoogleアカウントでログインしてください。"
+                "ログイン状態の切り替えに失敗しました（統合先と異なるアカウントでログインしています）。一度ログアウトして、統合先のGoogleアカウントでログインしてください。",
               );
               toast.dismiss(migratingToastId);
               return false;
@@ -1532,7 +1351,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setError(
               code
                 ? `Googleログインに失敗しました（${code}）。もう一度お試しください。`
-                : "Googleログインに失敗しました。もう一度お試しください。"
+                : "Googleログインに失敗しました。もう一度お試しください。",
             );
             toast.dismiss(migratingToastId);
             return false;
@@ -1555,7 +1374,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           if (!cleanupSucceeded) {
             toast.message(
-              "ゲストアカウントの削除に一部失敗しました（データは移行済みです）"
+              "ゲストアカウントの削除に一部失敗しました（データは移行済みです）",
             );
           }
 
@@ -1564,7 +1383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           toast.dismiss(migratingToastId);
           toast.error("データ移行に失敗しました");
           setError(
-            err instanceof Error ? err.message : "データ移行に失敗しました"
+            err instanceof Error ? err.message : "データ移行に失敗しました",
           );
           return false;
         } finally {
@@ -1611,7 +1430,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await firebaseSignOut(auth);
         } catch (err) {
           setError(
-            err instanceof Error ? err.message : "ログアウトに失敗しました"
+            err instanceof Error ? err.message : "ログアウトに失敗しました",
           );
         }
       },
@@ -1637,7 +1456,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         } catch (err) {
           setError(
-            err instanceof Error ? err.message : "アカウント削除に失敗しました"
+            err instanceof Error ? err.message : "アカウント削除に失敗しました",
           );
           throw err;
         }
