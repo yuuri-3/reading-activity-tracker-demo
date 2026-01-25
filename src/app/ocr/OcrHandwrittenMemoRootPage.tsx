@@ -8,6 +8,7 @@ import { FieldItem } from "../components/FieldItem";
 import { NeumorphicInput } from "../components/NeumorphicInput";
 import { NeumorphicTextarea } from "../components/NeumorphicTextarea";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { SegmentedControl } from "../components/SegmentedControl";
 import {
   Popover,
   PopoverContent,
@@ -28,11 +29,15 @@ import {
   getOcrHandwrittenMemoPrivacyPolicyUrl,
   isOcrHandwrittenMemoConsentAccepted,
 } from "./ocrHandwrittenMemoConsent";
-import { ocrHandwrittenMemoLocalState } from "./ocrHandwrittenMemoLocalState";
+import {
+  ocrHandwrittenMemoLocalState,
+  type OcrHandwrittenMemoDestination,
+} from "./ocrHandwrittenMemoLocalState";
 import {
   callOcrHandwrittenMemo,
   type OcrHandwrittenMemoResult,
 } from "./api/ocrHandwrittenMemo";
+import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
 
 export type OcrHandwrittenMemoRootPageProps = {
   onExit: () => void;
@@ -41,11 +46,14 @@ export type OcrHandwrittenMemoRootPageProps = {
 export function OcrHandwrittenMemoRootPage({
   onExit,
 }: OcrHandwrittenMemoRootPageProps) {
-  const { books, addBookMemo } = useApp();
+  const { books, tags, createTag, addBookMemo, addRecord } = useApp();
   const [consentDialogOpen, setConsentDialogOpen] = useState(false);
   const [pendingOcrStart, setPendingOcrStart] = useState(false);
   const [localStateSnapshot, setLocalStateSnapshot] = useState(() =>
     ocrHandwrittenMemoLocalState.load(),
+  );
+  const [destination, setDestination] = useState<OcrHandwrittenMemoDestination>(
+    () => localStateSnapshot.defaultDestination,
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFileUrl, setSelectedFileUrl] = useState<string | null>(null);
@@ -67,6 +75,7 @@ export function OcrHandwrittenMemoRootPage({
   const [memoDateTime, setMemoDateTime] = useState(() =>
     toLocalDateTimeInputValue(new Date()),
   );
+  const [recordTagIds, setRecordTagIds] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -91,7 +100,14 @@ export function OcrHandwrittenMemoRootPage({
     [books, selectedBookId],
   );
 
+  const tagOptions = useMemo(() => {
+    return [...tags]
+      .sort((a, b) => a.text.localeCompare(b.text, "ja"))
+      .map((t) => ({ id: t.id, text: t.text }));
+  }, [tags]);
+
   const canSaveMemo = !!selectedBookId && !!ocrText.trim() && !isRunning;
+  const canSaveRecord = !isRunning;
 
   useEffect(() => {
     return () => {
@@ -275,6 +291,39 @@ export function OcrHandwrittenMemoRootPage({
     setOcrFailedSourceId(null);
   };
 
+  const handleSaveRecord = async () => {
+    const date = new Date(memoDateTime);
+    if (Number.isNaN(date.getTime())) {
+      toast.error("日時を正しく入力してください");
+      return;
+    }
+
+    try {
+      await addRecord({
+        duration: 0,
+        memo: ocrText,
+        startTime: date.toISOString(),
+        endTime: date.toISOString(),
+        ...(recordTagIds.length ? { tagIds: recordTagIds } : {}),
+      });
+      toast.success("記録メモとして保存しました");
+      if (selectedFileUrl) {
+        URL.revokeObjectURL(selectedFileUrl);
+      }
+      setSelectedFile(null);
+      setSelectedFileUrl(null);
+      setSelectedFileId(null);
+      setLastOcrSourceId(null);
+      setOcrText("");
+      setErrorMessage(null);
+      setErrorDetail(null);
+      setOcrFailedSourceId(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("記録メモの保存に失敗しました");
+    }
+  };
+
   return (
     <div className="min-h-screen w-full px-4 py-8">
       <div className="max-w-2xl mx-auto">
@@ -391,95 +440,167 @@ export function OcrHandwrittenMemoRootPage({
         <div className="mt-6 rounded-lg border border-border bg-background/60 p-4">
           <div className="flex flex-col gap-4">
             <p className="text-sm font-medium text-foreground">保存先</p>
-            <FieldItem
-              className="w-full"
-              labelProps={{ text: "書籍", showOptionalLabel: false }}
-              instance={
-                <Popover open={bookSelectOpen} onOpenChange={setBookSelectOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-11 w-full justify-between rounded-[6px] bg-[var(--background-solid)] px-4 py-3 text-base font-normal leading-5"
-                      aria-expanded={bookSelectOpen}
-                      disabled={books.length === 0}
+            <SegmentedControl
+              value={destination}
+              onValueChange={(next) => {
+                const nextDestination = next as OcrHandwrittenMemoDestination;
+                setDestination(nextDestination);
+                const snapshot = ocrHandwrittenMemoLocalState.patch({
+                  defaultDestination: nextDestination,
+                });
+                setLocalStateSnapshot(snapshot);
+              }}
+              items={[
+                { value: "book", text: "書籍メモ" },
+                { value: "record", text: "記録メモ" },
+              ]}
+              className="w-fit"
+              disabled={isRunning}
+            />
+
+            {destination === "book" ? (
+              <>
+                <FieldItem
+                  className="w-full"
+                  labelProps={{ text: "書籍", showOptionalLabel: false }}
+                  instance={
+                    <Popover
+                      open={bookSelectOpen}
+                      onOpenChange={setBookSelectOpen}
                     >
-                      <span className="truncate">
-                        {selectedBook
-                          ? `${selectedBook.title}${
-                              selectedBook.author
-                                ? ` / ${selectedBook.author}`
-                                : ""
-                            }`
-                          : books.length === 0
-                          ? "書籍がありません"
-                          : "書籍を選択"}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="start"
-                    className="w-[var(--radix-popover-trigger-width)] p-0"
-                  >
-                    <Command>
-                      <CommandInput placeholder="書籍を検索" />
-                      <CommandList>
-                        <CommandEmpty>書籍が見つかりません</CommandEmpty>
-                        <CommandGroup>
-                          {books.map((book) => (
-                            <CommandItem
-                              key={book.id}
-                              value={`${book.title} ${book.author ?? ""}`}
-                              onSelect={() => {
-                                setSelectedBookId(book.id);
-                                setBookSelectOpen(false);
-                              }}
-                            >
-                              <span className="truncate">{book.title}</span>
-                              {book.author ? (
-                                <span className="ml-2 truncate text-xs text-muted-foreground">
-                                  {book.author}
-                                </span>
-                              ) : null}
-                              {selectedBookId === book.id ? (
-                                <span className="ml-auto flex items-center text-primary">
-                                  <IconCheck size={4} />
-                                </span>
-                              ) : null}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              }
-            />
-
-            <FieldItem
-              className="w-full"
-              labelProps={{ text: "日時", showOptionalLabel: false }}
-              instance={
-                <NeumorphicInput
-                  id="ocrMemoDateTime"
-                  type="datetime-local"
-                  step={1}
-                  value={memoDateTime}
-                  onChange={(event) => setMemoDateTime(event.target.value)}
-                  disabled={isRunning}
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 w-full justify-between rounded-[6px] bg-[var(--background-solid)] px-4 py-3 text-base font-normal leading-5"
+                          aria-expanded={bookSelectOpen}
+                          disabled={books.length === 0}
+                        >
+                          <span className="truncate">
+                            {selectedBook
+                              ? `${selectedBook.title}${
+                                  selectedBook.author
+                                    ? ` / ${selectedBook.author}`
+                                    : ""
+                                }`
+                              : books.length === 0
+                              ? "書籍がありません"
+                              : "書籍を選択"}
+                          </span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                      >
+                        <Command>
+                          <CommandInput placeholder="書籍を検索" />
+                          <CommandList>
+                            <CommandEmpty>書籍が見つかりません</CommandEmpty>
+                            <CommandGroup>
+                              {books.map((book) => (
+                                <CommandItem
+                                  key={book.id}
+                                  value={`${book.title} ${book.author ?? ""}`}
+                                  onSelect={() => {
+                                    setSelectedBookId(book.id);
+                                    setBookSelectOpen(false);
+                                  }}
+                                >
+                                  <span className="truncate">{book.title}</span>
+                                  {book.author ? (
+                                    <span className="ml-2 truncate text-xs text-muted-foreground">
+                                      {book.author}
+                                    </span>
+                                  ) : null}
+                                  {selectedBookId === book.id ? (
+                                    <span className="ml-auto flex items-center text-primary">
+                                      <IconCheck size={4} />
+                                    </span>
+                                  ) : null}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  }
                 />
-              }
-            />
 
-            <div className="pt-2">
-              <PrimaryButton
-                className="w-full justify-center"
-                onClick={handleSaveBookMemo}
-                disabled={!canSaveMemo}
-              >
-                書籍メモとして保存
-              </PrimaryButton>
-            </div>
+                <FieldItem
+                  className="w-full"
+                  labelProps={{ text: "日時", showOptionalLabel: false }}
+                  instance={
+                    <NeumorphicInput
+                      id="ocrMemoDateTime"
+                      type="datetime-local"
+                      step={1}
+                      value={memoDateTime}
+                      onChange={(event) => setMemoDateTime(event.target.value)}
+                      disabled={isRunning}
+                    />
+                  }
+                />
+
+                <div className="pt-2">
+                  <PrimaryButton
+                    className="w-full justify-center"
+                    onClick={handleSaveBookMemo}
+                    disabled={!canSaveMemo}
+                  >
+                    書籍メモとして保存
+                  </PrimaryButton>
+                </div>
+              </>
+            ) : (
+              <>
+                <FieldItem
+                  className="w-full"
+                  labelProps={{ text: "日時", showOptionalLabel: false }}
+                  instance={
+                    <NeumorphicInput
+                      id="ocrRecordDateTime"
+                      type="datetime-local"
+                      step={1}
+                      value={memoDateTime}
+                      onChange={(event) => setMemoDateTime(event.target.value)}
+                      disabled={isRunning}
+                    />
+                  }
+                />
+
+                <FieldItem
+                  className="w-full"
+                  labelProps={{ text: "タグ", showOptionalLabel: true }}
+                  instance={
+                    <TagMultiSelectInput
+                      id="ocrRecordTags"
+                      value={recordTagIds}
+                      onChange={setRecordTagIds}
+                      options={tagOptions}
+                      placeholder="タグを選択または追加してください"
+                      disabled={isRunning}
+                      onCreateOption={async (text) => {
+                        return await createTag({ text });
+                      }}
+                    />
+                  }
+                />
+
+                <div className="pt-2">
+                  <PrimaryButton
+                    className="w-full justify-center"
+                    onClick={() => {
+                      void handleSaveRecord();
+                    }}
+                    disabled={!canSaveRecord}
+                  >
+                    記録メモとして保存
+                  </PrimaryButton>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
