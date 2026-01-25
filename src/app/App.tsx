@@ -3,7 +3,11 @@ import { AuthGate } from "./auth/AuthGate";
 import { AuthProvider } from "./auth/AuthContext";
 import { useAuth } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
-import { useApp } from "./context/AppContext";
+import {
+  GuestCreateNoticeProvider,
+  useGuestCreateNotice,
+} from "./context/GuestCreateNoticeContext";
+import { SearchProvider } from "./context/SearchContext";
 import { TimerProvider } from "./timer/TimerContext";
 import { TimerPage } from "./pages/TimerPage";
 import { BookCollectionView } from "./pages/BookCollectionView";
@@ -31,7 +35,7 @@ function AppContent() {
     guestCreateNoticeOpen,
     closeGuestCreateNotice,
     dismissGuestCreateNotice,
-  } = useApp();
+  } = useGuestCreateNotice();
 
   const initialRoute = useMemo<RouteState>(() => {
     if (typeof window === "undefined") {
@@ -194,11 +198,15 @@ function AppProviders() {
   const { user } = useAuth();
 
   return (
-    <TimerProvider uid={user?.uid}>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </TimerProvider>
+    <GuestCreateNoticeProvider user={user}>
+      <SearchProvider>
+        <TimerProvider uid={user?.uid}>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
+        </TimerProvider>
+      </SearchProvider>
+    </GuestCreateNoticeProvider>
   );
 }
 

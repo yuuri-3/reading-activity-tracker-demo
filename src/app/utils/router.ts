@@ -29,7 +29,20 @@ export function parseRouteFromPathname(
   const path = stripBase(pathname).replace(/^\/+/, "").trim();
   if (!path) return { ...defaultRoute };
 
-  const [pageRaw, subRaw] = path.split("/");
+  const segments = path.split("/").filter(Boolean);
+  if (!segments.length) return { ...defaultRoute };
+
+  const knownPages: Page[] = ["home", "books", "records", "sanctum"];
+  const pageIndex = segments.findIndex((segment) =>
+    options.ocrEnabled
+      ? segment === "ocr" || knownPages.includes(segment as Page)
+      : knownPages.includes(segment as Page),
+  );
+
+  if (pageIndex < 0) return { ...defaultRoute };
+
+  const pageRaw = segments[pageIndex];
+  const subRaw = segments[pageIndex + 1];
 
   if (options.ocrEnabled && pageRaw === "ocr") {
     return {

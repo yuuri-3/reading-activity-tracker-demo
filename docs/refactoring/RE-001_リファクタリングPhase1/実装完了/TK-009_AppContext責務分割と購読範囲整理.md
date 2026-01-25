@@ -1,4 +1,4 @@
-# P1-TK-009 AppContext の責務分割（データ層/UI 状態）と購読範囲の整理
+# TK-009 AppContext の責務分割（データ層/UI 状態）と購読範囲の整理
 
 このチケットは、肥大化した `AppContext.tsx` を段階的に分割し、変更影響範囲とレンダリング負荷を下げます。
 
@@ -17,20 +17,28 @@
 
 ## 実装状況
 
-Status: ⬜ 未着手
+Status: ✅ 完了
 
 ## 受け入れ条件
 
-- [ ] `AppContext.tsx` の責務が 1 段階でも分離されている（最小 1 モジュール）
-- [ ] 変更後も既存の主要機能（books/records/tags/timer）が動作する
-- [ ] Context value が過剰に揺れないように、必要箇所で安定化（`useMemo` 等）が入る
+- [x] `AppContext.tsx` の責務が 1 段階でも分離されている（最小 1 モジュール）
+- [x] 変更後も既存の主要機能（books/records/tags/timer）が動作する
+- [x] Context value が過剰に揺れないように、必要箇所で安定化（`useMemo` 等）が入る
+
+## 決定事項
+
+1. 分割は 2 ステップで実施する
+   - Step1: Tags CRUD を `repositories` に切り出す
+   - Step2: UI 状態（Timer/Search/Guest notice）を用途別 Context に分離
+2. 1PR にまとめて対応する
+3. UI 状態の分離対象は **すべて**（Timer / Search / Guest notice）
 
 ## 作業内容
 
 ### 1) 分割方針を決める（段階的）
 
-- まず「Firestore 購読 + CRUD」を `repositories` に寄せる
-- 次に「UI 状態（Timer/Search/Guest）」を用途別 Context に分離
+- まず「Firestore 購読 + CRUD」を `repositories` に寄せる（Tags CRUD から）
+- 次に「UI 状態（Timer/Search/Guest notice）」を用途別 Context に分離
 
 ### 2) 小さく移す
 
@@ -40,6 +48,10 @@ Status: ⬜ 未着手
 
 - 既存の画面（Book/Record/Tag/Timer）を最小限確認
 - `npm run test-storybook` を回して回帰を拾う
+
+## テスト
+
+- firebase emulators:exec --only firestore "npm run test"
 
 ## 非ゴール
 
