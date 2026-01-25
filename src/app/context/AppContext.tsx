@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -21,6 +22,13 @@ import {
 import { Book, ReadingRecord, BookMemo, Tag } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { getFirestoreDb } from "../firebase/firebase";
+import { useGuestCreateNotice } from "./GuestCreateNoticeContext";
+import {
+  createTag as createTagInRepository,
+  updateTag as updateTagInRepository,
+  deleteTag as deleteTagInRepository,
+  restoreTag as restoreTagInRepository,
+} from "../repositories/tagRepository";
 
 // App context for managing global state
 interface AppContextType {
@@ -53,96 +61,9 @@ interface AppContextType {
   restoreRecord: (record: ReadingRecord) => Promise<void>;
   getRecordsByBook: (bookId: string) => ReadingRecord[];
   getTotalDurationByBook: (bookId: string) => number;
-
-  // Search
-  searchText: string;
-  setSearchText: (text: string) => void;
-
-  // Guest notice
-  guestCreateNoticeOpen: boolean;
-  closeGuestCreateNotice: () => void;
-  dismissGuestCreateNotice: () => void;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
-
-type PersistedGuestCreateNoticeV1 = {
-  v: 1;
-  createdCount: number;
-  dismissed: boolean;
-};
-
-const GUEST_CREATE_NOTICE_STORAGE_VERSION = 1 as const;
-
-function getGuestCreateNoticeStorageKey(uid: string | undefined) {
-  return `yomzoy:guestCreateNotice:v${GUEST_CREATE_NOTICE_STORAGE_VERSION}:${
-    uid ?? "anon"
-  }`;
-}
-
-function loadPersistedGuestCreateNotice(
-  storageKey: string,
-): PersistedGuestCreateNoticeV1 {
-  if (typeof window === "undefined") {
-    return {
-      v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
-      createdCount: 0,
-      dismissed: false,
-    };
-  }
-
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw)
-      return {
-        v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
-        createdCount: 0,
-        dismissed: false,
-      };
-    const parsed = JSON.parse(raw) as Partial<PersistedGuestCreateNoticeV1>;
-    if (parsed.v !== GUEST_CREATE_NOTICE_STORAGE_VERSION)
-      return {
-        v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
-        createdCount: 0,
-        dismissed: false,
-      };
-
-    const createdCount =
-      typeof parsed.createdCount === "number" &&
-      Number.isFinite(parsed.createdCount)
-        ? Math.max(0, Math.floor(parsed.createdCount))
-        : 0;
-    const dismissed =
-      typeof parsed.dismissed === "boolean" ? parsed.dismissed : false;
-
-    return { v: GUEST_CREATE_NOTICE_STORAGE_VERSION, createdCount, dismissed };
-  } catch {
-    return {
-      v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
-      createdCount: 0,
-      dismissed: false,
-    };
-  }
-}
-
-function savePersistedGuestCreateNotice(
-  storageKey: string,
-  state: PersistedGuestCreateNoticeV1,
-) {
-  if (typeof window === "undefined") return;
-
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(state));
-  } catch {
-    // ignore (e.g. storage full / disabled)
-  }
-}
-
-function shouldShowGuestCreateNotice(createdCount: number) {
-  if (createdCount === 3) return true;
-  if (createdCount > 3 && (createdCount - 3) % 5 === 0) return true;
-  return false;
-}
 
 function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return Object.fromEntries(
@@ -173,23 +94,12 @@ function normalizeDurationSeconds(data: {
   return Math.max(0, Math.floor(n));
 }
 
-function normalizeTagText(text: string) {
-  return text.trim();
-}
-
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { registerGuestCreation } = useGuestCreateNotice();
   const [books, setBooks] = useState<Book[]>([]);
   const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [searchText, setSearchText] = useState("");
-
-  const [guestCreateNoticeOpen, setGuestCreateNoticeOpen] = useState(false);
-
-  const guestCreateNoticeStorageKey = useMemo(
-    () => getGuestCreateNoticeStorageKey(user?.uid),
-    [user?.uid],
-  );
 
   const uid = user?.uid;
 
@@ -197,16 +107,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!uid) return null;
     return getFirestoreDb();
   }, [uid]);
-
-  useEffect(() => {
-    if (!user?.isAnonymous) {
-      setGuestCreateNoticeOpen(false);
-    }
-  }, [user?.isAnonymous]);
-
-  useEffect(() => {
-    setGuestCreateNoticeOpen(false);
-  }, [guestCreateNoticeStorageKey]);
 
   // Subscribe to Firestore (single source of truth)
   useEffect(() => {
@@ -327,252 +227,220 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [db, uid]);
 
-  const createTag = async (tag: { text: string; description?: string }) => {
-    if (!db || !uid) return null;
-    const text = normalizeTagText(tag.text);
-    if (!text) return null;
-    const now = new Date().toISOString();
-    const created = await addDoc(collection(db, "users", uid, "tags"), {
-      text,
-      description: tag.description ?? "",
-      createdAt: now,
-    });
-    return created.id;
-  };
+  const createTag = useCallback(
+    async (tag: { text: string; description?: string }) => {
+      return await createTagInRepository(db, uid, tag);
+    },
+    [db, uid],
+  );
 
-  const updateTag = async (
-    id: string,
-    updates: Partial<Pick<Tag, "text" | "description">>,
-  ) => {
-    if (!db || !uid) return;
-    const current = tags.find((t) => t.id === id);
-    if (!current) return;
+  const updateTag = useCallback(
+    async (id: string, updates: Partial<Pick<Tag, "text" | "description">>) => {
+      const current = tags.find((t) => t.id === id);
+      await updateTagInRepository(db, uid, id, current, updates);
+    },
+    [db, tags, uid],
+  );
 
-    const nextText =
-      typeof updates.text === "string"
-        ? normalizeTagText(updates.text)
-        : current.text;
-    const nextDescription =
-      typeof updates.description === "string"
-        ? updates.description
-        : current.description;
+  const deleteTag = useCallback(
+    async (id: string) => {
+      await deleteTagInRepository(db, uid, id);
+    },
+    [db, uid],
+  );
 
-    await updateDoc(
-      doc(db, "users", uid, "tags", id),
-      stripUndefined({
-        ...(nextText !== current.text ? { text: nextText } : {}),
-        ...(nextDescription !== current.description
-          ? { description: nextDescription }
-          : {}),
-      }),
-    );
-  };
-
-  const deleteTag = async (id: string) => {
-    if (!db || !uid) return;
-    await deleteDoc(doc(db, "users", uid, "tags", id));
-  };
-
-  const restoreTag = async (tag: Tag) => {
-    if (!db || !uid) return;
-    const { id, ...rest } = tag;
-    await setDoc(
-      doc(db, "users", uid, "tags", id),
-      stripUndefined({
-        ...rest,
-        text: normalizeTagText(tag.text),
-        description: tag.description ?? "",
-        createdAt: tag.createdAt ?? new Date().toISOString(),
-      } as unknown as Record<string, unknown>),
-    );
-  };
+  const restoreTag = useCallback(
+    async (tag: Tag) => {
+      await restoreTagInRepository(db, uid, tag);
+    },
+    [db, uid],
+  );
 
   // Book operations
-  const addBook = async (book: Omit<Book, "id" | "createdAt">) => {
-    if (!db || !uid) return;
-    const now = new Date().toISOString();
-    await addDoc(collection(db, "users", uid, "books"), {
-      ...stripUndefined({
-        ...book,
-        memos: book.memos ?? [],
-      }),
-      createdAt: now,
-    });
+  const addBook = useCallback(
+    async (book: Omit<Book, "id" | "createdAt">) => {
+      if (!db || !uid) return;
+      const now = new Date().toISOString();
+      await addDoc(collection(db, "users", uid, "books"), {
+        ...stripUndefined({
+          ...book,
+          memos: book.memos ?? [],
+        }),
+        createdAt: now,
+      });
+      registerGuestCreation();
+    },
+    [db, registerGuestCreation, uid],
+  );
 
-    if (user?.isAnonymous) {
-      const current = loadPersistedGuestCreateNotice(
-        guestCreateNoticeStorageKey,
-      );
-      if (!current.dismissed) {
-        const next: PersistedGuestCreateNoticeV1 = {
-          v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
-          createdCount: current.createdCount + 1,
-          dismissed: false,
+  const updateBook = useCallback(
+    async (id: string, updates: Partial<Book>) => {
+      if (!db || !uid) return;
+      const { id: _id, ...rest } = updates;
+      await updateDoc(doc(db, "users", uid, "books", id), stripUndefined(rest));
+    },
+    [db, uid],
+  );
+
+  const deleteBook = useCallback(
+    async (id: string) => {
+      if (!db || !uid) return;
+      await deleteDoc(doc(db, "users", uid, "books", id));
+    },
+    [db, uid],
+  );
+
+  const getBook = useCallback(
+    (id: string) => {
+      return books.find((book) => book.id === id);
+    },
+    [books],
+  );
+
+  const addBookMemo = useCallback(
+    (bookId: string, memoText: string) => {
+      const book = getBook(bookId);
+      if (book) {
+        const newMemo: BookMemo = {
+          id: Date.now().toString(),
+          text: memoText,
+          createdAt: new Date().toISOString(),
         };
-        savePersistedGuestCreateNotice(guestCreateNoticeStorageKey, next);
-        if (shouldShowGuestCreateNotice(next.createdCount)) {
-          setGuestCreateNoticeOpen(true);
-        }
+        void updateBook(bookId, { memos: [...(book.memos || []), newMemo] });
       }
-    }
-  };
-
-  const updateBook = async (id: string, updates: Partial<Book>) => {
-    if (!db || !uid) return;
-    const { id: _id, ...rest } = updates;
-    await updateDoc(doc(db, "users", uid, "books", id), stripUndefined(rest));
-  };
-
-  const deleteBook = async (id: string) => {
-    if (!db || !uid) return;
-    await deleteDoc(doc(db, "users", uid, "books", id));
-  };
-
-  const getBook = (id: string) => {
-    return books.find((book) => book.id === id);
-  };
-
-  const addBookMemo = (bookId: string, memoText: string) => {
-    const book = getBook(bookId);
-    if (book) {
-      const newMemo: BookMemo = {
-        id: Date.now().toString(),
-        text: memoText,
-        createdAt: new Date().toISOString(),
-      };
-      void updateBook(bookId, { memos: [...(book.memos || []), newMemo] });
-    }
-  };
+    },
+    [getBook, updateBook],
+  );
 
   // Record operations
-  const addRecord = async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
-    if (!db || !uid) {
-      throw new Error(
-        "ログイン情報の取得中です。少し待ってからもう一度お試しください",
-      );
-    }
-    const now = new Date().toISOString();
-    await addDoc(collection(db, "users", uid, "records"), {
-      ...stripUndefined({
-        ...(record as unknown as Record<string, unknown>),
-        duration:
-          typeof record.duration === "number"
-            ? Math.max(0, Math.floor(record.duration))
-            : record.duration,
-      }),
-      createdAt: now,
-    });
-
-    if (user?.isAnonymous) {
-      const current = loadPersistedGuestCreateNotice(
-        guestCreateNoticeStorageKey,
-      );
-      if (!current.dismissed) {
-        const next: PersistedGuestCreateNoticeV1 = {
-          v: GUEST_CREATE_NOTICE_STORAGE_VERSION,
-          createdCount: current.createdCount + 1,
-          dismissed: false,
-        };
-        savePersistedGuestCreateNotice(guestCreateNoticeStorageKey, next);
-        if (shouldShowGuestCreateNotice(next.createdCount)) {
-          setGuestCreateNoticeOpen(true);
-        }
+  const addRecord = useCallback(
+    async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
+      if (!db || !uid) {
+        throw new Error(
+          "ログイン情報の取得中です。少し待ってからもう一度お試しください",
+        );
       }
-    }
-  };
-
-  const closeGuestCreateNotice = () => setGuestCreateNoticeOpen(false);
-
-  const dismissGuestCreateNotice = () => {
-    setGuestCreateNoticeOpen(false);
-    if (!user?.isAnonymous) return;
-    const current = loadPersistedGuestCreateNotice(guestCreateNoticeStorageKey);
-    if (current.dismissed) return;
-    savePersistedGuestCreateNotice(guestCreateNoticeStorageKey, {
-      ...current,
-      dismissed: true,
-    });
-  };
-
-  const updateRecord = async (id: string, updates: Partial<ReadingRecord>) => {
-    if (!db || !uid) {
-      throw new Error(
-        "ログイン情報の取得中です。少し待ってからもう一度お試しください",
-      );
-    }
-    const { id: _id, ...rest } = updates;
-    const nextRest: Record<string, unknown> = {
-      ...rest,
-      ...(typeof rest.duration === "number"
-        ? { duration: Math.max(0, Math.floor(rest.duration)) }
-        : {}),
-      ...(typeof rest.bookId === "string" && rest.bookId === ""
-        ? { bookId: deleteField() }
-        : {}),
-    };
-    await updateDoc(
-      doc(db, "users", uid, "records", id),
-      stripUndefined(nextRest),
-    );
-  };
-
-  const deleteRecord = async (id: string) => {
-    if (!db || !uid) return;
-    await deleteDoc(doc(db, "users", uid, "records", id));
-  };
-
-  const restoreRecord = async (record: ReadingRecord) => {
-    if (!db || !uid) return;
-
-    const { id, ...rest } = record;
-    await setDoc(
-      doc(db, "users", uid, "records", id),
-      stripUndefined(rest as unknown as Record<string, unknown>),
-    );
-  };
-
-  const getRecordsByBook = (bookId: string) => {
-    return records.filter((record) => record.bookId === bookId);
-  };
-
-  const getTotalDurationByBook = (bookId: string) => {
-    return records
-      .filter((record) => record.bookId === bookId)
-      .reduce((total, record) => total + record.duration, 0);
-  };
-
-  return (
-    <AppContext.Provider
-      value={{
-        books,
-        addBook,
-        updateBook,
-        deleteBook,
-        getBook,
-        addBookMemo,
-        tags,
-        createTag,
-        updateTag,
-        deleteTag,
-        restoreTag,
-        records,
-        addRecord,
-        updateRecord,
-        deleteRecord,
-        restoreRecord,
-        getRecordsByBook,
-        getTotalDurationByBook,
-        searchText,
-        setSearchText,
-
-        guestCreateNoticeOpen,
-        closeGuestCreateNotice,
-        dismissGuestCreateNotice,
-      }}
-    >
-      {children}
-    </AppContext.Provider>
+      const now = new Date().toISOString();
+      await addDoc(collection(db, "users", uid, "records"), {
+        ...stripUndefined({
+          ...(record as unknown as Record<string, unknown>),
+          duration:
+            typeof record.duration === "number"
+              ? Math.max(0, Math.floor(record.duration))
+              : record.duration,
+        }),
+        createdAt: now,
+      });
+      registerGuestCreation();
+    },
+    [db, registerGuestCreation, uid],
   );
+
+  const updateRecord = useCallback(
+    async (id: string, updates: Partial<ReadingRecord>) => {
+      if (!db || !uid) {
+        throw new Error(
+          "ログイン情報の取得中です。少し待ってからもう一度お試しください",
+        );
+      }
+      const { id: _id, ...rest } = updates;
+      const nextRest: Record<string, unknown> = {
+        ...rest,
+        ...(typeof rest.duration === "number"
+          ? { duration: Math.max(0, Math.floor(rest.duration)) }
+          : {}),
+        ...(typeof rest.bookId === "string" && rest.bookId === ""
+          ? { bookId: deleteField() }
+          : {}),
+      };
+      await updateDoc(
+        doc(db, "users", uid, "records", id),
+        stripUndefined(nextRest),
+      );
+    },
+    [db, uid],
+  );
+
+  const deleteRecord = useCallback(
+    async (id: string) => {
+      if (!db || !uid) return;
+      await deleteDoc(doc(db, "users", uid, "records", id));
+    },
+    [db, uid],
+  );
+
+  const restoreRecord = useCallback(
+    async (record: ReadingRecord) => {
+      if (!db || !uid) return;
+
+      const { id, ...rest } = record;
+      await setDoc(
+        doc(db, "users", uid, "records", id),
+        stripUndefined(rest as unknown as Record<string, unknown>),
+      );
+    },
+    [db, uid],
+  );
+
+  const getRecordsByBook = useCallback(
+    (bookId: string) => {
+      return records.filter((record) => record.bookId === bookId);
+    },
+    [records],
+  );
+
+  const getTotalDurationByBook = useCallback(
+    (bookId: string) => {
+      return records
+        .filter((record) => record.bookId === bookId)
+        .reduce((total, record) => total + record.duration, 0);
+    },
+    [records],
+  );
+
+  const value = useMemo<AppContextType>(() => {
+    return {
+      books,
+      addBook,
+      updateBook,
+      deleteBook,
+      getBook,
+      addBookMemo,
+      tags,
+      createTag,
+      updateTag,
+      deleteTag,
+      restoreTag,
+      records,
+      addRecord,
+      updateRecord,
+      deleteRecord,
+      restoreRecord,
+      getRecordsByBook,
+      getTotalDurationByBook,
+    };
+  }, [
+    addBook,
+    addBookMemo,
+    addRecord,
+    books,
+    createTag,
+    deleteBook,
+    deleteRecord,
+    deleteTag,
+    getBook,
+    getRecordsByBook,
+    getTotalDurationByBook,
+    records,
+    restoreRecord,
+    restoreTag,
+    tags,
+    updateBook,
+    updateRecord,
+    updateTag,
+  ]);
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
 export function useApp() {
