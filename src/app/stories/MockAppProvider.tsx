@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AppContext } from "../context/AppContext";
+import { GuestCreateNoticeProvider } from "../context/GuestCreateNoticeContext";
+import { SearchProvider } from "../context/SearchContext";
 import type { Book, ReadingRecord, Tag, TimerState } from "../types";
 import { TimerProvider } from "../timer/TimerContext";
 
@@ -33,7 +35,6 @@ export function MockAppProvider({
     () => initialRecords ?? [],
   );
   const [tags, setTags] = useState<Tag[]>(() => initialTags ?? []);
-  const [searchText, setSearchText] = useState(initialSearchText ?? "");
   const initialTimerState = useMemo<TimerState>(() => {
     const startTime = initialTimerRunning ? Date.now() : null;
     return {
@@ -43,8 +44,6 @@ export function MockAppProvider({
       pausedTime: initialTimerSeconds,
     };
   }, [initialTimerRunning, initialTimerSeconds]);
-
-  const [guestCreateNoticeOpen, setGuestCreateNoticeOpen] = useState(false);
 
   const value = useMemo<
     NonNullable<React.ContextType<typeof AppContext>>
@@ -210,14 +209,8 @@ export function MockAppProvider({
       restoreRecord,
       getRecordsByBook,
       getTotalDurationByBook,
-      searchText,
-      setSearchText,
-
-      guestCreateNoticeOpen,
-      closeGuestCreateNotice: () => setGuestCreateNoticeOpen(false),
-      dismissGuestCreateNotice: () => setGuestCreateNoticeOpen(false),
     };
-  }, [books, records, searchText, tags, guestCreateNoticeOpen]);
+  }, [books, records, tags]);
 
   return (
     <TimerProvider
@@ -225,7 +218,11 @@ export function MockAppProvider({
       tickMs={timerTickMs}
       initialState={initialTimerState}
     >
-      <AppContext.Provider value={value}>{children}</AppContext.Provider>
+      <GuestCreateNoticeProvider user={null}>
+        <SearchProvider initialSearchText={initialSearchText}>
+          <AppContext.Provider value={value}>{children}</AppContext.Provider>
+        </SearchProvider>
+      </GuestCreateNoticeProvider>
     </TimerProvider>
   );
 }

@@ -3,7 +3,11 @@ import { AuthGate } from "./auth/AuthGate";
 import { AuthProvider } from "./auth/AuthContext";
 import { useAuth } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
-import { useApp } from "./context/AppContext";
+import {
+  GuestCreateNoticeProvider,
+  useGuestCreateNotice,
+} from "./context/GuestCreateNoticeContext";
+import { SearchProvider } from "./context/SearchContext";
 import { TimerProvider } from "./timer/TimerContext";
 import { TimerPage } from "./pages/TimerPage";
 import { BookCollectionView } from "./pages/BookCollectionView";
@@ -14,77 +18,16 @@ import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { TabBar, type Page } from "./components/TabBar";
 import { Dialog } from "./components/Dialog";
 import { Toast } from "./components/Toast";
-import { joinWithBase, stripBase } from "./utils/navigation";
+import { joinWithBase } from "./utils/navigation";
 import { isOcrHandwrittenMemoEnabled } from "./ocr/env";
 import { OcrHandwrittenMemoRootPage } from "./ocr/OcrHandwrittenMemoRootPage";
-
-type RecordsSubPage = "add" | null;
-type SanctumSubPage = "tags" | "privacy" | null;
-
-type RouteState = {
-  page: Page;
-  recordsSubPage: RecordsSubPage;
-  sanctumSubPage: SanctumSubPage;
-  ocrActive: boolean;
-};
-
-function parseRouteFromPath(pathname: string) {
-  const path = stripBase(pathname).replace(/^\/+/, "").trim();
-  if (!path)
-    return {
-      page: "home" as Page,
-      recordsSubPage: null,
-      sanctumSubPage: null,
-      ocrActive: false,
-    } satisfies RouteState;
-
-  const [pageRaw, subRaw] = path.split("/");
-
-  if (isOcrHandwrittenMemoEnabled() && pageRaw === "ocr") {
-    return {
-      page: "home" as Page,
-      recordsSubPage: null,
-      sanctumSubPage: null,
-      ocrActive: true,
-    } satisfies RouteState;
-  }
-
-  const page: Page =
-    pageRaw === "home" ||
-    pageRaw === "books" ||
-    pageRaw === "records" ||
-    pageRaw === "sanctum"
-      ? (pageRaw as Page)
-      : "home";
-
-  const recordsSubPage: RecordsSubPage =
-    page === "records" && subRaw === "add" ? "add" : null;
-
-  const sanctumSubPage: SanctumSubPage =
-    page === "sanctum" && (subRaw === "tags" || subRaw === "privacy")
-      ? (subRaw as SanctumSubPage)
-      : null;
-
-  return {
-    page,
-    recordsSubPage,
-    sanctumSubPage,
-    ocrActive: false,
-  } satisfies RouteState;
-}
-
-function toPathname(
-  page: Page,
-  recordsSubPage: RecordsSubPage,
-  sanctumSubPage: SanctumSubPage,
-  ocrActive: boolean,
-) {
-  if (ocrActive) return "/ocr";
-  if (page === "home") return "/";
-  if (page === "records" && recordsSubPage) return `/records/${recordsSubPage}`;
-  if (page === "sanctum" && sanctumSubPage) return `/sanctum/${sanctumSubPage}`;
-  return `/${page}`;
-}
+import {
+  parseRouteFromPathname,
+  toPathname,
+  type RecordsSubPage,
+  type RouteState,
+  type SanctumSubPage,
+} from "./utils/router";
 
 function AppContent() {
   const { user } = useAuth();
@@ -92,7 +35,7 @@ function AppContent() {
     guestCreateNoticeOpen,
     closeGuestCreateNotice,
     dismissGuestCreateNotice,
-  } = useApp();
+  } = useGuestCreateNotice();
 
   const initialRoute = useMemo<RouteState>(() => {
     if (typeof window === "undefined") {
@@ -104,7 +47,9 @@ function AppContent() {
       };
     }
 
-    return parseRouteFromPath(window.location.pathname);
+    return parseRouteFromPathname(window.location.pathname, {
+      ocrEnabled: isOcrHandwrittenMemoEnabled(),
+    });
   }, []);
 
   const [currentPage, setCurrentPage] = useState<Page>(initialRoute.page);
@@ -121,7 +66,12 @@ function AppContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const nextPathname = joinWithBase(
-      toPathname(currentPage, recordsSubPage, sanctumSubPage, ocrActive),
+      toPathname({
+        page: currentPage,
+        recordsSubPage,
+        sanctumSubPage,
+        ocrActive,
+      }),
     );
     if (window.location.pathname !== nextPathname) {
       window.history.pushState(
@@ -136,7 +86,9 @@ function AppContent() {
     if (typeof window === "undefined") return;
     const onPopState = () => {
       const { page, recordsSubPage, sanctumSubPage, ocrActive } =
-        parseRouteFromPath(window.location.pathname);
+        parseRouteFromPathname(window.location.pathname, {
+          ocrEnabled: isOcrHandwrittenMemoEnabled(),
+        });
       setCurrentPage(page);
       setRecordsSubPage(recordsSubPage);
       setSanctumSubPage(sanctumSubPage);
@@ -246,11 +198,15 @@ function AppProviders() {
   const { user } = useAuth();
 
   return (
-    <TimerProvider uid={user?.uid}>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </TimerProvider>
+    <GuestCreateNoticeProvider user={user}>
+      <SearchProvider>
+        <TimerProvider uid={user?.uid}>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
+        </TimerProvider>
+      </SearchProvider>
+    </GuestCreateNoticeProvider>
   );
 }
 
