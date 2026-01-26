@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   setDoc,
+  Timestamp,
   updateDoc,
   type Firestore,
 } from "firebase/firestore";
@@ -35,11 +36,10 @@ export async function createTag(
   if (!db || !uid) return null;
   const text = normalizeTagText(tag.text);
   if (!text) return null;
-  const now = new Date().toISOString();
   const created = await addDoc(collection(db, "users", uid, "tags"), {
     text,
     description: tag.description ?? "",
-    createdAt: now,
+    createdAt: Timestamp.now(),
   });
   return created.id;
 }
@@ -89,13 +89,20 @@ export async function restoreTag(
 ) {
   if (!db || !uid) return;
   const { id, ...rest } = tag;
+  const createdAtIso = tag.createdAt ?? "";
+  const createdAtDate = createdAtIso ? new Date(createdAtIso) : null;
+  const createdAt =
+    createdAtDate && !Number.isNaN(createdAtDate.getTime())
+      ? Timestamp.fromDate(createdAtDate)
+      : undefined;
   await setDoc(
     doc(db, "users", uid, "tags", id),
     stripUndefined({
       ...rest,
       text: normalizeTagText(tag.text),
       description: tag.description ?? "",
-      createdAt: tag.createdAt ?? new Date().toISOString(),
+      createdAt,
     } as unknown as Record<string, unknown>),
+    { merge: true },
   );
 }

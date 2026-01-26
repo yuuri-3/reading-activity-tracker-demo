@@ -27,12 +27,10 @@ type PrepareGuestMergeResult = {
   secret: string;
   expiresAt: string; // ISO
 };
-
 type PreviewGuestMergeInput = {
   requestId: string;
   secret: string;
 };
-
 type PreviewGuestMergeResult = {
   anonUid: string;
   counts: {
@@ -53,11 +51,13 @@ type ExecuteGuestMergeResult = {
   moved: {
     tags: number;
     books: number;
+    memos: number;
     records: number;
   };
   deleted: {
     tags: number;
     books: number;
+    memos: number;
     records: number;
     userDoc: boolean;
     authUser: boolean;
@@ -263,7 +263,7 @@ async function requireValidAppCheckToken(request: any): Promise<void> {
 async function consumeOcrQuotaOrThrow(
   db: FirebaseFirestore.Firestore,
   uid: string,
-  now: Date
+  now: Date,
 ): Promise<void> {
   const { minuteKey, dayKey } = getJstBucketKeys(now);
   const minuteRef = db
@@ -306,7 +306,7 @@ async function consumeOcrQuotaOrThrow(
 
     // Keep docs for a while (can be used with Firestore TTL if enabled later).
     const deleteAtMinute = Timestamp.fromMillis(
-      nowMs + 8 * 24 * 60 * 60 * 1000
+      nowMs + 8 * 24 * 60 * 60 * 1000,
     );
     const deleteAtDay = Timestamp.fromMillis(nowMs + 40 * 24 * 60 * 60 * 1000);
 
@@ -320,7 +320,7 @@ async function consumeOcrQuotaOrThrow(
         updatedAt: tsNow,
         deleteAt: deleteAtMinute,
       },
-      { merge: true }
+      { merge: true },
     );
 
     tx.set(
@@ -333,7 +333,7 @@ async function consumeOcrQuotaOrThrow(
         updatedAt: tsNow,
         deleteAt: deleteAtDay,
       },
-      { merge: true }
+      { merge: true },
     );
   });
 }
@@ -442,7 +442,7 @@ const REQUEST_DELETE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 async function countSubcollection(
   db: FirebaseFirestore.Firestore,
   uid: string,
-  subcollection: "tags" | "books" | "records"
+  subcollection: "tags" | "books" | "records",
 ): Promise<number> {
   const ref = db.collection("users").doc(uid).collection(subcollection);
   const snap = await ref.get();
@@ -454,7 +454,7 @@ async function copySubcollection(
   fromUid: string,
   toUid: string,
   subcollection: "tags" | "books" | "records",
-  writer: FirebaseFirestore.BulkWriter
+  writer: FirebaseFirestore.BulkWriter,
 ): Promise<number> {
   const fromRef = db.collection("users").doc(fromUid).collection(subcollection);
   const toRef = db.collection("users").doc(toUid).collection(subcollection);
@@ -467,11 +467,34 @@ async function copySubcollection(
   return snap.size;
 }
 
+async function copyBookMemos(
+  db: FirebaseFirestore.Firestore,
+  fromUid: string,
+  toUid: string,
+  writer: FirebaseFirestore.BulkWriter,
+): Promise<number> {
+  const fromBooksRef = db.collection("users").doc(fromUid).collection("books");
+  const toBooksRef = db.collection("users").doc(toUid).collection("books");
+  const booksSnap = await fromBooksRef.get();
+
+  let total = 0;
+  for (const bookSnap of booksSnap.docs) {
+    const memosSnap = await bookSnap.ref.collection("memos").get();
+    const toMemosRef = toBooksRef.doc(bookSnap.id).collection("memos");
+    for (const memoSnap of memosSnap.docs) {
+      writer.set(toMemosRef.doc(memoSnap.id), memoSnap.data(), { merge: true });
+    }
+    total += memosSnap.size;
+  }
+
+  return total;
+}
+
 async function deleteSubcollection(
   db: FirebaseFirestore.Firestore,
   uid: string,
   subcollection: "tags" | "books" | "records",
-  writer: FirebaseFirestore.BulkWriter
+  writer: FirebaseFirestore.BulkWriter,
 ): Promise<number> {
   const ref = db.collection("users").doc(uid).collection(subcollection);
   const snap = await ref.get();
@@ -481,6 +504,26 @@ async function deleteSubcollection(
   }
 
   return snap.size;
+}
+
+async function deleteBookMemos(
+  db: FirebaseFirestore.Firestore,
+  uid: string,
+  writer: FirebaseFirestore.BulkWriter,
+): Promise<number> {
+  const booksRef = db.collection("users").doc(uid).collection("books");
+  const booksSnap = await booksRef.get();
+
+  let total = 0;
+  for (const bookSnap of booksSnap.docs) {
+    const memosSnap = await bookSnap.ref.collection("memos").get();
+    for (const memoSnap of memosSnap.docs) {
+      writer.delete(memoSnap.ref);
+    }
+    total += memosSnap.size;
+  }
+
+  return total;
 }
 
 async function deleteAuthUserIfLikelyAnonymous(uid: string): Promise<boolean> {
@@ -537,7 +580,7 @@ export const prepareGuestMerge = onCall(
       secret,
       expiresAt: new Date(expiresAtMs).toISOString(),
     };
-  }
+  },
 );
 
 // Health check / capability endpoint for the frontend.
@@ -556,7 +599,7 @@ export const getGuestMergeCapabilities = onCall(
       },
       checkedAt: new Date().toISOString(),
     };
-  }
+  },
 );
 
 export const previewGuestMerge = onCall(
@@ -565,11 +608,11 @@ export const previewGuestMerge = onCall(
 
     const requestId = requireString(
       (request.data as PreviewGuestMergeInput | undefined)?.requestId,
-      "requestId"
+      "requestId",
     );
     const secret = requireString(
       (request.data as PreviewGuestMergeInput | undefined)?.secret,
-      "secret"
+      "secret",
     );
 
     const db = admin.firestore();
@@ -621,7 +664,7 @@ export const previewGuestMerge = onCall(
       anonUid,
       counts: { tags, books, records },
     };
-  }
+  },
 );
 
 export const executeGuestMerge = onCall(
@@ -631,7 +674,7 @@ export const executeGuestMerge = onCall(
     const toUid = request.auth.uid;
     const requestId = requireString(
       (request.data as any)?.requestId,
-      "requestId"
+      "requestId",
     );
     const secret = requireString((request.data as any)?.secret, "secret");
 
@@ -680,14 +723,14 @@ export const executeGuestMerge = onCall(
         }
         throw new HttpsError(
           "failed-precondition",
-          "Merge request already used"
+          "Merge request already used",
         );
       }
 
       if (status === "processing") {
         throw new HttpsError(
           "aborted",
-          "Merge request is being processed. Please retry shortly."
+          "Merge request is being processed. Please retry shortly.",
         );
       }
 
@@ -710,10 +753,11 @@ export const executeGuestMerge = onCall(
       return {
         fromUid: anonUid,
         toUid,
-        moved: { tags: 0, books: 0, records: 0 },
+        moved: { tags: 0, books: 0, memos: 0, records: 0 },
         deleted: {
           tags: 0,
           books: 0,
+          memos: 0,
           records: 0,
           userDoc: false,
           authUser: false,
@@ -729,10 +773,11 @@ export const executeGuestMerge = onCall(
         doneByUid: toUid,
         doneAt: Timestamp.now(),
         result: {
-          moved: { tags: 0, books: 0, records: 0 },
+          moved: { tags: 0, books: 0, memos: 0, records: 0 },
           deleted: {
             tags: 0,
             books: 0,
+            memos: 0,
             records: 0,
             userDoc: false,
             authUser: false,
@@ -743,10 +788,11 @@ export const executeGuestMerge = onCall(
       return {
         fromUid: anonUid,
         toUid,
-        moved: { tags: 0, books: 0, records: 0 },
+        moved: { tags: 0, books: 0, memos: 0, records: 0 },
         deleted: {
           tags: 0,
           books: 0,
+          memos: 0,
           records: 0,
           userDoc: false,
           authUser: false,
@@ -762,40 +808,44 @@ export const executeGuestMerge = onCall(
         anonUid,
         toUid,
         "tags",
-        writer
+        writer,
       );
       const movedBooks = await copySubcollection(
         db,
         anonUid,
         toUid,
         "books",
-        writer
+        writer,
       );
+      const movedMemos = await copyBookMemos(db, anonUid, toUid, writer);
       const movedRecords = await copySubcollection(
         db,
         anonUid,
         toUid,
         "records",
-        writer
+        writer,
       );
 
       const deletedRecords = await deleteSubcollection(
         db,
         anonUid,
         "records",
-        writer
+        writer,
       );
+
+      // Subcollections are not deleted automatically; delete memos explicitly before deleting books.
+      const deletedMemos = await deleteBookMemos(db, anonUid, writer);
       const deletedBooks = await deleteSubcollection(
         db,
         anonUid,
         "books",
-        writer
+        writer,
       );
       const deletedTags = await deleteSubcollection(
         db,
         anonUid,
         "tags",
-        writer
+        writer,
       );
 
       await writer.close();
@@ -813,10 +863,16 @@ export const executeGuestMerge = onCall(
       const result = {
         fromUid: anonUid,
         toUid,
-        moved: { tags: movedTags, books: movedBooks, records: movedRecords },
+        moved: {
+          tags: movedTags,
+          books: movedBooks,
+          memos: movedMemos,
+          records: movedRecords,
+        },
         deleted: {
           tags: deletedTags,
           books: deletedBooks,
+          memos: deletedMemos,
           records: deletedRecords,
           userDoc: deletedUserDoc,
           authUser: deletedAuthUser,
@@ -848,10 +904,10 @@ export const executeGuestMerge = onCall(
 
       throw new HttpsError(
         "internal",
-        "Guest merge failed. Please try again later."
+        "Guest merge failed. Please try again later.",
       );
     }
-  }
+  },
 );
 
 export const ocrHandwrittenMemo = onCall(
@@ -936,5 +992,5 @@ export const ocrHandwrittenMemo = onCall(
         requestId,
       } satisfies HttpsErrorDetails);
     }
-  }
+  },
 );

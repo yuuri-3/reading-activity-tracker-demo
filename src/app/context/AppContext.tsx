@@ -17,6 +17,7 @@ import {
   orderBy,
   query,
   setDoc,
+  Timestamp,
   updateDoc,
 } from "firebase/firestore";
 import { Book, ReadingRecord, BookMemo, Tag } from "../types";
@@ -38,7 +39,18 @@ interface AppContextType {
   updateBook: (id: string, book: Partial<Book>) => Promise<void>;
   deleteBook: (id: string) => Promise<void>;
   getBook: (id: string) => Book | undefined;
-  addBookMemo: (bookId: string, memoText: string, createdAt?: string) => void;
+  addBookMemo: (
+    bookId: string,
+    memoText: string,
+    createdAt?: string,
+  ) => Promise<void>;
+  updateBookMemo: (
+    bookId: string,
+    memoId: string,
+    updates: { text?: string },
+  ) => Promise<void>;
+  deleteBookMemo: (bookId: string, memoId: string) => Promise<void>;
+  restoreBookMemo: (bookId: string, memo: BookMemo) => Promise<void>;
 
   // Tags
   tags: Tag[];
@@ -61,6 +73,9 @@ interface AppContextType {
   restoreRecord: (record: ReadingRecord) => Promise<void>;
   getRecordsByBook: (bookId: string) => ReadingRecord[];
   getTotalDurationByBook: (bookId: string) => number;
+
+  // Migration safety (TK-011)
+  migrationIssues: Array<{ kind: string; refPath: string; reason: string }>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -72,23 +87,26 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
 }
 
 function toIsoString(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (value instanceof Date) {
-    const ms = value.getTime();
-    return Number.isNaN(ms) ? "" : value.toISOString();
-  }
+  // NOTE(TK-011): 旧形式(ISO文字列)のフォールバックは行わない。
+  // Firestore Timestamp (Web SDK) and similar objects only.
+  if (!isTimestampLike(value)) return "";
+  const date = value.toDate();
+  const ms = date.getTime();
+  return Number.isNaN(ms) ? "" : date.toISOString();
+}
 
-  // Firestore Timestamp (Web SDK) and similar objects.
-  if (value && typeof value === "object") {
-    const maybeToDate = (value as { toDate?: unknown }).toDate;
-    if (typeof maybeToDate === "function") {
-      const date = (value as { toDate: () => Date }).toDate();
-      const ms = date.getTime();
-      return Number.isNaN(ms) ? "" : date.toISOString();
-    }
-  }
+function isTimestampLike(value: unknown): value is { toDate: () => Date } {
+  if (!value || typeof value !== "object") return false;
+  return typeof (value as { toDate?: unknown }).toDate === "function";
+}
 
-  return "";
+function toTimestampFromIsoOrThrow(iso: string, label: string): Timestamp {
+  const d = new Date(iso);
+  const ms = d.getTime();
+  if (Number.isNaN(ms)) {
+    throw new Error(`${label} が不正です: ${iso}`);
+  }
+  return Timestamp.fromDate(d);
 }
 
 function normalizeDurationSeconds(data: {
@@ -96,16 +114,12 @@ function normalizeDurationSeconds(data: {
   startTime?: unknown;
   endTime?: unknown;
 }): number {
-  const startTime = typeof data.startTime === "string" ? data.startTime : "";
-  const endTime = typeof data.endTime === "string" ? data.endTime : "";
-
-  if (startTime && endTime) {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
-      const diffSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
-      if (diffSeconds > 0) return diffSeconds;
-    }
+  // NOTE(TK-011): 旧形式(文字列日時)から duration を算出しない。
+  if (isTimestampLike(data.startTime) && isTimestampLike(data.endTime)) {
+    const start = data.startTime.toDate();
+    const end = data.endTime.toDate();
+    const diffSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+    if (diffSeconds > 0) return diffSeconds;
   }
 
   const n =
@@ -117,9 +131,25 @@ function normalizeDurationSeconds(data: {
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { registerGuestCreation } = useGuestCreateNotice();
-  const [books, setBooks] = useState<Book[]>([]);
+  const [baseBooks, setBaseBooks] = useState<Book[]>([]);
+  const [bookMemosByBookId, setBookMemosByBookId] = useState<
+    Record<string, BookMemo[]>
+  >({});
   const [records, setRecords] = useState<ReadingRecord[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+
+  const [bookIssues, setBookIssues] = useState<
+    Array<{ kind: string; refPath: string; reason: string }>
+  >([]);
+  const [recordIssues, setRecordIssues] = useState<
+    Array<{ kind: string; refPath: string; reason: string }>
+  >([]);
+  const [tagIssues, setTagIssues] = useState<
+    Array<{ kind: string; refPath: string; reason: string }>
+  >([]);
+  const [memoIssues, setMemoIssues] = useState<
+    Array<{ kind: string; refPath: string; reason: string }>
+  >([]);
 
   const uid = user?.uid;
 
@@ -131,11 +161,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Subscribe to Firestore (single source of truth)
   useEffect(() => {
     if (!db || !uid) {
-      setBooks([]);
+      setBaseBooks([]);
+      setBookMemosByBookId({});
       setRecords([]);
       setTags([]);
+      setBookIssues([]);
+      setRecordIssues([]);
+      setTagIssues([]);
+      setMemoIssues([]);
       return;
     }
+
+    const memoUnsubsByBookId = new Map<string, () => void>();
+    const memoIssuesByBookId = new Map<
+      string,
+      Array<{ kind: string; refPath: string; reason: string }>
+    >();
+
+    const recomputeMemoIssues = () => {
+      setMemoIssues(Array.from(memoIssuesByBookId.values()).flat());
+    };
+
+    const subscribeBookMemos = (bookId: string) => {
+      if (memoUnsubsByBookId.has(bookId)) return;
+
+      const memosQuery = query(
+        collection(db, "users", uid, "books", bookId, "memos"),
+        orderBy("createdAt", "desc"),
+      );
+
+      const unsub = onSnapshot(
+        memosQuery,
+        (snapshot) => {
+          const issues: Array<{
+            kind: string;
+            refPath: string;
+            reason: string;
+          }> = [];
+          const memos: BookMemo[] = snapshot.docs.map((d) => {
+            const raw = d.data() as Record<string, unknown>;
+            if (!isTimestampLike(raw.createdAt)) {
+              issues.push({
+                kind: "memos.createdAt",
+                refPath: d.ref.path,
+                reason: "createdAt is not Timestamp",
+              });
+            }
+
+            return {
+              id: d.id,
+              text: typeof raw.text === "string" ? raw.text : "",
+              createdAt: toIsoString(raw.createdAt),
+            } satisfies BookMemo;
+          });
+
+          setBookMemosByBookId((prev) => ({ ...prev, [bookId]: memos }));
+          memoIssuesByBookId.set(bookId, issues);
+          recomputeMemoIssues();
+        },
+        (err) => {
+          // eslint-disable-next-line no-console
+          console.error("[AppContext] memos onSnapshot error", err);
+        },
+      );
+
+      memoUnsubsByBookId.set(bookId, unsub);
+    };
+
+    const unsubscribeBookMemos = (bookId: string) => {
+      const unsub = memoUnsubsByBookId.get(bookId);
+      if (unsub) unsub();
+      memoUnsubsByBookId.delete(bookId);
+      memoIssuesByBookId.delete(bookId);
+
+      setBookMemosByBookId((prev) => {
+        if (!(bookId in prev)) return prev;
+        const next = { ...prev };
+        delete next[bookId];
+        return next;
+      });
+      recomputeMemoIssues();
+    };
 
     const onSnapshotError = (err: unknown) => {
       // This used to be silent; keep it visible for debugging.
@@ -161,20 +267,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubBooks = onSnapshot(
       booksQuery,
       (snapshot) => {
-        setBooks(
+        const issues: Array<{ kind: string; refPath: string; reason: string }> =
+          [];
+
+        const nextBookIds = snapshot.docs.map((d) => d.id);
+
+        // Remove memo subscriptions for deleted books.
+        for (const existingBookId of memoUnsubsByBookId.keys()) {
+          if (!nextBookIds.includes(existingBookId)) {
+            unsubscribeBookMemos(existingBookId);
+          }
+        }
+
+        // Add memo subscriptions for new books.
+        for (const bookId of nextBookIds) {
+          if (!memoUnsubsByBookId.has(bookId)) {
+            subscribeBookMemos(bookId);
+          }
+        }
+
+        setBaseBooks(
           snapshot.docs.map((d) => {
-            const data = d.data() as Omit<Book, "id">;
+            const raw = d.data() as Record<string, unknown>;
+            if (!isTimestampLike(raw.createdAt)) {
+              issues.push({
+                kind: "books.createdAt",
+                refPath: d.ref.path,
+                reason: "createdAt is not Timestamp",
+              });
+            }
+
             return {
               id: d.id,
-              title: data.title,
-              author: data.author,
-              memos: data.memos ?? [],
-              createdAt: toIsoString(
-                (data as unknown as { createdAt?: unknown }).createdAt,
-              ),
-            };
+              title: typeof raw.title === "string" ? raw.title : "",
+              author: typeof raw.author === "string" ? raw.author : undefined,
+              memos: [],
+              createdAt: toIsoString(raw.createdAt),
+            } satisfies Book;
           }),
         );
+
+        setBookIssues(issues);
       },
       onSnapshotError,
     );
@@ -182,6 +315,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubRecords = onSnapshot(
       recordsQuery,
       (snapshot) => {
+        const issues: Array<{ kind: string; refPath: string; reason: string }> =
+          [];
         setRecords(
           snapshot.docs.map((d) => {
             const data = d.data() as Omit<ReadingRecord, "id">;
@@ -205,18 +340,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
               duration: normalizeDurationSeconds(data),
               memo,
               tagIds,
-              startTime: toIsoString(
-                (data as unknown as { startTime?: unknown }).startTime,
-              ),
-              endTime: toIsoString(
-                (data as unknown as { endTime?: unknown }).endTime,
-              ),
-              createdAt: toIsoString(
-                (data as unknown as { createdAt?: unknown }).createdAt,
-              ),
+              startTime: (() => {
+                const v = (data as unknown as { startTime?: unknown })
+                  .startTime;
+                if (!isTimestampLike(v)) {
+                  issues.push({
+                    kind: "records.startTime",
+                    refPath: d.ref.path,
+                    reason: "startTime is not Timestamp",
+                  });
+                }
+                return toIsoString(v);
+              })(),
+              endTime: (() => {
+                const v = (data as unknown as { endTime?: unknown }).endTime;
+                if (!isTimestampLike(v)) {
+                  issues.push({
+                    kind: "records.endTime",
+                    refPath: d.ref.path,
+                    reason: "endTime is not Timestamp",
+                  });
+                }
+                return toIsoString(v);
+              })(),
+              createdAt: (() => {
+                const v = (data as unknown as { createdAt?: unknown })
+                  .createdAt;
+                if (!isTimestampLike(v)) {
+                  issues.push({
+                    kind: "records.createdAt",
+                    refPath: d.ref.path,
+                    reason: "createdAt is not Timestamp",
+                  });
+                }
+                return toIsoString(v);
+              })(),
             };
           }),
         );
+
+        setRecordIssues(issues);
       },
       onSnapshotError,
     );
@@ -224,6 +387,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubTags = onSnapshot(
       tagsQuery,
       (snapshot) => {
+        const issues: Array<{ kind: string; refPath: string; reason: string }> =
+          [];
         setTags(
           snapshot.docs.map((d) => {
             const data = d.data() as {
@@ -235,8 +400,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const text = typeof data.text === "string" ? data.text : "";
             const description =
               typeof data.description === "string" ? data.description : "";
-            const createdAt =
-              toIsoString(data.createdAt) || new Date().toISOString();
+            if (!isTimestampLike(data.createdAt)) {
+              issues.push({
+                kind: "tags.createdAt",
+                refPath: d.ref.path,
+                reason: "createdAt is not Timestamp",
+              });
+            }
+            const createdAt = toIsoString(data.createdAt);
 
             return {
               id: d.id,
@@ -246,6 +417,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             } satisfies Tag;
           }),
         );
+
+        setTagIssues(issues);
       },
       onSnapshotError,
     );
@@ -254,8 +427,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubBooks();
       unsubRecords();
       unsubTags();
+
+      for (const unsub of memoUnsubsByBookId.values()) {
+        try {
+          unsub();
+        } catch {
+          // ignore
+        }
+      }
     };
   }, [db, uid]);
+
+  const books = useMemo<Book[]>(() => {
+    return baseBooks.map((b) => ({
+      ...b,
+      memos: bookMemosByBookId[b.id] ?? [],
+    }));
+  }, [baseBooks, bookMemosByBookId]);
+
+  const migrationIssues = useMemo(() => {
+    return [...bookIssues, ...memoIssues, ...recordIssues, ...tagIssues];
+  }, [bookIssues, memoIssues, recordIssues, tagIssues]);
 
   const createTag = useCallback(
     async (tag: { text: string; description?: string }) => {
@@ -290,13 +482,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addBook = useCallback(
     async (book: Omit<Book, "id" | "createdAt">) => {
       if (!db || !uid) return;
-      const now = new Date().toISOString();
+      const { memos: _memos, ...rest } = book as Omit<
+        Book,
+        "id" | "createdAt"
+      > & { memos?: unknown };
       await addDoc(collection(db, "users", uid, "books"), {
-        ...stripUndefined({
-          ...book,
-          memos: book.memos ?? [],
-        }),
-        createdAt: now,
+        ...stripUndefined(rest as unknown as Record<string, unknown>),
+        createdAt: Timestamp.now(),
       });
       registerGuestCreation();
     },
@@ -306,7 +498,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateBook = useCallback(
     async (id: string, updates: Partial<Book>) => {
       if (!db || !uid) return;
-      const { id: _id, ...rest } = updates;
+      const {
+        id: _id,
+        memos: _memos,
+        createdAt: _createdAt,
+        ...rest
+      } = updates as Partial<Book> & { memos?: unknown };
       await updateDoc(doc(db, "users", uid, "books", id), stripUndefined(rest));
     },
     [db, uid],
@@ -328,20 +525,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const addBookMemo = useCallback(
-    (bookId: string, memoText: string, createdAt?: string) => {
-      const book = getBook(bookId);
-      if (book) {
-        const fallbackCreatedAt = new Date().toISOString();
-        const createdAtValue = createdAt?.trim() || fallbackCreatedAt;
-        const newMemo: BookMemo = {
-          id: Date.now().toString(),
-          text: memoText,
-          createdAt: createdAtValue,
-        };
-        void updateBook(bookId, { memos: [...(book.memos || []), newMemo] });
-      }
+    async (bookId: string, memoText: string, createdAt?: string) => {
+      if (!db || !uid) return;
+      const createdAtIso = createdAt?.trim() || new Date().toISOString();
+      const ts = toTimestampFromIsoOrThrow(createdAtIso, "createdAt");
+
+      await addDoc(collection(db, "users", uid, "books", bookId, "memos"), {
+        text: memoText,
+        createdAt: ts,
+      });
+      registerGuestCreation();
     },
-    [getBook, updateBook],
+    [db, registerGuestCreation, uid],
+  );
+
+  const updateBookMemo = useCallback(
+    async (bookId: string, memoId: string, updates: { text?: string }) => {
+      if (!db || !uid) return;
+      await updateDoc(
+        doc(db, "users", uid, "books", bookId, "memos", memoId),
+        stripUndefined({
+          ...(typeof updates.text === "string" ? { text: updates.text } : {}),
+        }),
+      );
+    },
+    [db, uid],
+  );
+
+  const deleteBookMemo = useCallback(
+    async (bookId: string, memoId: string) => {
+      if (!db || !uid) return;
+      await deleteDoc(doc(db, "users", uid, "books", bookId, "memos", memoId));
+    },
+    [db, uid],
+  );
+
+  const restoreBookMemo = useCallback(
+    async (bookId: string, memo: BookMemo) => {
+      if (!db || !uid) return;
+      const ts = toTimestampFromIsoOrThrow(memo.createdAt, "createdAt");
+      await setDoc(
+        doc(db, "users", uid, "books", bookId, "memos", memo.id),
+        {
+          text: memo.text,
+          createdAt: ts,
+        },
+        { merge: true },
+      );
+    },
+    [db, uid],
   );
 
   // Record operations
@@ -352,7 +584,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           "ログイン情報の取得中です。少し待ってからもう一度お試しください",
         );
       }
-      const now = new Date().toISOString();
+      const startTs = toTimestampFromIsoOrThrow(record.startTime, "startTime");
+      const endTs = toTimestampFromIsoOrThrow(record.endTime, "endTime");
       await addDoc(collection(db, "users", uid, "records"), {
         ...stripUndefined({
           ...(record as unknown as Record<string, unknown>),
@@ -360,8 +593,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             typeof record.duration === "number"
               ? Math.max(0, Math.floor(record.duration))
               : record.duration,
+          startTime: startTs,
+          endTime: endTs,
         }),
-        createdAt: now,
+        createdAt: Timestamp.now(),
       });
       registerGuestCreation();
     },
@@ -375,7 +610,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           "ログイン情報の取得中です。少し待ってからもう一度お試しください",
         );
       }
-      const { id: _id, ...rest } = updates;
+      const {
+        id: _id,
+        startTime: startIso,
+        endTime: endIso,
+        ...rest
+      } = updates;
       const nextRest: Record<string, unknown> = {
         ...rest,
         ...(typeof rest.duration === "number"
@@ -383,6 +623,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : {}),
         ...(typeof rest.bookId === "string" && rest.bookId === ""
           ? { bookId: deleteField() }
+          : {}),
+        ...(typeof startIso === "string" && startIso.trim()
+          ? { startTime: toTimestampFromIsoOrThrow(startIso, "startTime") }
+          : {}),
+        ...(typeof endIso === "string" && endIso.trim()
+          ? { endTime: toTimestampFromIsoOrThrow(endIso, "endTime") }
           : {}),
       };
       await updateDoc(
@@ -408,7 +654,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { id, ...rest } = record;
       await setDoc(
         doc(db, "users", uid, "records", id),
-        stripUndefined(rest as unknown as Record<string, unknown>),
+        stripUndefined({
+          ...(rest as unknown as Record<string, unknown>),
+          startTime: toTimestampFromIsoOrThrow(record.startTime, "startTime"),
+          endTime: toTimestampFromIsoOrThrow(record.endTime, "endTime"),
+          createdAt: toTimestampFromIsoOrThrow(record.createdAt, "createdAt"),
+        }),
+        { merge: true },
       );
     },
     [db, uid],
@@ -438,6 +690,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteBook,
       getBook,
       addBookMemo,
+      updateBookMemo,
+      deleteBookMemo,
+      restoreBookMemo,
       tags,
       createTag,
       updateTag,
@@ -450,6 +705,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       restoreRecord,
       getRecordsByBook,
       getTotalDurationByBook,
+      migrationIssues,
     };
   }, [
     addBook,
@@ -468,8 +724,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     restoreTag,
     tags,
     updateBook,
+    updateBookMemo,
     updateRecord,
     updateTag,
+    deleteBookMemo,
+    restoreBookMemo,
+    migrationIssues,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

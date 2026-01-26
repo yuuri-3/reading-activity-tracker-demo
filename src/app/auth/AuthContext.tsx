@@ -104,6 +104,11 @@ export async function deleteAccountImpl(args: {
 
 type FirestoreDocData = Record<string, unknown>;
 type FirestoreDocSnapshot = { id: string; data: FirestoreDocData };
+type FirestoreBookMemoDocSnapshot = {
+  bookId: string;
+  id: string;
+  data: FirestoreDocData;
+};
 
 type SecondaryAppAuthAndDb = Awaited<
   ReturnType<typeof createSecondaryAppAuthAndDb>
@@ -165,6 +170,69 @@ async function writeUserSubcollectionDocsMerge(
 
   if (opCount > 0) {
     await batch.commit();
+  }
+}
+
+async function readUserBookMemoDocs(
+  db: ReturnType<typeof getFirestoreDb>,
+  uid: string,
+  bookIds: string[],
+): Promise<FirestoreBookMemoDocSnapshot[]> {
+  const out: FirestoreBookMemoDocSnapshot[] = [];
+  for (const bookId of bookIds) {
+    const snap = await getDocs(
+      collection(db, "users", uid, "books", bookId, "memos"),
+    );
+    for (const d of snap.docs) {
+      const raw = (d.data() as unknown as FirestoreDocData) ?? {};
+      out.push({ bookId, id: d.id, data: raw });
+    }
+  }
+  return out;
+}
+
+async function writeUserBookMemoDocsMerge(
+  db: ReturnType<typeof getFirestoreDb>,
+  uid: string,
+  docs: FirestoreBookMemoDocSnapshot[],
+) {
+  if (docs.length === 0) return;
+
+  // Firestore batch limit is 500 operations. Keep margin.
+  let batch = writeBatch(db);
+  let opCount = 0;
+
+  for (const d of docs) {
+    const ref = firestoreDoc(
+      db,
+      "users",
+      uid,
+      "books",
+      d.bookId,
+      "memos",
+      d.id,
+    );
+    batch.set(ref, d.data, { merge: true });
+    opCount += 1;
+    if (opCount >= 450) {
+      await batch.commit();
+      batch = writeBatch(db);
+      opCount = 0;
+    }
+  }
+
+  if (opCount > 0) {
+    await batch.commit();
+  }
+}
+
+async function deleteUserBookMemos(
+  db: ReturnType<typeof getFirestoreDb>,
+  uid: string,
+) {
+  const booksSnap = await getDocs(collection(db, "users", uid, "books"));
+  for (const bookDoc of booksSnap.docs) {
+    await deleteCollectionDocs(db, "users", uid, "books", bookDoc.id, "memos");
   }
 }
 
@@ -470,6 +538,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     anonTags?: FirestoreDocSnapshot[];
     anonBooks?: FirestoreDocSnapshot[];
     anonRecords?: FirestoreDocSnapshot[];
+    anonBookMemos?: FirestoreBookMemoDocSnapshot[];
   } | null>(null);
 
   const fallbackSecondaryRef = React.useRef<{
@@ -747,6 +816,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     readUserSubcollectionDocs(db, anonUid, "books"),
                     readUserSubcollectionDocs(db, anonUid, "records"),
                   ]);
+                  const anonBookMemos = await readUserBookMemoDocs(
+                    db,
+                    anonUid,
+                    anonBooks.map((b) => b.id),
+                  );
                   pendingFallbackDataRef.current = {
                     anonUser: currentUser,
                     anonUid,
@@ -755,6 +829,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     anonTags,
                     anonBooks,
                     anonRecords,
+                    anonBookMemos,
                   };
                   setPendingFallbackMigration({
                     reasonCode: code,
@@ -1017,7 +1092,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const copiedCount =
             pending.anonTags.length +
             pending.anonBooks.length +
-            pending.anonRecords.length;
+            pending.anonRecords.length +
+            (pending.anonBookMemos?.length ?? 0);
 
           // 5) primary を Googleログインへ切り替える（可能ならcredentialでサイレント）
           // ここが成功しないと「統合先のuidでデータが見える」状態にならない。
@@ -1202,7 +1278,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const copiedCount =
           pending.anonTags.length +
           pending.anonBooks.length +
-          pending.anonRecords.length;
+          pending.anonRecords.length +
+          (pending.anonBookMemos?.length ?? 0);
 
         try {
           // 3) tags -> books -> records の順で「追加のみ」コピー（secondaryの認証で実行）
@@ -1218,6 +1295,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "books",
             pending.anonBooks,
           );
+          if (pending.anonBookMemos && pending.anonBookMemos.length > 0) {
+            await writeUserBookMemoDocsMerge(
+              secondary.db,
+              nextUid,
+              pending.anonBookMemos,
+            );
+          }
           await writeUserSubcollectionDocsMerge(
             secondary.db,
             nextUid,
@@ -1231,6 +1315,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const db = getFirestoreDb();
 
           // 5) primary を Googleログインへ切り替える
+          await deleteUserBookMemos(db, pending.anonUid);
           try {
             if (googleCredential) {
               await signInWithCredential(auth, googleCredential);
@@ -1298,6 +1383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(pending.anonUser);
 
             try {
+              await deleteUserBookMemos(db, pending.anonUid);
               for (const subcollection of ACCOUNT_DELETION_SUBCOLLECTIONS) {
                 await deleteCollectionDocs(
                   db,
