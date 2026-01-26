@@ -23,7 +23,7 @@ describe("Firestore Rules (smoke)", () => {
       firestore: {
         rules: readFileSync(
           path.join(process.cwd(), "firestore.rules"),
-          "utf8"
+          "utf8",
         ),
       },
     });
@@ -38,7 +38,15 @@ describe("Firestore Rules (smoke)", () => {
 
     await assertFails(getDoc(doc(db, "users", "u1", "books", "b1")));
     await assertFails(
-      setDoc(doc(db, "users", "u1", "books", "b1"), { title: "x" })
+      getDoc(doc(db, "users", "u1", "books", "b1", "memos", "m1")),
+    );
+    await assertFails(
+      setDoc(doc(db, "users", "u1", "books", "b1"), { title: "x" }),
+    );
+    await assertFails(
+      setDoc(doc(db, "users", "u1", "books", "b1", "memos", "m1"), {
+        text: "memo",
+      }),
     );
   });
 
@@ -47,15 +55,24 @@ describe("Firestore Rules (smoke)", () => {
     const db = testEnv.authenticatedContext(uid).firestore();
 
     await assertSucceeds(
-      setDoc(doc(db, "users", uid, "books", "b1"), { title: "book" })
+      setDoc(doc(db, "users", uid, "books", "b1"), { title: "book" }),
     );
     await assertSucceeds(getDoc(doc(db, "users", uid, "books", "b1")));
 
     await assertSucceeds(
-      setDoc(doc(db, "users", uid, "records", "r1"), { memo: "record" })
+      setDoc(doc(db, "users", uid, "books", "b1", "memos", "m1"), {
+        text: "memo",
+      }),
     );
     await assertSucceeds(
-      setDoc(doc(db, "users", uid, "tags", "t1"), { name: "tag" })
+      getDoc(doc(db, "users", uid, "books", "b1", "memos", "m1")),
+    );
+
+    await assertSucceeds(
+      setDoc(doc(db, "users", uid, "records", "r1"), { memo: "record" }),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, "users", uid, "tags", "t1"), { name: "tag" }),
     );
   });
 
@@ -67,7 +84,15 @@ describe("Firestore Rules (smoke)", () => {
 
     await assertFails(getDoc(doc(otherDb, "users", ownerUid, "books", "b1")));
     await assertFails(
-      setDoc(doc(otherDb, "users", ownerUid, "books", "b1"), { title: "x" })
+      getDoc(doc(otherDb, "users", ownerUid, "books", "b1", "memos", "m1")),
+    );
+    await assertFails(
+      setDoc(doc(otherDb, "users", ownerUid, "books", "b1"), { title: "x" }),
+    );
+    await assertFails(
+      setDoc(doc(otherDb, "users", ownerUid, "books", "b1", "memos", "m1"), {
+        text: "x",
+      }),
     );
   });
 });

@@ -71,6 +71,26 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
   ) as Partial<T>;
 }
 
+function toIsoString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isNaN(ms) ? "" : value.toISOString();
+  }
+
+  // Firestore Timestamp (Web SDK) and similar objects.
+  if (value && typeof value === "object") {
+    const maybeToDate = (value as { toDate?: unknown }).toDate;
+    if (typeof maybeToDate === "function") {
+      const date = (value as { toDate: () => Date }).toDate();
+      const ms = date.getTime();
+      return Number.isNaN(ms) ? "" : date.toISOString();
+    }
+  }
+
+  return "";
+}
+
 function normalizeDurationSeconds(data: {
   duration?: unknown;
   startTime?: unknown;
@@ -149,7 +169,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
               title: data.title,
               author: data.author,
               memos: data.memos ?? [],
-              createdAt: data.createdAt,
+              createdAt: toIsoString(
+                (data as unknown as { createdAt?: unknown }).createdAt,
+              ),
             };
           }),
         );
@@ -163,6 +185,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRecords(
           snapshot.docs.map((d) => {
             const data = d.data() as Omit<ReadingRecord, "id">;
+            const memo =
+              typeof (data as unknown as { memo?: unknown }).memo === "string"
+                ? ((data as unknown as { memo?: unknown }).memo as string)
+                : "";
             const tagIds: string[] | undefined = Array.isArray(
               (data as unknown as { tagIds?: unknown }).tagIds,
             )
@@ -177,11 +203,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
               id: d.id,
               bookId: data.bookId,
               duration: normalizeDurationSeconds(data),
-              memo: data.memo,
+              memo,
               tagIds,
-              startTime: data.startTime,
-              endTime: data.endTime,
-              createdAt: data.createdAt,
+              startTime: toIsoString(
+                (data as unknown as { startTime?: unknown }).startTime,
+              ),
+              endTime: toIsoString(
+                (data as unknown as { endTime?: unknown }).endTime,
+              ),
+              createdAt: toIsoString(
+                (data as unknown as { createdAt?: unknown }).createdAt,
+              ),
             };
           }),
         );
@@ -204,9 +236,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const description =
               typeof data.description === "string" ? data.description : "";
             const createdAt =
-              typeof data.createdAt === "string"
-                ? data.createdAt
-                : new Date().toISOString();
+              toIsoString(data.createdAt) || new Date().toISOString();
 
             return {
               id: d.id,
