@@ -157,12 +157,13 @@ BookMemo はサブコレクション化する。
 - 実行（まず dry-run）
   - `npm --prefix functions run build && node functions/lib/admin/backfillTk011.js --project=<PROJECT_ID> --uid=<UID> --out=./.tmp/tk011-dry-run.json`
 - 実行（書き込み）
-  - `npm --prefix functions run build && node functions/lib/admin/backfillTk011.js --project=<PROJECT_ID> --uid=<UID> --write --out=./.tmp/tk011-write.json`
+  - `npm --prefix functions run build && node functions/lib/admin/backfillTk011.js --project=<PROJECT_ID> --uid=<UID> --write --allowed-uids=<UID> --out=./.tmp/tk011-write.json`
 
 ガード方針:
 
 - 書き込みは `--write` 指定時のみ行う（デフォルトは dry-run）
 - `--project` と `--uid/--uids` を必須にし、対象を明示してから実行する
+- 誤実行防止のため、書き込み時は `--allowed-uids` を必須にする（対象 UID ホワイトリスト）
 - 失敗 1 件でもあればデプロイしない（5.1 に従う）
 
 ### 6.1) 移行手順（ゼロユーザー前提の短期ビッグバン）

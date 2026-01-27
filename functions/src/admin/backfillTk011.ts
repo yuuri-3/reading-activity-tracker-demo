@@ -73,6 +73,30 @@ function parseUids(uidsRaw: string | boolean | undefined): string[] {
     .filter(Boolean);
 }
 
+function assertAllowedUids(args: {
+  mode: Mode;
+  targetUids: string[];
+  allowedUidsRaw: string | boolean | undefined;
+}): void {
+  const { mode, targetUids, allowedUidsRaw } = args;
+  if (mode === "dry-run") return;
+
+  const allowedUids = parseUids(allowedUidsRaw);
+  if (allowedUids.length === 0) {
+    throw new Error(
+      "--allowed-uids=<uid1,uid2,...> is required in write mode (safety guard)",
+    );
+  }
+
+  const allowedSet = new Set(allowedUids);
+  const denied = targetUids.filter((uid) => !allowedSet.has(uid));
+  if (denied.length > 0) {
+    throw new Error(
+      `targetUids contains uid(s) not in --allowed-uids: ${denied.join(", ")}`,
+    );
+  }
+}
+
 function toTimestampOrError(
   value: unknown,
 ): { ok: true; ts: Timestamp } | { ok: false; reason: string } {
@@ -130,6 +154,12 @@ async function main(): Promise<void> {
   admin.initializeApp({
     credential: admin.credential.applicationDefault(),
     projectId,
+  });
+
+  assertAllowedUids({
+    mode,
+    targetUids: uids,
+    allowedUidsRaw: args["allowed-uids"],
   });
 
   const db = admin.firestore();
