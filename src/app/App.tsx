@@ -3,6 +3,7 @@ import { AuthGate } from "./auth/AuthGate";
 import { AuthProvider } from "./auth/AuthContext";
 import { useAuth } from "./auth/AuthContext";
 import { AppProvider } from "./context/AppContext";
+import { useApp } from "./context/AppContext";
 import {
   GuestCreateNoticeProvider,
   useGuestCreateNotice,
@@ -31,11 +32,15 @@ import {
 
 function AppContent() {
   const { user } = useAuth();
+  const { migrationIssues } = useApp();
   const {
     guestCreateNoticeOpen,
     closeGuestCreateNotice,
     dismissGuestCreateNotice,
   } = useGuestCreateNotice();
+
+  const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
+  const isMigrationBlocked = migrationIssues.length > 0;
 
   const initialRoute = useMemo<RouteState>(() => {
     if (typeof window === "undefined") {
@@ -119,7 +124,60 @@ function AppContent() {
       {/* Main Content */}
       <main className="flex-1 w-full pb-24">
         <div className="w-full">
-          {ocrActive ? (
+          {isMigrationBlocked ? (
+            <div className="max-w-2xl mx-auto px-6 pt-8 pb-28">
+              <div className="rounded-xl border border-[#f2c94c] bg-[#fff8dd] px-5 py-4 text-foreground">
+                <p className="text-[14px] font-semibold leading-6">
+                  データ移行が完了していないため、アプリを停止しています
+                </p>
+                <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+                  Timestamp化/書籍メモのサブコレ移行（TK-011）の漏れが検出されました（
+                  {migrationIssues.length}
+                  件）。旧形式のフォールバックは行わず、新形式のみを正として扱います。
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-md bg-foreground px-3 py-2 text-[13px] font-medium text-background"
+                    onClick={() => setMigrationDialogOpen(true)}
+                  >
+                    詳細を見る
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-foreground/20 bg-background px-3 py-2 text-[13px] font-medium text-foreground"
+                    onClick={() => {
+                      const lines = migrationIssues.map(
+                        (i) => `${i.kind}\t${i.refPath}\t${i.reason}`,
+                      );
+                      const text = lines.join("\n");
+                      try {
+                        void navigator.clipboard?.writeText(text);
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                  >
+                    一覧をコピー
+                  </button>
+                </div>
+
+                <div className="mt-5 rounded-lg border border-foreground/10 bg-background/70 px-4 py-3">
+                  <p className="text-[13px] font-medium leading-5">
+                    対応の目安
+                  </p>
+                  <ul className="mt-1 list-disc pl-5 text-[13px] leading-5 text-muted-foreground">
+                    <li>バックフィル（Admin SDK）を再実行し、失敗0件を確認</li>
+                    <li>
+                      失敗が残る場合は、対象ドキュメントの値を修正して再実行
+                    </li>
+                    <li>0件になったら、この画面は自動的に解除されます</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          ) : ocrActive ? (
             <OcrHandwrittenMemoRootPage
               onExit={() => {
                 setOcrActive(false);
@@ -158,7 +216,7 @@ function AppContent() {
 
       {/* Bottom Navigation - iOS Floating Style */}
       <nav className="fixed bottom-0 left-0 right-0 pointer-events-none">
-        {ocrActive ? null : (
+        {ocrActive || isMigrationBlocked ? null : (
           <div className="max-w-2xl mx-auto px-4 pb-4">
             <div className="pointer-events-auto -translate-y-6 max-w-[345px] mx-auto">
               <TabBar currentPage={currentPage} onChange={handleChangePage} />
@@ -168,7 +226,44 @@ function AppContent() {
       </nav>
 
       <Dialog
-        open={guestCreateNoticeOpen && !!user?.isAnonymous}
+        open={migrationDialogOpen}
+        onOpenChange={setMigrationDialogOpen}
+        title="データ移行の未完了（要確認）"
+        description="Timestamp化やmemosサブコレ移行が完了していないデータが検出されました。種類/IDを確認し、バックフィルや修正を行ってください。"
+        formPatternType="AddRecord"
+        cancelLabel="閉じる"
+        confirmLabel="コピー"
+        onCancel={() => setMigrationDialogOpen(false)}
+        onConfirm={() => {
+          const lines = migrationIssues.map((i) => `${i.kind}\t${i.refPath}`);
+          const text = lines.join("\n");
+          try {
+            void navigator.clipboard?.writeText(text);
+          } catch {
+            // ignore
+          }
+        }}
+      >
+        <div className="flex flex-col gap-2 text-sm leading-6 text-foreground">
+          <ul className="list-disc pl-5">
+            {migrationIssues.slice(0, 50).map((i) => (
+              <li key={`${i.kind}:${i.refPath}`}>
+                <span className="font-medium">{i.kind}</span> — {i.refPath}
+              </li>
+            ))}
+          </ul>
+          {migrationIssues.length > 50 ? (
+            <p className="text-muted-foreground">
+              ※表示は先頭50件のみ（全{migrationIssues.length}件）
+            </p>
+          ) : null}
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={
+          guestCreateNoticeOpen && !!user?.isAnonymous && !isMigrationBlocked
+        }
         onOpenChange={(open) => {
           if (open) return;
           closeGuestCreateNotice();

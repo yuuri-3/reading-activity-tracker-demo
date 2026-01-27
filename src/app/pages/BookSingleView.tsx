@@ -25,6 +25,9 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   const {
     updateBook,
     deleteBook,
+    updateBookMemo,
+    deleteBookMemo,
+    restoreBookMemo,
     tags,
     getRecordsByBook,
     getTotalDurationByBook,
@@ -123,14 +126,12 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     const deletedMemo = prevMemos.find((m) => m.id === memoId);
     if (!deletedMemo) return;
 
-    const nextMemos = prevMemos.filter((m) => m.id !== memoId);
-
     // Show Undo toast immediately (Firestore ack can be slow on mobile networks).
     toast.success("書籍メモを削除しました", {
       action: {
         label: "Undo",
         onClick: () => {
-          void updateBook(book.id, { memos: prevMemos }).catch((err) => {
+          void restoreBookMemo(book.id, deletedMemo).catch((err) => {
             console.error(err);
             toast.error("書籍メモの復元に失敗しました");
           });
@@ -138,7 +139,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
       },
     });
 
-    void updateBook(book.id, { memos: nextMemos }).catch((err) => {
+    void deleteBookMemo(book.id, memoId).catch((err) => {
       console.error(err);
       toast.error("書籍メモの削除に失敗しました");
     });
@@ -154,10 +155,11 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
 
   const handleConfirmEditBookMemo = () => {
     if (!editingBookMemoId) return;
-    void updateBook(book.id, {
-      memos: (book.memos ?? []).map((m) =>
-        m.id === editingBookMemoId ? { ...m, text: editingBookMemoText } : m,
-      ),
+    void updateBookMemo(book.id, editingBookMemoId, {
+      text: editingBookMemoText,
+    }).catch((err) => {
+      console.error(err);
+      toast.error("書籍メモの更新に失敗しました");
     });
     setIsEditBookMemoOpen(false);
     setEditingBookMemoId(null);

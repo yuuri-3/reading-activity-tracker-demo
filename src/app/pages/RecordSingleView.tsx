@@ -352,7 +352,7 @@ export function RecordSingleView({
       }
 
       if (bookMemo.trim() && selectedBookId) {
-        addBookMemo(selectedBookId, bookMemo.trim());
+        void addBookMemo(selectedBookId, bookMemo.trim());
       }
 
       resetAddForm();

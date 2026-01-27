@@ -122,7 +122,7 @@ export function TimerSection({
     });
 
     if (bookMemoSnapshot.trim() && selectedBookIdSnapshot) {
-      addBookMemo(selectedBookIdSnapshot, bookMemoSnapshot.trim());
+      void addBookMemo(selectedBookIdSnapshot, bookMemoSnapshot.trim());
     }
 
     stopInFlightRef.current = false;

@@ -79,7 +79,7 @@ async function createTestApp(name: string): Promise<TestAppBundle> {
 async function seedUserData(
   testEnv: RulesTestEnvironment,
   uid: string,
-  counts: { tags: number; books: number; records: number },
+  counts: { tags: number; books: number; memos: number; records: number },
 ) {
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const adminDb = context.firestore();
@@ -95,9 +95,19 @@ async function seedUserData(
     }
 
     for (let i = 0; i < counts.books; i += 1) {
-      await setDoc(doc(adminDb, "users", uid, "books", `book-${i + 1}`), {
+      const bookId = `book-${i + 1}`;
+      await setDoc(doc(adminDb, "users", uid, "books", bookId), {
         title: `book-${i + 1}`,
       });
+
+      for (let j = 0; j < counts.memos; j += 1) {
+        await setDoc(
+          doc(adminDb, "users", uid, "books", bookId, "memos", `memo-${j + 1}`),
+          {
+            text: `memo-${j + 1}`,
+          },
+        );
+      }
     }
 
     for (let i = 0; i < counts.records; i += 1) {
@@ -122,6 +132,21 @@ async function countSubcollection(
     size = snap.size;
   });
   return size;
+}
+
+async function countBookMemos(testEnv: RulesTestEnvironment, uid: string) {
+  let total = 0;
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const adminDb = context.firestore();
+    const booksSnap = await getDocs(collection(adminDb, "users", uid, "books"));
+    for (const b of booksSnap.docs) {
+      const memosSnap = await getDocs(
+        collection(adminDb, "users", uid, "books", b.id, "memos"),
+      );
+      total += memosSnap.size;
+    }
+  });
+  return total;
 }
 
 async function hasUserDoc(testEnv: RulesTestEnvironment, uid: string) {
@@ -186,7 +211,12 @@ describe("Guest merge integration (backend)", () => {
       );
       const targetUid = targetCredential.user.uid;
 
-      await seedUserData(testEnv, anonUid, { tags: 2, books: 1, records: 1 });
+      await seedUserData(testEnv, anonUid, {
+        tags: 2,
+        books: 1,
+        memos: 2,
+        records: 1,
+      });
 
       const prepare = httpsCallable(anonBundle.functions, "prepareGuestMerge");
       const prepareRes = await prepare({});
@@ -226,6 +256,9 @@ describe("Guest merge integration (backend)", () => {
 
       expect(mergedCounts).toEqual([2, 1, 1]);
 
+      const mergedMemos = await countBookMemos(testEnv, targetUid);
+      expect(mergedMemos).toBe(2);
+
       const anonCounts = await Promise.all([
         countSubcollection(testEnv, anonUid, "tags"),
         countSubcollection(testEnv, anonUid, "books"),
@@ -233,6 +266,9 @@ describe("Guest merge integration (backend)", () => {
       ]);
 
       expect(anonCounts).toEqual([0, 0, 0]);
+
+      const anonMemos = await countBookMemos(testEnv, anonUid);
+      expect(anonMemos).toBe(0);
 
       const anonDocExists = await hasUserDoc(testEnv, anonUid);
       expect(anonDocExists).toBe(false);
@@ -256,7 +292,12 @@ describe("Guest merge integration (backend)", () => {
         "password-123",
       );
 
-      await seedUserData(testEnv, anonUid, { tags: 1, books: 0, records: 0 });
+      await seedUserData(testEnv, anonUid, {
+        tags: 1,
+        books: 0,
+        memos: 0,
+        records: 0,
+      });
 
       const prepare = httpsCallable(anonBundle.functions, "prepareGuestMerge");
       const prepareRes = await prepare({});
@@ -287,7 +328,12 @@ describe("Guest merge integration (backend)", () => {
       const anonCredential = await signInAnonymously(anonBundle.auth);
       const anonUid = anonCredential.user.uid;
 
-      await seedUserData(testEnv, anonUid, { tags: 1, books: 0, records: 0 });
+      await seedUserData(testEnv, anonUid, {
+        tags: 1,
+        books: 0,
+        memos: 0,
+        records: 0,
+      });
 
       const prepare = httpsCallable(anonBundle.functions, "prepareGuestMerge");
       const prepareRes = await prepare({});
@@ -338,7 +384,12 @@ describe("Guest merge integration (backend)", () => {
         "password-123",
       );
 
-      await seedUserData(testEnv, anonUid, { tags: 1, books: 1, records: 0 });
+      await seedUserData(testEnv, anonUid, {
+        tags: 1,
+        books: 1,
+        memos: 1,
+        records: 0,
+      });
 
       const prepare = httpsCallable(anonBundle.functions, "prepareGuestMerge");
       const prepareRes = await prepare({});

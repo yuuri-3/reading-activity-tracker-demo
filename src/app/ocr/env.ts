@@ -3,7 +3,7 @@ type OcrEnv = {
 };
 
 export function isOcrHandwrittenMemoEnabled(
-  env: OcrEnv = import.meta.env,
+  env: OcrEnv = import.meta.env as unknown as OcrEnv,
 ): boolean {
   return env.VITE_FEATURE_OCR === "1";
 }

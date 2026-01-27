@@ -260,7 +260,7 @@ export function OcrHandwrittenMemoRootPage({
     setConsentDialogOpen(true);
   };
 
-  const handleSaveBookMemo = () => {
+  const handleSaveBookMemo = async () => {
     if (!selectedBookId) {
       toast.error("保存先の書籍を選択してください");
       return;
@@ -276,8 +276,13 @@ export function OcrHandwrittenMemoRootPage({
       return;
     }
 
-    addBookMemo(selectedBookId, trimmedText, date.toISOString());
-    toast.success("書籍メモとして保存しました");
+    try {
+      await addBookMemo(selectedBookId, trimmedText, date.toISOString());
+      toast.success("書籍メモとして保存しました");
+    } catch {
+      toast.error("書籍メモの保存に失敗しました");
+      return;
+    }
     if (selectedFileUrl) {
       URL.revokeObjectURL(selectedFileUrl);
     }

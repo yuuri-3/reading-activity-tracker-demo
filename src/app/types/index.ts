@@ -1,8 +1,17 @@
+import type { Timestamp } from "firebase/firestore";
+
 export interface BookMemo {
   id: string;
   text: string;
   createdAt: string;
 }
+
+export type BookMemoRef = {
+  bookId: string;
+  memoId: string;
+  text: string;
+  createdAt: Timestamp;
+};
 
 export interface Book {
   id: string;

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { AppContext } from "../context/AppContext";
 import { GuestCreateNoticeProvider } from "../context/GuestCreateNoticeContext";
 import { SearchProvider } from "../context/SearchContext";
-import type { Book, ReadingRecord, Tag, TimerState } from "../types";
+import type { Book, BookMemo, ReadingRecord, Tag, TimerState } from "../types";
 import { TimerProvider } from "../timer/TimerContext";
 import { MockAuthProvider } from "../auth/AuthContext";
 
@@ -130,7 +130,7 @@ export function MockAppProvider({
       setRecords((prev) => prev.filter((r) => r.bookId !== id));
     };
 
-    const addBookMemo = (
+    const addBookMemo = async (
       bookId: string,
       memoText: string,
       createdAt?: string,
@@ -149,6 +149,41 @@ export function MockAppProvider({
           },
         ],
       });
+    };
+
+    const updateBookMemo = async (
+      bookId: string,
+      memoId: string,
+      updates: { text?: string },
+    ) => {
+      const target = getBook(bookId);
+      if (!target) return;
+      const next = (target.memos ?? []).map((m) =>
+        m.id === memoId
+          ? {
+              ...m,
+              ...(typeof updates.text === "string"
+                ? { text: updates.text }
+                : {}),
+            }
+          : m,
+      );
+      await updateBook(bookId, { memos: next });
+    };
+
+    const deleteBookMemo = async (bookId: string, memoId: string) => {
+      const target = getBook(bookId);
+      if (!target) return;
+      const next = (target.memos ?? []).filter((m) => m.id !== memoId);
+      await updateBook(bookId, { memos: next });
+    };
+
+    const restoreBookMemo = async (bookId: string, memo: BookMemo) => {
+      const target = getBook(bookId);
+      if (!target) return;
+      const exists = (target.memos ?? []).some((m) => m.id === memo.id);
+      if (exists) return;
+      await updateBook(bookId, { memos: [...(target.memos ?? []), memo] });
     };
 
     const addRecord = async (
@@ -204,6 +239,9 @@ export function MockAppProvider({
       deleteBook,
       getBook,
       addBookMemo,
+      updateBookMemo,
+      deleteBookMemo,
+      restoreBookMemo,
       tags,
       createTag,
       updateTag,
@@ -216,6 +254,7 @@ export function MockAppProvider({
       restoreRecord,
       getRecordsByBook,
       getTotalDurationByBook,
+      migrationIssues: [],
     };
   }, [books, records, tags]);
 
