@@ -6,7 +6,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { initializeApp, deleteApp } from "firebase/app";
+import { initializeApp, deleteApp, FirebaseError } from "firebase/app";
 import {
   browserLocalPersistence,
   deleteUser,
@@ -733,9 +733,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const anonUid = currentUser.uid;
                 const expectedEmail = getErrorEmail(err);
                 const linkErrorCredential =
-                  (GoogleAuthProvider.credentialFromError(
-                    err,
-                  ) as OAuthCredential | null) ?? null;
+                  err instanceof FirebaseError
+                    ? (GoogleAuthProvider.credentialFromError(
+                        err,
+                      ) as OAuthCredential | null) ?? null
+                    : null;
 
                 if (enableBackendMerge) {
                   try {
@@ -779,7 +781,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     pendingFallbackDataRef.current = {
                       anonUser: currentUser,
                       anonUid,
-                      expectedEmail,
+                      ...(expectedEmail !== undefined
+                        ? { expectedEmail }
+                        : {}),
                       reasonCode: code,
                       mergeRequest,
                       linkErrorCredential,
@@ -824,7 +828,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   pendingFallbackDataRef.current = {
                     anonUser: currentUser,
                     anonUid,
-                    expectedEmail,
+                    ...(expectedEmail !== undefined
+                      ? { expectedEmail }
+                      : {}),
                     reasonCode: code,
                     anonTags,
                     anonBooks,
@@ -903,6 +909,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       confirmFallbackMigration: async () => {
         const pending = pendingFallbackDataRef.current;
         if (!pending) return false;
+
+        const anonTags = pending.anonTags ?? [];
+        const anonBooks = pending.anonBooks ?? [];
+        const anonRecords = pending.anonRecords ?? [];
+        const anonBookMemos = pending.anonBookMemos ?? [];
 
         if (fallbackMigrationRunningRef.current) return false;
         fallbackMigrationRunningRef.current = true;
@@ -1016,9 +1027,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 expectedEmail,
                 selectedEmail,
                 counts: {
-                  tags: pending.anonTags.length,
-                  books: pending.anonBooks.length,
-                  records: pending.anonRecords.length,
+                  tags: anonTags.length,
+                  books: anonBooks.length,
+                  records: anonRecords.length,
                 },
               });
               toast.dismiss(migratingToastId);
@@ -1030,19 +1041,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               secondary.db,
               nextUid,
               "tags",
-              pending.anonTags,
+              anonTags,
             );
             await writeUserSubcollectionDocsMerge(
               secondary.db,
               nextUid,
               "books",
-              pending.anonBooks,
+              anonBooks,
             );
             await writeUserSubcollectionDocsMerge(
               secondary.db,
               nextUid,
               "records",
-              pending.anonRecords,
+              anonRecords,
             );
           } catch (popupErr) {
             const popupCode = getErrorCode(popupErr);
@@ -1090,10 +1101,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           toast.dismiss(migratingToastId);
           const copiedCount =
-            pending.anonTags.length +
-            pending.anonBooks.length +
-            pending.anonRecords.length +
-            (pending.anonBookMemos?.length ?? 0);
+            anonTags.length +
+            anonBooks.length +
+            anonRecords.length +
+            anonBookMemos.length;
 
           // 5) primary を Googleログインへ切り替える（可能ならcredentialでサイレント）
           // ここが成功しないと「統合先のuidでデータが見える」状態にならない。
@@ -1140,9 +1151,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 expectedEmail: selectedEmail,
                 selectedEmail: loggedInEmail,
                 counts: {
-                  tags: pending.anonTags.length,
-                  books: pending.anonBooks.length,
-                  records: pending.anonRecords.length,
+                  tags: anonTags.length,
+                  books: anonBooks.length,
+                  records: anonRecords.length,
                 },
               });
               return false;
@@ -1263,6 +1274,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const stored = fallbackSecondaryRef.current;
         if (!pending || !stored) return false;
 
+        const anonTags = pending.anonTags ?? [];
+        const anonBooks = pending.anonBooks ?? [];
+        const anonRecords = pending.anonRecords ?? [];
+        const anonBookMemos = pending.anonBookMemos ?? [];
+
         if (fallbackMigrationRunningRef.current) return false;
         fallbackMigrationRunningRef.current = true;
         setFallbackMigrationInProgress(true);
@@ -1276,10 +1292,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const { secondary, nextUid, googleCredential, selectedEmail } = stored;
         const copiedCount =
-          pending.anonTags.length +
-          pending.anonBooks.length +
-          pending.anonRecords.length +
-          (pending.anonBookMemos?.length ?? 0);
+          anonTags.length +
+          anonBooks.length +
+          anonRecords.length +
+          anonBookMemos.length;
 
         try {
           // 3) tags -> books -> records の順で「追加のみ」コピー（secondaryの認証で実行）
@@ -1287,26 +1303,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             secondary.db,
             nextUid,
             "tags",
-            pending.anonTags,
+            anonTags,
           );
           await writeUserSubcollectionDocsMerge(
             secondary.db,
             nextUid,
             "books",
-            pending.anonBooks,
+            anonBooks,
           );
-          if (pending.anonBookMemos && pending.anonBookMemos.length > 0) {
+          if (anonBookMemos.length > 0) {
             await writeUserBookMemoDocsMerge(
               secondary.db,
               nextUid,
-              pending.anonBookMemos,
+              anonBookMemos,
             );
           }
           await writeUserSubcollectionDocsMerge(
             secondary.db,
             nextUid,
             "records",
-            pending.anonRecords,
+            anonRecords,
           );
 
           // 以降は通常のフォールバック移行と同じ（ログイン切替→削除→ログイン復帰）

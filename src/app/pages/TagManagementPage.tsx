@@ -189,6 +189,7 @@ export function TagManagementPage({ initialTags }: TagManagementPageProps) {
     const index = list.findIndex((t) => t.id === id);
     if (index < 0) return;
     const removed = list[index];
+    if (!removed) return;
     const removedTag: Tag = {
       id: removed.id,
       text: removed.text,

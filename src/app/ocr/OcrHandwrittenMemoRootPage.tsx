@@ -231,9 +231,9 @@ export function OcrHandwrittenMemoRootPage({
         const err = res as Extract<OcrHandwrittenMemoResult, { ok: false }>;
         setErrorMessage(toOcrErrorMessage(err.error));
         setErrorDetail({
-          code: err.error.code,
-          reason: err.error.reason,
-          requestId: err.error.requestId,
+          ...(err.error.code ? { code: err.error.code } : {}),
+          ...(err.error.reason ? { reason: err.error.reason } : {}),
+          ...(err.error.requestId ? { requestId: err.error.requestId } : {}),
         });
         if (import.meta.env.DEV) {
           console.error("OCR failed", err.error);

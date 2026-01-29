@@ -773,11 +773,13 @@ export function RecordSingleView({
             onSearchQueryChange={handleSearchQueryChange}
             searchPlaceholder="キーワードで検索"
             showSegmentedControl={isSearchActive}
-            segmentedControlItems={segmentedControlItems}
             segmentedControlValue={selectedSegment}
             onSegmentedControlValueChange={(value) =>
               setSelectedSegment(value as RecordsSegment)
             }
+            {...(segmentedControlItems
+              ? { segmentedControlItems }
+              : {})}
           />
 
           <div className="px-6 pt-2 pb-28">
@@ -898,8 +900,10 @@ export function RecordSingleView({
                                   durationSeconds={record.duration}
                                   dateTime={record.startTime}
                                   recordNote={recordNoteNode}
-                                  bookName={book?.title}
-                                  tagsNode={tagsNode}
+                                  {...(book?.title
+                                    ? { bookName: book.title }
+                                    : {})}
+                                  {...(tagsNode ? { tagsNode } : {})}
                                   onEdit={() => handleOpenEditDialog(record.id)}
                                   onDelete={() => void handleDelete(record.id)}
                                 />
@@ -949,8 +953,10 @@ export function RecordSingleView({
                                   durationSeconds={record.duration}
                                   dateTime={record.startTime}
                                   recordNote={record.memo}
-                                  bookName={book?.title}
-                                  tagsNode={tagsNode}
+                                  {...(book?.title
+                                    ? { bookName: book.title }
+                                    : {})}
+                                  {...(tagsNode ? { tagsNode } : {})}
                                   onEdit={() => handleOpenEditDialog(record.id)}
                                   onDelete={() => void handleDelete(record.id)}
                                 />

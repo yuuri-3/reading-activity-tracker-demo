@@ -46,6 +46,7 @@
 ## テスト実行ルール
 
 - 実装完了後は、変更の影響範囲に応じたテストを必ず実行し、結果を PR 本文の確認項目に反映してください
+- push 前は必ず `npm run typecheck:all`（`typecheck` + `typecheck:test`）を実行してください
 
 ## commit, push 時のルール
 

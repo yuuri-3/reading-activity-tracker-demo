@@ -16,5 +16,5 @@ export type IconProps = {
   /** Tailwind spacing token (e.g. 6 = w-6/h-6) */
   size?: IconSizeToken;
   /** CSS color value (e.g. "var(--foreground)", "currentColor") */
-  color?: string;
+  color?: string | undefined;
 };

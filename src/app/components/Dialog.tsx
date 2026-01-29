@@ -101,22 +101,22 @@ export function Dialog({
           stickyHeader && "sm:p-0 sm:gap-0",
           contentClassName
         )}
-        onOpenAutoFocus={
-          formPatternType === "AddRecord"
-            ? (e) => {
+        {...(formPatternType === "AddRecord"
+          ? {
+              onOpenAutoFocus: (e) => {
                 // Prevent focusing the first input on open.
                 // On some devices/browsers, focusing a datetime-local input
                 // immediately opens the native date/time picker.
                 e.preventDefault();
-              }
-            : undefined
-        }
-        onEscapeKeyDown={
-          disableEscapeClose ? (e) => e.preventDefault() : undefined
-        }
-        onInteractOutside={
-          disableOutsideClose ? (e) => e.preventDefault() : undefined
-        }
+              },
+            }
+          : {})}
+        {...(disableEscapeClose
+          ? { onEscapeKeyDown: (e) => e.preventDefault() }
+          : {})}
+        {...(disableOutsideClose
+          ? { onInteractOutside: (e) => e.preventDefault() }
+          : {})}
       >
         <div className={cn("flex flex-col", stickyHeader ? "gap-0" : "gap-5")}>
           <DialogHeader

@@ -31,8 +31,8 @@ export async function checkGuestMergeBackend(): Promise<GuestMergeBackendCheckRe
     const code = getCallableErrorCode(err);
     const cls = classifyCallableError(code);
 
-    if (cls === "missing") return { status: "missing", code };
-    if (cls === "temporary") return { status: "temporary", code };
-    return { status: "error", code };
+    if (cls === "missing") return { status: "missing", ...(code ? { code } : {}) };
+    if (cls === "temporary") return { status: "temporary", ...(code ? { code } : {}) };
+    return { status: "error", ...(code ? { code } : {}) };
   }
 }
