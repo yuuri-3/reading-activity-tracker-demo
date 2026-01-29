@@ -22,7 +22,7 @@ export function BookListCard({
       lastActivityAt={lastActivityAt}
       notesCount={notesCount}
       totalDurationSeconds={totalDurationSeconds}
-      onClick={onClick}
+      {...(onClick ? { onClick } : {})}
     />
   );
 }

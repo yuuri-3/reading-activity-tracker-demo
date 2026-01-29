@@ -79,9 +79,11 @@ export function SegmentedControl({
         <SegmentedControlItem
           key={item.value}
           text={item.text}
-          amount={item.amount}
           itemValue={item.value}
-          itemDisabled={item.disabled}
+          {...(item.amount !== undefined ? { amount: item.amount } : {})}
+          {...(item.disabled !== undefined
+            ? { itemDisabled: item.disabled }
+            : {})}
         />
       ))}
     </ToggleGroupPrimitive.Root>

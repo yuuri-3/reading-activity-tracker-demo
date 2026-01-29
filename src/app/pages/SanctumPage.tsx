@@ -79,7 +79,7 @@ export function SanctumPage() {
 
   const fallbackInitial = (() => {
     const src = (displayName || email).trim();
-    return src ? src[0].toUpperCase() : "?";
+    return src ? src.charAt(0).toUpperCase() : "?";
   })();
 
   useEffect(() => {

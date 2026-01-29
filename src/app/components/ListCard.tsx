@@ -202,7 +202,10 @@ export function ListCard(props: ListCardProps) {
                 </p>
                 <p className="tabular-nums">{formatDateTime(dateTime)}</p>
               </div>
-              <Actions onDelete={onDelete} onEdit={onEdit} />
+              <Actions
+                {...(onDelete ? { onDelete } : {})}
+                {...(onEdit ? { onEdit } : {})}
+              />
             </div>
 
             {recordNoteNode ? (
@@ -249,7 +252,10 @@ export function ListCard(props: ListCardProps) {
               <p className="text-sm text-muted-foreground tabular-nums">
                 {formatDateTime(createdAt)}
               </p>
-              <Actions onDelete={onDelete} onEdit={onEdit} />
+              <Actions
+                {...(onDelete ? { onDelete } : {})}
+                {...(onEdit ? { onEdit } : {})}
+              />
             </div>
 
             {bookName ? (

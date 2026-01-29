@@ -122,12 +122,12 @@ function normalizeOcrCallableError(err: unknown): OcrHandwrittenMemoError {
   const requestId = pickRequestId(details);
 
   return {
-    code,
     class: cls,
     message: buildMessage(rawCode, reason, requestId),
-    reason,
-    retryAfterSeconds,
-    requestId,
+    ...(code ? { code } : {}),
+    ...(reason ? { reason } : {}),
+    ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
+    ...(requestId ? { requestId } : {}),
   };
 }
 

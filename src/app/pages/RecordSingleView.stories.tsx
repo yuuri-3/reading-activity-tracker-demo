@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { RecordSingleView } from "./RecordSingleView";
 import { MockAppProvider } from "../stories/MockAppProvider";
+import type { ReadingRecord } from "../types";
 import {
   createDemoBooks,
   createDemoRecords,
@@ -52,7 +53,12 @@ function createDefaultRecordsStoryData() {
     },
   ];
 
-  const withAllCombos = [
+  const combosBase: Array<{
+    id: string;
+    bookId?: string;
+    memo: string;
+    tagIds: string[];
+  }> = [
     // tags: on/off, book: on/off, memo: on/off (8 patterns)
     {
       id: "record-combo-1",
@@ -68,7 +74,6 @@ function createDefaultRecordsStoryData() {
     },
     {
       id: "record-combo-3",
-      bookId: undefined,
       memo: "記録メモ",
       tagIds: ["tag-1", "tag-2", "tag-3"],
     },
@@ -80,7 +85,6 @@ function createDefaultRecordsStoryData() {
     },
     {
       id: "record-combo-5",
-      bookId: undefined,
       memo: "記録メモ",
       tagIds: [],
     },
@@ -92,34 +96,36 @@ function createDefaultRecordsStoryData() {
     },
     {
       id: "record-combo-7",
-      bookId: undefined,
       memo: "",
       tagIds: ["tag-1", "tag-2", "tag-3"],
     },
     {
       id: "record-combo-8",
-      bookId: undefined,
       memo: "",
       tagIds: [],
     },
-  ].map((p, idx) => {
-    const duration = 2 * 3600 + 32 * 60;
-    const endTime = createIsoDate(-180 - idx * 15);
-    const startTime = createIsoDate(
-      -180 - idx * 15 - Math.floor(duration / 60)
-    );
+  ];
 
-    return {
-      id: p.id,
-      bookId: p.bookId,
-      duration,
-      memo: p.memo,
-      tagIds: p.tagIds,
-      startTime,
-      endTime,
-      createdAt: endTime,
-    };
-  });
+  const withAllCombos: ReadingRecord[] = combosBase.map(
+    (p, idx): ReadingRecord => {
+      const duration = 2 * 3600 + 32 * 60;
+      const endTime = createIsoDate(-180 - idx * 15);
+      const startTime = createIsoDate(
+        -180 - idx * 15 - Math.floor(duration / 60),
+      );
+
+      return {
+        id: p.id,
+        ...(p.bookId !== undefined ? { bookId: p.bookId } : {}),
+        duration,
+        memo: p.memo,
+        tagIds: p.tagIds,
+        startTime,
+        endTime,
+        createdAt: endTime,
+      };
+    },
+  );
 
   return { books, tags, records: [...withAllCombos, ...baseRecords] };
 }
@@ -168,7 +174,7 @@ export const Filtered: Story = {
   },
   play: async ({ canvasElement }) => {
     const input = canvasElement.querySelector(
-      'input[placeholder="キーワードで検索"]'
+      'input[placeholder="キーワードで検索"]',
     ) as HTMLInputElement | null;
 
     if (input) {
@@ -177,7 +183,7 @@ export const Filtered: Story = {
         const prototype = Object.getPrototypeOf(el);
         const prototypeValueSetter = Object.getOwnPropertyDescriptor(
           prototype,
-          "value"
+          "value",
         )?.set;
 
         if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {

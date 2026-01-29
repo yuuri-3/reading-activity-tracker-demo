@@ -297,10 +297,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
               });
             }
 
+            const author =
+              typeof raw.author === "string" ? raw.author : undefined;
+
             return {
               id: d.id,
               title: typeof raw.title === "string" ? raw.title : "",
-              author: typeof raw.author === "string" ? raw.author : undefined,
+              ...(author !== undefined ? { author } : {}),
               memos: [],
               createdAt: toIsoString(raw.createdAt),
             } satisfies Book;
@@ -333,13 +336,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   (v): v is string => typeof v === "string" && v.length > 0,
                 )
               : undefined;
+            const bookId =
+              typeof data.bookId === "string" ? data.bookId : undefined;
 
             return {
               id: d.id,
-              bookId: data.bookId,
+              ...(bookId !== undefined ? { bookId } : {}),
               duration: normalizeDurationSeconds(data),
               memo,
-              tagIds,
+              ...(tagIds !== undefined ? { tagIds } : {}),
               startTime: (() => {
                 const v = (data as unknown as { startTime?: unknown })
                   .startTime;

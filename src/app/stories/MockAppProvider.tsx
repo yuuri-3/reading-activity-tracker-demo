@@ -111,7 +111,7 @@ export function MockAppProvider({
         {
           id: `book-${Date.now()}`,
           title: book.title,
-          author: book.author,
+          ...(book.author !== undefined ? { author: book.author } : {}),
           memos: book.memos ?? [],
           createdAt: new Date().toISOString(),
         },
@@ -266,7 +266,11 @@ export function MockAppProvider({
         initialState={initialTimerState}
       >
         <GuestCreateNoticeProvider user={null}>
-          <SearchProvider initialSearchText={initialSearchText}>
+          <SearchProvider
+            {...(initialSearchText !== undefined
+              ? { initialSearchText }
+              : {})}
+          >
             <AppContext.Provider value={value}>{children}</AppContext.Provider>
           </SearchProvider>
         </GuestCreateNoticeProvider>

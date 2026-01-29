@@ -302,7 +302,7 @@ function AppProviders() {
   return (
     <GuestCreateNoticeProvider user={user}>
       <SearchProvider>
-        <TimerProvider uid={user?.uid}>
+        <TimerProvider {...(user?.uid ? { uid: user.uid } : {})}>
           <AppProvider>
             <AppContent />
           </AppProvider>
