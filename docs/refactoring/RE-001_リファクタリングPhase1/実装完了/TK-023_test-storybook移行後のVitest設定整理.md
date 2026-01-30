@@ -2,6 +2,8 @@
 
 このチケットは、`test-storybook` を Storybook test runner に移行した後に、不要になった Vitest browser mode / storybook project 周りの設定やスクリプトを整理します。
 
+この内容は [TK-015](./TK-015_Vitest_workspace廃止に備えて移行.md)（方針 A）で同時に対応しました（workspace deprecated 対応と同じ範囲のため）。
+
 ## ゴール
 
 - テスト実行系のスクリプト/設定が二重管理にならない
@@ -16,23 +18,19 @@
 
 ## 関連
 
-- 元チケット: [TK-003 CI に typecheck + test-storybook を追加](TK-003_CIにtypecheckとtest-storybook追加.md)
+- 元チケット: [TK-003 CI に typecheck + test-storybook を追加](./TK-003_CIにtypecheckとtest-storybook追加.md)
 
 ## 実装状況
 
-Status: ⬜ 未着手
+Status: ✅ TK-015 に統合済み
 
 ## 受け入れ条件
 
-- [ ] `test-storybook` が Storybook test runner を指す
-- [ ] 不要になった設定ファイル/依存/スクリプトが整理されている
-- [ ] `npm run test` / `npm run test-storybook` の役割分担がドキュメント化されている
+- [x] [TK-015](./TK-015_Vitest_workspace廃止に備えて移行.md) 側で達成されている
 
 ## 作業内容（概要）
 
-- 移行後に未使用になる設定（storybook project / browser mode）を洗い出し
-- 削除/統合/移行の方針を決めて整理
-- CI と開発者のローカル運用手順を更新
+- 作業は [TK-015](./TK-015_Vitest_workspace廃止に備えて移行.md) に集約
 
 ## 非ゴール
 

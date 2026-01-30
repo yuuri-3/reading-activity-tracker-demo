@@ -21,9 +21,7 @@
     "test:guest-merge": "npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions \"npm run test:guest-merge:unit\"",
     "test:guest-merge:mac": "JAVA_HOME=$(/usr/libexec/java_home -v 21) PATH=\"$JAVA_HOME/bin:$PATH\" npm --prefix functions run build && firebase emulators:exec --only auth,firestore,functions \"npm run test:guest-merge:unit\"",
     "test-storybook": "test-storybook --config-dir .storybook --url http://127.0.0.1:6006 --maxWorkers=2",
-    "test-storybook:vitest": "vitest --project=storybook --run",
-    "test-storybook:watch": "npm run test-storybook:vitest:watch",
-    "test-storybook:vitest:watch": "vitest --project=storybook"
+    "test-storybook:watch": "test-storybook --config-dir .storybook --url http://127.0.0.1:6006 --watch --maxWorkers=2"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -89,7 +87,6 @@
     "@firebase/rules-unit-testing": "^3.0.4",
     "@storybook/addon-docs": "^10.1.10",
     "@storybook/addon-onboarding": "^10.1.10",
-    "@storybook/addon-vitest": "^10.1.10",
     "@storybook/react": "^10.1.10",
     "@storybook/react-vite": "^10.1.10",
     "@storybook/test-runner": "^0.24.2",

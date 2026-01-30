@@ -4,6 +4,16 @@ This is a code bundle for Yomzoy. The original project is available at https://w
 
 ## Running the code
 
+## Push 前の品質ゲート運用
+
+本番 CI（GitHub Actions）で通ることを保証するため、push 前に必ず下記コマンドをローカルで実行してください。
+
+- 型チェック: `npm run typecheck:all`
+- ロジック・ユニットテスト: `npm run test`（エミュレータ依存テストは `npm run test:rules:mac` などで個別に）
+- UI テスト: `npm run storybook` を起動した状態で `npm run test-storybook`
+
+これらが全て通ることを確認してから push してください。
+
 Run `npm i` to install the dependencies.
 
 Run `npm run dev` to start the development server.

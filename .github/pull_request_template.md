@@ -12,6 +12,9 @@
 
 ## 確認
 
+- [ ] `npm run typecheck:all`（型チェック）
+- [ ] `npm run test`（ロジック・ユニットテスト）
+- [ ] `npm run storybook` → `npm run test-storybook`（UI テスト）
 - [ ] `npm run build`
 - [ ] `npx tsc -p tsconfig.json --noEmit`
 - [ ] 動作確認（該当画面）

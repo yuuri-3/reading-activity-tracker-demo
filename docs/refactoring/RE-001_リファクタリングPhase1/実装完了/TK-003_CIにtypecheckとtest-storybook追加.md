@@ -113,7 +113,7 @@ Status: ✅ 実装完了
 
 ※ 既存の Vitest browser mode（`vitest --project=storybook`）向け設定は、移行後に不要になれば別チケットで整理する（このチケットでは「CI にゲートを追加して運用できる状態」を優先）。
 
-→ 整理チケット: [TK-023 `test-storybook` 移行後の Vitest（storybook project）設定整理](TK-023_test-storybook移行後のVitest設定整理.md)
+→ 整理チケット: [TK-023 `test-storybook` 移行後の Vitest（storybook project）設定整理](実装完了/TK-023_test-storybook移行後のVitest設定整理.md)
 
 ### 4) Storybook を CI で起動してからテストを実行
 

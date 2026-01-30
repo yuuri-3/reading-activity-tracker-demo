@@ -45,6 +45,9 @@ const PORTS = {
   functions: 5001,
 };
 
+const hasFirestoreEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+const describeWithEmulator = hasFirestoreEmulator ? describe : describe.skip;
+
 type TestAppBundle = {
   app: FirebaseApp;
   auth: ReturnType<typeof getAuth>;
@@ -173,7 +176,7 @@ async function expireMergeRequest(
   });
 }
 
-describe("Guest merge integration (backend)", () => {
+describeWithEmulator("Guest merge integration (backend)", () => {
   let testEnv: RulesTestEnvironment;
 
   beforeAll(async () => {
