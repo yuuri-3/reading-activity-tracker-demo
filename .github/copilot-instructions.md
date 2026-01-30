@@ -47,6 +47,11 @@
 
 - 実装完了後は、変更の影響範囲に応じたテストを必ず実行し、結果を PR 本文の確認項目に反映してください
 - push 前は必ず `npm run typecheck:all`（`typecheck` + `typecheck:test`）を実行してください
+- CI が落ちる回数を減らすため、push 前に「CI とほぼ同義の品質ゲート」をローカルで実行してください
+  - 型チェック: `npm run typecheck:all`
+  - ロジック・ユニットテスト: `npm run test`
+    - エミュレータ依存テストは `npm run test:rules:mac` / `npm run test:guest-merge:mac` などで個別に実行
+  - UI テスト: `npm run storybook` を起動した状態で `npm run test-storybook`
 
 ## commit, push 時のルール
 

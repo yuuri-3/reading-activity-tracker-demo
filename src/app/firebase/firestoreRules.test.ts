@@ -14,7 +14,10 @@ import { afterAll, beforeAll, describe, it } from "vitest";
 // This test is expected to run against the Firebase Emulator Suite.
 // Use: `npm run test:rules`
 
-describe("Firestore Rules (smoke)", () => {
+const hasFirestoreEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+const describeWithEmulator = hasFirestoreEmulator ? describe : describe.skip;
+
+describeWithEmulator("Firestore Rules (smoke)", () => {
   let testEnv: RulesTestEnvironment;
 
   beforeAll(async () => {

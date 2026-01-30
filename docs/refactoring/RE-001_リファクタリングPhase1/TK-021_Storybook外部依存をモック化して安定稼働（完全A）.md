@@ -15,7 +15,7 @@
 
 ## 関連
 
-- 元チケット: [TK-003 CI に typecheck + test-storybook を追加](TK-003_CIにtypecheckとtest-storybook追加.md)
+- 元チケット: [TK-003 CI に typecheck + test-storybook を追加](./実装完了/TK-003_CIにtypecheckとtest-storybook追加.md)
 
 ## 実装状況
 
