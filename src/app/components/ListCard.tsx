@@ -81,7 +81,7 @@ function ListCardFrame<TAs extends React.ElementType = "div">({
           : "[box-shadow:var(--shadow-neumorphism-sm)]",
         "p-4",
         isButton && "w-full text-left hover:bg-accent transition-colors",
-        className,
+        className
       )}
       {...(componentProps as any)}
     />
@@ -222,8 +222,8 @@ export function ListCard(props: ListCardProps) {
               <div className="flex flex-wrap gap-2">{tagsNode}</div>
             ) : tags && tags.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {tags.map((t) => (
-                  <Tag key={t} text={t} />
+                {tags.map((t, index) => (
+                  <Tag key={`tag-${index}`} text={t} />
                 ))}
               </div>
             ) : null}
