@@ -37,6 +37,13 @@ export const Record: Story = {
     dateTime: new Date("2025-12-28T12:24:00.000Z").toISOString(),
     recordNote: "記録メモ",
     bookName: "書籍名（選択あれば）",
+    tags: ["タグ1", "タグ2", "タグ3"],
+  },
+};
+
+export const RecordWithDuplicateTags: Story = {
+  args: {
+    ...Record.args,
     tags: ["タグ1", "タグ1", "タグ1"],
   },
 };
