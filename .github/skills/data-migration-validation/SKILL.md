@@ -20,6 +20,33 @@ description: データ移行前の安全性検証手順（匿名化コピー・d
 5. 失敗時のロールバック/再実行手順を明文化する
 6. 実行前後のメトリクス比較（件数・紐付け率など）を記録する
 
+## 事前に決める情報（検証環境の準備に必要）
+
+- 検証用 Firebase projectId
+- 検証用 Firestore データベース ID（例: `validation`）
+- リージョン（本番と同じ推奨）
+- エクスポート先の GCS バケット名
+- 匿名化方針（削除/置換するフィールドの指定。不要なら「なし」と明記）
+
+## 運用ルール
+
+- 検証（dry-run / リハーサル）を実行したら、必ず「人手レビューの手順」を案内する
+
+## 人手レビュー手順（案内用テンプレ）
+
+1. dry-run レポートの `matchesSample` から 5〜10 件を選ぶ
+2. Firestore コンソール（検証用 DB）で `records/{recordId}` を開く
+   - `bookId` がサンプルの `bookId` と一致
+   - `bookMemoId` がサンプルの `memoId` と一致
+   - `createdAt` がサンプルの `recordCreatedAt` 付近
+3. `books/{bookId}/memos/{memoId}` を開く
+   - `createdAt` がサンプルの `memoCreatedAt` と一致（±5 分以内）
+
+### よくある質問（タイムゾーン差）
+
+- Q: コンソールで表示されている日時とサンプルの日時が違う
+- A: `recordCreatedAt` / `memoCreatedAt` は UTC のため、JST では $+9$ 時間される
+
 ## 成果物（期待）
 
 - dry-run レポート

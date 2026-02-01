@@ -17,17 +17,17 @@
 
 ## 実装状況
 
-Status: ⬜ 未着手
+Status: ✅ 完了
 
 ## 受け入れ条件
 
 達成チェック:
 
-- [ ] `ReadingRecord` 型に `bookMemoId?: string` が追加されている
-- [ ] 新規作成時、書籍メモを一緒に登録した場合は `bookMemoId` が設定される
-- [ ] 既存データに対して移行スクリプトを実行でき、同時刻付近の記録と書籍メモが紐付けられる
-- [ ] 移行後も既存機能（記録作成・編集・削除・書籍メモ作成・編集・削除）が正常動作する
-- [ ] 紐付けがない記録・書籍メモも引き続き正常に動作する
+- [x] `ReadingRecord` 型に `bookMemoId?: string` が追加されている
+- [x] 新規作成時、書籍メモを一緒に登録した場合は `bookMemoId` が設定される
+- [x] 既存データに対して移行スクリプトを実行でき、同時刻付近の記録と書籍メモが紐付けられる
+- [x] 移行後も既存機能（記録作成・編集・削除・書籍メモ作成・編集・削除）が正常動作する
+- [x] 紐付けがない記録・書籍メモも引き続き正常に動作する
 
 ## 作業内容
 
@@ -142,6 +142,19 @@ await addRecord({
   - 参照スクリプト: [functions/src/admin/analyzeTk028Memos.ts](../../../functions/src/admin/analyzeTk028Memos.ts)
 - 書籍詳細画面の時刻表示はローカル時刻（JST など）に変換して表示されるため、UTC の `10:35` は UI 上では `19:35` として見える
   - 参照: [src/app/components/ListCard.tsx](../../src/app/components/ListCard.tsx)、[src/app/utils/format.ts](../../src/app/utils/format.ts)
+
+## 実装完了メモ（2026-02-01）
+
+- 実装: `bookMemoId` 追加 / 新規作成時の紐付け / 移行スクリプト追加（DB 指定対応）
+- 検証（migration-test）
+  - dry-run: [functions/tmp/tk028-backfill-migration-test-dry-run.json](../../../functions/tmp/tk028-backfill-migration-test-dry-run.json)
+  - write: [functions/tmp/tk028-backfill-migration-test-write.json](../../../functions/tmp/tk028-backfill-migration-test-write.json)
+  - post: [functions/tmp/tk028-backfill-migration-test-post.json](../../../functions/tmp/tk028-backfill-migration-test-post.json)
+- 本番移行（default）
+  - dry-run: [functions/tmp/tk028-backfill-prod-dry-run.json](../../../functions/tmp/tk028-backfill-prod-dry-run.json)
+  - write: [functions/tmp/tk028-backfill-prod-write.json](../../../functions/tmp/tk028-backfill-prod-write.json)
+  - post: [functions/tmp/tk028-backfill-prod-post.json](../../../functions/tmp/tk028-backfill-prod-post.json)
+- 人手レビュー: 実データで紐付け確認済み（ユーザー確認済み）
 
 ## 関連チケット
 

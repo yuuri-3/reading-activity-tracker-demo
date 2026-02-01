@@ -1,5 +1,5 @@
 import * as admin from "firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
+import { Timestamp, getFirestore } from "firebase-admin/firestore";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -51,6 +51,7 @@ type UidSummary = {
 type Summary = {
   mode: Mode;
   projectId: string;
+  databaseId: string;
   windowMinutes: number;
   maxSamples: number;
   targetUids: string[];
@@ -206,6 +207,10 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
 
   const projectId = requireStringOpt(args.project, "project");
+  const databaseId =
+    typeof args.database === "string" && args.database.trim().length > 0
+      ? args.database.trim()
+      : "(default)";
   const uids = parseUids(args.uids ?? args.uid);
   if (uids.length === 0) {
     throw new Error("--uids=<uid1,uid2> (or --uid=<uid>) is required");
@@ -246,17 +251,18 @@ async function main(): Promise<void> {
     }
   }
 
-  admin.initializeApp({
+  const app = admin.initializeApp({
     credential: admin.credential.applicationDefault(),
     projectId,
   });
 
-  const db = admin.firestore();
+  const db = getFirestore(app, databaseId);
   const windowMs = windowMinutes * 60 * 1000;
 
   const summary: Summary = {
     mode,
     projectId,
+    databaseId,
     windowMinutes,
     maxSamples,
     targetUids: uids,

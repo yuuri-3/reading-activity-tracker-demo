@@ -42,6 +42,16 @@ Run `npm run build-storybook` to build a static Storybook.
 
 ※ `VITE_*` はフロントに埋め込まれる値のため、サービスアカウントなどのシークレットは入れないでください。
 
+## データ移行検証（プロジェクト既定値）
+
+検証環境の準備に必要な既定値は以下です（変わらない前提）。
+
+- projectId: yomzoy
+- 検証用 Firestore DB: migration-test
+- リージョン: asia-northeast1
+- GCS バケット: yomzoy-firestore-export-validation
+- 匿名化: なし
+
 ## Firebase Hosting（本番ホスティング）
 
 本番ホスティングは Firebase Hosting を使います。
