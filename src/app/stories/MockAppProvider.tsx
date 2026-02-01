@@ -190,6 +190,11 @@ export function MockAppProvider({
       await updateBook(bookId, { memos: [...(target.memos ?? []), memo] });
     };
 
+    const getBookMemoById = (bookId: string, memoId: string) => {
+      const target = getBook(bookId);
+      return (target?.memos ?? []).find((memo) => memo.id === memoId);
+    };
+
     const addRecord = async (
       record: Omit<ReadingRecord, "id" | "createdAt">,
     ) => {
@@ -246,6 +251,7 @@ export function MockAppProvider({
       updateBookMemo,
       deleteBookMemo,
       restoreBookMemo,
+      getBookMemoById,
       tags,
       createTag,
       updateTag,

@@ -31,6 +31,7 @@ type RecordVariantProps = BaseProps & {
   durationSeconds: number;
   dateTime: string;
   recordNote?: React.ReactNode;
+  bookNote?: React.ReactNode;
   bookName?: string;
   tags?: string[];
   tagsNode?: React.ReactNode;
@@ -81,7 +82,7 @@ function ListCardFrame<TAs extends React.ElementType = "div">({
           : "[box-shadow:var(--shadow-neumorphism-sm)]",
         "p-4",
         isButton && "w-full text-left hover:bg-accent transition-colors",
-        className
+        className,
       )}
       {...(componentProps as any)}
     />
@@ -183,6 +184,7 @@ export function ListCard(props: ListCardProps) {
         durationSeconds,
         dateTime,
         recordNote,
+        bookNote,
         bookName,
         tags,
         tagsNode,
@@ -191,6 +193,7 @@ export function ListCard(props: ListCardProps) {
       } = props;
 
       const recordNoteNode = recordNote ? linkifyReactNode(recordNote) : null;
+      const bookNoteNode = bookNote ? linkifyReactNode(bookNote) : null;
 
       return (
         <ListCardFrame shadow={shadow} className={cn("w-full", className)}>
@@ -210,6 +213,12 @@ export function ListCard(props: ListCardProps) {
 
             {recordNoteNode ? (
               <p className="text-sm whitespace-pre-wrap">{recordNoteNode}</p>
+            ) : null}
+
+            {bookNoteNode ? (
+              <p className="text-xs text-muted-foreground whitespace-pre-wrap border-l-2 border-muted-foreground/30 pl-2 line-clamp-2">
+                {bookNoteNode}
+              </p>
             ) : null}
 
             {bookName ? (

@@ -30,6 +30,7 @@ import { Tag } from "../components/Tag";
 import { useElementScrollRestoration } from "../utils/useElementScrollRestoration";
 import { DialogFormPattern } from "../components/DialogFormPattern";
 import { IconClock } from "../components/icons/IconClock";
+import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 
 type RecordsSegment = "all" | "reading" | "book";
 
@@ -217,6 +218,12 @@ export function RecordSingleView({
   const [memo, setMemo] = useState("");
   const [bookMemo, setBookMemo] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [pendingDeleteRecord, setPendingDeleteRecord] =
+    useState<ReadingRecord | null>(null);
+  const [pendingDeleteMemo, setPendingDeleteMemo] = useState<BookMemo | null>(
+    null,
+  );
   const [startAt, setStartAt] = useState(
     () => getDefaultAddRecordDateTimeValues().startAt,
   );
@@ -420,12 +427,57 @@ export function RecordSingleView({
     }
   };
 
+  const closeDeleteConfirm = () => {
+    setIsDeleteConfirmOpen(false);
+    setPendingDeleteRecord(null);
+    setPendingDeleteMemo(null);
+  };
+
+  const deleteRecordWithUndo = ({
+    record,
+    deleteMemo = false,
+    memo,
+  }: {
+    record: ReadingRecord;
+    deleteMemo?: boolean;
+    memo?: BookMemo | null;
+  }) => {
+    // Firestore write acknowledgements can be delayed on poor networks.
+    // Show the Undo toast immediately, and only show an error if the delete fails.
+    toast.success("記録を削除しました", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          void restoreRecord(record).catch((err) => {
+            console.error(err);
+            toast.error("記録の復元に失敗しました");
+          });
+          if (deleteMemo && memo && record.bookId) {
+            void restoreBookMemo(record.bookId, memo).catch((err) => {
+              console.error(err);
+              toast.error("書籍メモの復元に失敗しました");
+            });
+          }
+        },
+      },
+    });
+
+    if (deleteMemo && record.bookId && record.bookMemoId) {
+      void deleteBookMemo(record.bookId, record.bookMemoId).catch((err) => {
+        console.error(err);
+        toast.error("書籍メモの削除に失敗しました");
+      });
+    }
+
+    void deleteRecord(record.id).catch((err) => {
+      console.error(err);
+      toast.error("記録の削除に失敗しました");
+    });
+  };
+
   const handleDelete = async (recordId: string) => {
     const deletedRecord = records.find((r) => r.id === recordId);
     if (!deletedRecord) return;
-
-    let deletedMemo: BookMemo | undefined;
-    let shouldDeleteMemo = false;
 
     if (deletedRecord.bookId && deletedRecord.bookMemoId) {
       const linkedMemo = getBookMemoById(
@@ -434,53 +486,14 @@ export function RecordSingleView({
       );
 
       if (linkedMemo) {
-        const deleteBoth = confirm(
-          "この記録と一緒に作成された書籍メモも削除しますか？\n\nOK: 両方削除\nキャンセル: 記録のみ削除",
-        );
-        if (deleteBoth) {
-          shouldDeleteMemo = true;
-          deletedMemo = linkedMemo;
-        } else if (!confirm("記録のみ削除しますか？")) {
-          return;
-        }
+        setPendingDeleteRecord(deletedRecord);
+        setPendingDeleteMemo(linkedMemo);
+        setIsDeleteConfirmOpen(true);
+        return;
       }
     }
 
-    // Firestore write acknowledgements can be delayed on poor networks.
-    // Show the Undo toast immediately, and only show an error if the delete fails.
-    toast.success("記録を削除しました", {
-      action: {
-        label: "Undo",
-        onClick: () => {
-          void restoreRecord(deletedRecord).catch((err) => {
-            console.error(err);
-            toast.error("記録の復元に失敗しました");
-          });
-          if (deletedMemo && deletedRecord.bookId) {
-            void restoreBookMemo(deletedRecord.bookId, deletedMemo).catch(
-              (err) => {
-                console.error(err);
-                toast.error("書籍メモの復元に失敗しました");
-              },
-            );
-          }
-        },
-      },
-    });
-
-    if (shouldDeleteMemo && deletedRecord.bookId && deletedRecord.bookMemoId) {
-      void deleteBookMemo(deletedRecord.bookId, deletedRecord.bookMemoId).catch(
-        (err) => {
-          console.error(err);
-          toast.error("書籍メモの削除に失敗しました");
-        },
-      );
-    }
-
-    void deleteRecord(recordId).catch((err) => {
-      console.error(err);
-      toast.error("記録の削除に失敗しました");
-    });
+    deleteRecordWithUndo({ record: deletedRecord });
   };
 
   const handleSearchQueryChange = (value: string) => {
@@ -955,6 +968,13 @@ export function RecordSingleView({
                               const book = record.bookId
                                 ? getBook(record.bookId)
                                 : null;
+                              const linkedMemo =
+                                record.bookId && record.bookMemoId
+                                  ? getBookMemoById(
+                                      record.bookId,
+                                      record.bookMemoId,
+                                    )
+                                  : undefined;
 
                               const recordNoteNode = item.matchedMemo
                                 ? highlightText(record.memo ?? "", searchQuery)
@@ -987,6 +1007,9 @@ export function RecordSingleView({
                                   durationSeconds={record.duration}
                                   dateTime={record.startTime}
                                   recordNote={recordNoteNode}
+                                  {...(linkedMemo?.text
+                                    ? { bookNote: linkedMemo.text }
+                                    : {})}
                                   {...(book?.title
                                     ? { bookName: book.title }
                                     : {})}
@@ -1024,6 +1047,13 @@ export function RecordSingleView({
                               const book = record.bookId
                                 ? getBook(record.bookId)
                                 : null;
+                              const linkedMemo =
+                                record.bookId && record.bookMemoId
+                                  ? getBookMemoById(
+                                      record.bookId,
+                                      record.bookMemoId,
+                                    )
+                                  : undefined;
 
                               const tagsNode = (() => {
                                 const items = getRecordTagItems(record);
@@ -1040,6 +1070,9 @@ export function RecordSingleView({
                                   durationSeconds={record.duration}
                                   dateTime={record.startTime}
                                   recordNote={record.memo}
+                                  {...(linkedMemo?.text
+                                    ? { bookNote: linkedMemo.text }
+                                    : {})}
                                   {...(book?.title
                                     ? { bookName: book.title }
                                     : {})}
@@ -1200,6 +1233,32 @@ export function RecordSingleView({
           )}
         </div>
       </Dialog>
+
+      <DeleteConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDeleteConfirm();
+            return;
+          }
+          setIsDeleteConfirmOpen(true);
+        }}
+        memoText={pendingDeleteMemo?.text ?? null}
+        onDeleteRecord={() => {
+          if (!pendingDeleteRecord) return;
+          deleteRecordWithUndo({ record: pendingDeleteRecord });
+          closeDeleteConfirm();
+        }}
+        onDeleteBoth={() => {
+          if (!pendingDeleteRecord) return;
+          deleteRecordWithUndo({
+            record: pendingDeleteRecord,
+            deleteMemo: true,
+            memo: pendingDeleteMemo,
+          });
+          closeDeleteConfirm();
+        }}
+      />
     </>
   );
 }
