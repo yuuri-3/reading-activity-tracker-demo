@@ -109,21 +109,28 @@ export function TimerSection({
     // Show success immediately, and only show an error if the write fails.
     toast.success("計測結果を保存しました");
 
-    void addRecord({
-      duration,
-      memo: memoSnapshot,
-      startTime,
-      endTime: now.toISOString(),
-      ...(selectedBookIdSnapshot ? { bookId: selectedBookIdSnapshot } : {}),
-      ...(tagIdsSnapshot.length ? { tagIds: tagIdsSnapshot } : {}),
-    }).catch((err) => {
+    const saveRecord = async () => {
+      const trimmedBookMemo = bookMemoSnapshot.trim();
+      const bookMemoId =
+        trimmedBookMemo && selectedBookIdSnapshot
+          ? await addBookMemo(selectedBookIdSnapshot, trimmedBookMemo)
+          : undefined;
+
+      await addRecord({
+        duration,
+        memo: memoSnapshot,
+        startTime,
+        endTime: now.toISOString(),
+        ...(selectedBookIdSnapshot ? { bookId: selectedBookIdSnapshot } : {}),
+        ...(bookMemoId ? { bookMemoId } : {}),
+        ...(tagIdsSnapshot.length ? { tagIds: tagIdsSnapshot } : {}),
+      });
+    };
+
+    void saveRecord().catch((err) => {
       console.error(err);
       toast.error("計測結果の保存に失敗しました");
     });
-
-    if (bookMemoSnapshot.trim() && selectedBookIdSnapshot) {
-      void addBookMemo(selectedBookIdSnapshot, bookMemoSnapshot.trim());
-    }
 
     stopInFlightRef.current = false;
   };

@@ -136,19 +136,23 @@ export function MockAppProvider({
       createdAt?: string,
     ) => {
       const target = getBook(bookId);
-      if (!target) return;
+      if (!target) {
+        throw new Error("Book not found");
+      }
       const fallbackCreatedAt = new Date().toISOString();
       const createdAtValue = createdAt?.trim() || fallbackCreatedAt;
+      const memoId = `memo-${Date.now()}`;
       void updateBook(bookId, {
         memos: [
           ...(target.memos ?? []),
           {
-            id: Date.now().toString(),
+            id: memoId,
             text: memoText,
             createdAt: createdAtValue,
           },
         ],
       });
+      return memoId;
     };
 
     const updateBookMemo = async (
@@ -267,9 +271,7 @@ export function MockAppProvider({
       >
         <GuestCreateNoticeProvider user={null}>
           <SearchProvider
-            {...(initialSearchText !== undefined
-              ? { initialSearchText }
-              : {})}
+            {...(initialSearchText !== undefined ? { initialSearchText } : {})}
           >
             <AppContext.Provider value={value}>{children}</AppContext.Provider>
           </SearchProvider>
