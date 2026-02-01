@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "test": "vitest",
+    "test": "vitest run",
     "test:rules:unit": "vitest run src/app/firebase/firestoreRules.test.ts",
     "test:rules": "firebase emulators:exec --only firestore \"npm run test:rules:unit\"",
     "test:rules:mac": "JAVA_HOME=$(/usr/libexec/java_home -v 21) PATH=\"$JAVA_HOME/bin:$PATH\" firebase emulators:exec --only firestore \"npm run test:rules:unit\"",
