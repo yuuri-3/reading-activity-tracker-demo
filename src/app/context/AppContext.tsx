@@ -51,6 +51,7 @@ interface AppContextType {
   ) => Promise<void>;
   deleteBookMemo: (bookId: string, memoId: string) => Promise<void>;
   restoreBookMemo: (bookId: string, memo: BookMemo) => Promise<void>;
+  getBookMemoById: (bookId: string, memoId: string) => BookMemo | undefined;
 
   // Tags
   tags: Tag[];
@@ -592,6 +593,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [db, uid],
   );
 
+  const getBookMemoById = useCallback(
+    (bookId: string, memoId: string) => {
+      const memos = bookMemosByBookId[bookId] ?? [];
+      return memos.find((memo) => memo.id === memoId);
+    },
+    [bookMemosByBookId],
+  );
+
   // Record operations
   const addRecord = useCallback(
     async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
@@ -712,6 +721,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateBookMemo,
       deleteBookMemo,
       restoreBookMemo,
+      getBookMemoById,
       tags,
       createTag,
       updateTag,
@@ -748,6 +758,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTag,
     deleteBookMemo,
     restoreBookMemo,
+    getBookMemoById,
     migrationIssues,
   ]);
 

@@ -199,7 +199,11 @@ export function RecordSingleView({
     deleteRecord,
     restoreRecord,
     addBookMemo,
+    updateBookMemo,
+    deleteBookMemo,
+    restoreBookMemo,
     getBook,
+    getBookMemoById,
   } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSegment, setSelectedSegment] = useState<RecordsSegment>("all");
@@ -286,7 +290,12 @@ export function RecordSingleView({
     setEditingRecordId(record.id);
     setSelectedBookId(record.bookId ?? "");
     setMemo(record.memo ?? "");
-    setBookMemo("");
+    if (record.bookId && record.bookMemoId) {
+      const linkedMemo = getBookMemoById(record.bookId, record.bookMemoId);
+      setBookMemo(linkedMemo?.text ?? "");
+    } else {
+      setBookMemo("");
+    }
     setTagIds(record.tagIds ?? []);
 
     const start = new Date(record.startTime);
@@ -330,6 +339,43 @@ export function RecordSingleView({
       }
 
       if (editingRecordId) {
+        const record = records.find((r) => r.id === editingRecordId);
+        if (!record) {
+          throw new Error("編集対象の記録が見つかりませんでした");
+        }
+
+        const trimmedBookMemo = bookMemo.trim();
+        const prevBookId = record.bookId ?? "";
+        const prevBookMemoId = record.bookMemoId ?? "";
+        const prevMemo =
+          prevBookId && prevBookMemoId
+            ? getBookMemoById(prevBookId, prevBookMemoId)
+            : undefined;
+        const prevMemoText = prevMemo?.text ?? "";
+        const selectedBookIdValue = selectedBookId ?? "";
+        const hasSelectedBook = selectedBookIdValue.length > 0;
+        const bookChanged = prevBookId !== selectedBookIdValue;
+
+        let nextBookMemoId: string | undefined;
+
+        if (!hasSelectedBook || trimmedBookMemo.length === 0) {
+          if (prevBookMemoId) {
+            nextBookMemoId = "";
+          }
+        } else if (prevBookMemoId && prevBookId && !bookChanged && prevMemo) {
+          if (trimmedBookMemo !== prevMemoText) {
+            await updateBookMemo(prevBookId, prevBookMemoId, {
+              text: trimmedBookMemo,
+            });
+          }
+        } else {
+          const newBookMemoId = await addBookMemo(
+            selectedBookIdValue,
+            trimmedBookMemo,
+          );
+          nextBookMemoId = newBookMemoId;
+        }
+
         await updateRecord(editingRecordId, {
           duration,
           memo,
@@ -337,6 +383,9 @@ export function RecordSingleView({
           endTime: end.toISOString(),
           // 編集時は、解除(空文字)も反映させるため常に送る
           bookId: selectedBookId,
+          ...(nextBookMemoId !== undefined
+            ? { bookMemoId: nextBookMemoId }
+            : {}),
           // 編集時は、タグを全て外した場合(空配列)も反映させるため常に送る
           tagIds,
         });
@@ -373,22 +422,60 @@ export function RecordSingleView({
 
   const handleDelete = async (recordId: string) => {
     const deletedRecord = records.find((r) => r.id === recordId);
+    if (!deletedRecord) return;
+
+    let deletedMemo: BookMemo | undefined;
+    let shouldDeleteMemo = false;
+
+    if (deletedRecord.bookId && deletedRecord.bookMemoId) {
+      const linkedMemo = getBookMemoById(
+        deletedRecord.bookId,
+        deletedRecord.bookMemoId,
+      );
+
+      if (linkedMemo) {
+        const deleteBoth = confirm(
+          "この記録と一緒に作成された書籍メモも削除しますか？\n\nOK: 両方削除\nキャンセル: 記録のみ削除",
+        );
+        if (deleteBoth) {
+          shouldDeleteMemo = true;
+          deletedMemo = linkedMemo;
+        } else if (!confirm("記録のみ削除しますか？")) {
+          return;
+        }
+      }
+    }
 
     // Firestore write acknowledgements can be delayed on poor networks.
     // Show the Undo toast immediately, and only show an error if the delete fails.
     toast.success("記録を削除しました", {
-      action: deletedRecord
-        ? {
-            label: "Undo",
-            onClick: () => {
-              void restoreRecord(deletedRecord).catch((err) => {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          void restoreRecord(deletedRecord).catch((err) => {
+            console.error(err);
+            toast.error("記録の復元に失敗しました");
+          });
+          if (deletedMemo && deletedRecord.bookId) {
+            void restoreBookMemo(deletedRecord.bookId, deletedMemo).catch(
+              (err) => {
                 console.error(err);
-                toast.error("記録の復元に失敗しました");
-              });
-            },
+                toast.error("書籍メモの復元に失敗しました");
+              },
+            );
           }
-        : undefined,
+        },
+      },
     });
+
+    if (shouldDeleteMemo && deletedRecord.bookId && deletedRecord.bookMemoId) {
+      void deleteBookMemo(deletedRecord.bookId, deletedRecord.bookMemoId).catch(
+        (err) => {
+          console.error(err);
+          toast.error("書籍メモの削除に失敗しました");
+        },
+      );
+    }
 
     void deleteRecord(recordId).catch((err) => {
       console.error(err);
