@@ -48,6 +48,14 @@ export const RecordWithDuplicateTags: Story = {
   },
 };
 
+export const RecordWithBookMemo: Story = {
+  args: {
+    ...Record.args,
+    bookNote:
+      "第2章の事例が特に参考になったので、次回のレビューでも再度読みたい。",
+  },
+};
+
 export const BookNote: Story = {
   args: {
     type: "BookNote",

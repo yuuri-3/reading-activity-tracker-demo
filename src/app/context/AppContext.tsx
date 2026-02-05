@@ -51,6 +51,7 @@ interface AppContextType {
   ) => Promise<void>;
   deleteBookMemo: (bookId: string, memoId: string) => Promise<void>;
   restoreBookMemo: (bookId: string, memo: BookMemo) => Promise<void>;
+  getBookMemoById: (bookId: string, memoId: string) => BookMemo | undefined;
 
   // Tags
   tags: Tag[];
@@ -340,11 +341,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
               typeof data.bookId === "string" ? data.bookId : undefined;
             const bookMemoId =
               typeof data.bookMemoId === "string" ? data.bookMemoId : undefined;
+            const bookMemo =
+              typeof (data as unknown as { bookMemo?: unknown }).bookMemo ===
+              "string"
+                ? ((data as unknown as { bookMemo?: unknown })
+                    .bookMemo as string)
+                : undefined;
 
             return {
               id: d.id,
               ...(bookId !== undefined ? { bookId } : {}),
               ...(bookMemoId !== undefined ? { bookMemoId } : {}),
+              ...(bookMemo !== undefined ? { bookMemo } : {}),
               duration: normalizeDurationSeconds(data),
               memo,
               ...(tagIds !== undefined ? { tagIds } : {}),
@@ -592,6 +600,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [db, uid],
   );
 
+  const getBookMemoById = useCallback(
+    (bookId: string, memoId: string) => {
+      const memos = bookMemosByBookId[bookId] ?? [];
+      return memos.find((memo) => memo.id === memoId);
+    },
+    [bookMemosByBookId],
+  );
+
   // Record operations
   const addRecord = useCallback(
     async (record: Omit<ReadingRecord, "id" | "createdAt">) => {
@@ -642,6 +658,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : {}),
         ...(typeof rest.bookMemoId === "string" && rest.bookMemoId === ""
           ? { bookMemoId: deleteField() }
+          : {}),
+        ...(typeof rest.bookMemo === "string" && rest.bookMemo === ""
+          ? { bookMemo: deleteField() }
           : {}),
         ...(typeof startIso === "string" && startIso.trim()
           ? { startTime: toTimestampFromIsoOrThrow(startIso, "startTime") }
@@ -712,6 +731,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateBookMemo,
       deleteBookMemo,
       restoreBookMemo,
+      getBookMemoById,
       tags,
       createTag,
       updateTag,
@@ -748,6 +768,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTag,
     deleteBookMemo,
     restoreBookMemo,
+    getBookMemoById,
     migrationIssues,
   ]);
 
