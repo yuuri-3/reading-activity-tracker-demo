@@ -43,7 +43,7 @@ interface AppContextType {
     bookId: string,
     memoText: string,
     createdAt?: string,
-  ) => Promise<void>;
+  ) => Promise<string>;
   updateBookMemo: (
     bookId: string,
     memoId: string,
@@ -338,10 +338,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
               : undefined;
             const bookId =
               typeof data.bookId === "string" ? data.bookId : undefined;
+            const bookMemoId =
+              typeof data.bookMemoId === "string" ? data.bookMemoId : undefined;
 
             return {
               id: d.id,
               ...(bookId !== undefined ? { bookId } : {}),
+              ...(bookMemoId !== undefined ? { bookMemoId } : {}),
               duration: normalizeDurationSeconds(data),
               memo,
               ...(tagIds !== undefined ? { tagIds } : {}),
@@ -531,15 +534,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addBookMemo = useCallback(
     async (bookId: string, memoText: string, createdAt?: string) => {
-      if (!db || !uid) return;
+      if (!db || !uid) {
+        throw new Error(
+          "ログイン情報の取得中です。少し待ってからもう一度お試しください",
+        );
+      }
       const createdAtIso = createdAt?.trim() || new Date().toISOString();
       const ts = toTimestampFromIsoOrThrow(createdAtIso, "createdAt");
 
-      await addDoc(collection(db, "users", uid, "books", bookId, "memos"), {
-        text: memoText,
-        createdAt: ts,
-      });
+      const docRef = await addDoc(
+        collection(db, "users", uid, "books", bookId, "memos"),
+        {
+          text: memoText,
+          createdAt: ts,
+        },
+      );
       registerGuestCreation();
+      return docRef.id;
     },
     [db, registerGuestCreation, uid],
   );
@@ -628,6 +639,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : {}),
         ...(typeof rest.bookId === "string" && rest.bookId === ""
           ? { bookId: deleteField() }
+          : {}),
+        ...(typeof rest.bookMemoId === "string" && rest.bookMemoId === ""
+          ? { bookMemoId: deleteField() }
           : {}),
         ...(typeof startIso === "string" && startIso.trim()
           ? { startTime: toTimestampFromIsoOrThrow(startIso, "startTime") }

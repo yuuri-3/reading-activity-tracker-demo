@@ -341,18 +341,20 @@ export function RecordSingleView({
           tagIds,
         });
       } else {
+        const trimmedBookMemo = bookMemo.trim();
+        const bookMemoId =
+          trimmedBookMemo && selectedBookId
+            ? await addBookMemo(selectedBookId, trimmedBookMemo)
+            : undefined;
         await addRecord({
           duration,
           memo,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           ...(selectedBookId ? { bookId: selectedBookId } : {}),
+          ...(bookMemoId ? { bookMemoId } : {}),
           ...(tagIds.length ? { tagIds } : {}),
         });
-      }
-
-      if (bookMemo.trim() && selectedBookId) {
-        void addBookMemo(selectedBookId, bookMemo.trim());
       }
 
       resetAddForm();
@@ -777,9 +779,7 @@ export function RecordSingleView({
             onSegmentedControlValueChange={(value) =>
               setSelectedSegment(value as RecordsSegment)
             }
-            {...(segmentedControlItems
-              ? { segmentedControlItems }
-              : {})}
+            {...(segmentedControlItems ? { segmentedControlItems } : {})}
           />
 
           <div className="px-6 pt-2 pb-28">

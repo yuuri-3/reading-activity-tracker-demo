@@ -24,6 +24,7 @@ export interface Book {
 export interface ReadingRecord {
   id: string;
   bookId?: string;
+  bookMemoId?: string;
   duration: number; // seconds
   memo: string;
   /** Tag references (preferred). */
