@@ -341,11 +341,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
               typeof data.bookId === "string" ? data.bookId : undefined;
             const bookMemoId =
               typeof data.bookMemoId === "string" ? data.bookMemoId : undefined;
+            const bookMemo =
+              typeof (data as unknown as { bookMemo?: unknown }).bookMemo ===
+              "string"
+                ? ((data as unknown as { bookMemo?: unknown })
+                    .bookMemo as string)
+                : undefined;
 
             return {
               id: d.id,
               ...(bookId !== undefined ? { bookId } : {}),
               ...(bookMemoId !== undefined ? { bookMemoId } : {}),
+              ...(bookMemo !== undefined ? { bookMemo } : {}),
               duration: normalizeDurationSeconds(data),
               memo,
               ...(tagIds !== undefined ? { tagIds } : {}),
@@ -651,6 +658,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : {}),
         ...(typeof rest.bookMemoId === "string" && rest.bookMemoId === ""
           ? { bookMemoId: deleteField() }
+          : {}),
+        ...(typeof rest.bookMemo === "string" && rest.bookMemo === ""
+          ? { bookMemo: deleteField() }
           : {}),
         ...(typeof startIso === "string" && startIso.trim()
           ? { startTime: toTimestampFromIsoOrThrow(startIso, "startTime") }

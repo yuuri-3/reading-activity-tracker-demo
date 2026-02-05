@@ -115,6 +115,10 @@ export function TimerSection({
         trimmedBookMemo && selectedBookIdSnapshot
           ? await addBookMemo(selectedBookIdSnapshot, trimmedBookMemo)
           : undefined;
+      const recordBookMemo =
+        trimmedBookMemo && !selectedBookIdSnapshot
+          ? trimmedBookMemo
+          : undefined;
 
       await addRecord({
         duration,
@@ -123,6 +127,7 @@ export function TimerSection({
         endTime: now.toISOString(),
         ...(selectedBookIdSnapshot ? { bookId: selectedBookIdSnapshot } : {}),
         ...(bookMemoId ? { bookMemoId } : {}),
+        ...(recordBookMemo ? { bookMemo: recordBookMemo } : {}),
         ...(tagIdsSnapshot.length ? { tagIds: tagIdsSnapshot } : {}),
       });
     };

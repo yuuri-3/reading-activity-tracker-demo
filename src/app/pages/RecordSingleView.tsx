@@ -301,7 +301,7 @@ export function RecordSingleView({
       const linkedMemo = getBookMemoById(record.bookId, record.bookMemoId);
       setBookMemo(linkedMemo?.text ?? "");
     } else {
-      setBookMemo("");
+      setBookMemo(record.bookMemo ?? "");
     }
     setTagIds(record.tagIds ?? []);
 
@@ -364,10 +364,16 @@ export function RecordSingleView({
         const bookChanged = prevBookId !== selectedBookIdValue;
 
         let nextBookMemoId: string | undefined;
+        let nextBookMemoText: string | undefined;
 
         if (!hasSelectedBook || trimmedBookMemo.length === 0) {
           if (prevBookMemoId) {
             nextBookMemoId = "";
+          }
+          if (!hasSelectedBook) {
+            nextBookMemoText = trimmedBookMemo;
+          } else if (trimmedBookMemo.length === 0) {
+            nextBookMemoText = "";
           }
         } else if (prevBookMemoId && prevBookId && !bookChanged && prevMemo) {
           if (trimmedBookMemo !== prevMemoText) {
@@ -375,12 +381,14 @@ export function RecordSingleView({
               text: trimmedBookMemo,
             });
           }
+          nextBookMemoText = "";
         } else {
           const newBookMemoId = await addBookMemo(
             selectedBookIdValue,
             trimmedBookMemo,
           );
           nextBookMemoId = newBookMemoId;
+          nextBookMemoText = "";
         }
 
         await updateRecord(editingRecordId, {
@@ -393,6 +401,9 @@ export function RecordSingleView({
           ...(nextBookMemoId !== undefined
             ? { bookMemoId: nextBookMemoId }
             : {}),
+          ...(nextBookMemoText !== undefined
+            ? { bookMemo: nextBookMemoText }
+            : {}),
           // 編集時は、タグを全て外した場合(空配列)も反映させるため常に送る
           tagIds,
         });
@@ -402,6 +413,8 @@ export function RecordSingleView({
           trimmedBookMemo && selectedBookId
             ? await addBookMemo(selectedBookId, trimmedBookMemo)
             : undefined;
+        const recordBookMemo =
+          trimmedBookMemo && !selectedBookId ? trimmedBookMemo : undefined;
         await addRecord({
           duration,
           memo,
@@ -409,6 +422,7 @@ export function RecordSingleView({
           endTime: end.toISOString(),
           ...(selectedBookId ? { bookId: selectedBookId } : {}),
           ...(bookMemoId ? { bookMemoId } : {}),
+          ...(recordBookMemo ? { bookMemo: recordBookMemo } : {}),
           ...(tagIds.length ? { tagIds } : {}),
         });
       }
@@ -975,6 +989,8 @@ export function RecordSingleView({
                                       record.bookMemoId,
                                     )
                                   : undefined;
+                              const bookNoteText =
+                                linkedMemo?.text ?? record.bookMemo;
 
                               const recordNoteNode = item.matchedMemo
                                 ? highlightText(record.memo ?? "", searchQuery)
@@ -1007,8 +1023,8 @@ export function RecordSingleView({
                                   durationSeconds={record.duration}
                                   dateTime={record.startTime}
                                   recordNote={recordNoteNode}
-                                  {...(linkedMemo?.text
-                                    ? { bookNote: linkedMemo.text }
+                                  {...(bookNoteText
+                                    ? { bookNote: bookNoteText }
                                     : {})}
                                   {...(book?.title
                                     ? { bookName: book.title }
@@ -1054,6 +1070,8 @@ export function RecordSingleView({
                                       record.bookMemoId,
                                     )
                                   : undefined;
+                              const bookNoteText =
+                                linkedMemo?.text ?? record.bookMemo;
 
                               const tagsNode = (() => {
                                 const items = getRecordTagItems(record);
@@ -1070,8 +1088,8 @@ export function RecordSingleView({
                                   durationSeconds={record.duration}
                                   dateTime={record.startTime}
                                   recordNote={record.memo}
-                                  {...(linkedMemo?.text
-                                    ? { bookNote: linkedMemo.text }
+                                  {...(bookNoteText
+                                    ? { bookNote: bookNoteText }
                                     : {})}
                                   {...(book?.title
                                     ? { bookName: book.title }
