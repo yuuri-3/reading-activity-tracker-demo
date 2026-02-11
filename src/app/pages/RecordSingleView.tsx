@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { useApp } from "../context/AppContext";
 import { formatDurationHms } from "../utils/format";
+import { getTotalPauseSeconds } from "../utils/recordDuration";
 import { Header } from "../components/Header";
 import { IconRecord } from "../components/icons/IconRecord";
 import { ListCard } from "../components/ListCard";
@@ -230,6 +231,8 @@ export function RecordSingleView({
   const [endAt, setEndAt] = useState(
     () => getDefaultAddRecordDateTimeValues().endAt,
   );
+  const [editingMeasuredSeconds, setEditingMeasuredSeconds] = useState(0);
+  const [editingPauseSeconds, setEditingPauseSeconds] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const isMobile = useIsMobile();
@@ -276,6 +279,8 @@ export function RecordSingleView({
     setTagIds([]);
     setStartAt(defaults.startAt);
     setEndAt(defaults.endAt);
+    setEditingMeasuredSeconds(0);
+    setEditingPauseSeconds(0);
     setSaveError(null);
     setIsSaving(false);
   };
@@ -304,6 +309,8 @@ export function RecordSingleView({
       setBookMemo(record.bookMemo ?? "");
     }
     setTagIds(record.tagIds ?? []);
+    setEditingMeasuredSeconds(Math.max(0, Math.floor(record.duration)));
+    setEditingPauseSeconds(getTotalPauseSeconds(record.pauseIntervals));
 
     const start = new Date(record.startTime);
     const end = new Date(record.endTime);
@@ -739,6 +746,7 @@ export function RecordSingleView({
   );
 
   const isAddScreenOpen = isMobile ? subPage === "add" : isAddDialogOpen;
+  const showEditTimeSummary = editingRecordId !== null;
 
   if (isMobile && isAddScreenOpen) {
     return (
@@ -789,6 +797,37 @@ export function RecordSingleView({
               />
             }
           />
+
+          {showEditTimeSummary ? (
+            <>
+              <FieldItem
+                className="w-full"
+                labelProps={{ text: "計測時間", showOptionalLabel: false }}
+                instance={
+                  <NeumorphicInput
+                    id="measuredDurationReadonly"
+                    type="text"
+                    value={formatDurationHms(editingMeasuredSeconds)}
+                    readOnly
+                    disabled
+                  />
+                }
+              />
+              <FieldItem
+                className="w-full"
+                labelProps={{ text: "休憩時間", showOptionalLabel: false }}
+                instance={
+                  <NeumorphicInput
+                    id="pauseDurationReadonly"
+                    type="text"
+                    value={formatDurationHms(editingPauseSeconds)}
+                    readOnly
+                    disabled
+                  />
+                }
+              />
+            </>
+          ) : null}
 
           <FieldItem
             className="w-full"
@@ -1166,6 +1205,37 @@ export function RecordSingleView({
               />
             }
           />
+
+          {showEditTimeSummary ? (
+            <>
+              <FieldItem
+                className="w-full"
+                labelProps={{ text: "計測時間", showOptionalLabel: false }}
+                instance={
+                  <NeumorphicInput
+                    id="measuredDurationReadonlyDesktop"
+                    type="text"
+                    value={formatDurationHms(editingMeasuredSeconds)}
+                    readOnly
+                    disabled
+                  />
+                }
+              />
+              <FieldItem
+                className="w-full"
+                labelProps={{ text: "休憩時間", showOptionalLabel: false }}
+                instance={
+                  <NeumorphicInput
+                    id="pauseDurationReadonlyDesktop"
+                    type="text"
+                    value={formatDurationHms(editingPauseSeconds)}
+                    readOnly
+                    disabled
+                  />
+                }
+              />
+            </>
+          ) : null}
 
           <FieldItem
             className="w-full"

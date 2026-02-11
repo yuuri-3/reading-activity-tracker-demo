@@ -30,6 +30,7 @@ import {
   deleteTag as deleteTagInRepository,
   restoreTag as restoreTagInRepository,
 } from "../repositories/tagRepository";
+import { getTotalPauseSeconds, normalizePauseIntervals } from "../utils/recordDuration";
 
 // App context for managing global state
 interface AppContextType {
@@ -114,19 +115,24 @@ function normalizeDurationSeconds(data: {
   duration?: unknown;
   startTime?: unknown;
   endTime?: unknown;
+  pauseIntervals?: unknown;
 }): number {
+  // Prefer explicit duration; it is pause-excluded and the source of truth.
+  const n =
+    typeof data.duration === "number" ? data.duration : Number(data.duration);
+  if (Number.isFinite(n)) return Math.max(0, Math.floor(n));
+
   // NOTE(TK-011): 旧形式(文字列日時)から duration を算出しない。
   if (isTimestampLike(data.startTime) && isTimestampLike(data.endTime)) {
     const start = data.startTime.toDate();
     const end = data.endTime.toDate();
     const diffSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
-    if (diffSeconds > 0) return diffSeconds;
+    if (diffSeconds > 0) {
+      const pauseSeconds = getTotalPauseSeconds(data.pauseIntervals);
+      return Math.max(0, diffSeconds - pauseSeconds);
+    }
   }
-
-  const n =
-    typeof data.duration === "number" ? data.duration : Number(data.duration);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.floor(n));
+  return 0;
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -356,6 +362,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
               duration: normalizeDurationSeconds(data),
               memo,
               ...(tagIds !== undefined ? { tagIds } : {}),
+              pauseIntervals: normalizePauseIntervals(
+                (data as unknown as { pauseIntervals?: unknown }).pauseIntervals,
+              ),
               startTime: (() => {
                 const v = (data as unknown as { startTime?: unknown })
                   .startTime;
