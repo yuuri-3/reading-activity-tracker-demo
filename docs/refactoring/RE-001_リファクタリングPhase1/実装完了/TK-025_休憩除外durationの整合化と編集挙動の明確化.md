@@ -1,6 +1,6 @@
 # P0-TK-025 休憩除外durationの整合化と編集挙動の明確化
 
-Status: ⬜ 未着手
+Status: ✅ 完了
 
 このチケットは、タイマー計測で「休憩時間を差し引いた計測時間」を正として扱い、表示・保存・編集の挙動を一貫させるための修正です。
 
@@ -34,13 +34,13 @@ Status: ⬜ 未着手
 
 ## 受け入れ条件
 
-- [ ] 休憩あり計測（開始 -> 一時停止 -> 再開 -> 終了）で保存された記録の表示時間が、休憩除外の値になる
-- [ ] 休憩あり計測で、保存レコードの `startTime` が実開始時刻と一致する
-- [ ] 休憩区間が `pauseIntervals` として保存される
-- [ ] 記録一覧カードで `duration` が表示され、`start/end` 差分由来で増えることがない
-- [ ] 月次合計/日次グループ合計が `record.duration` ベースで一致する
-- [ ] 記録編集画面で終了時刻を変更して保存すると `duration` が変更される
-- [ ] 編集後も `startTime/endTime/duration` の整合（不正な負値なし）が保たれる
+- [x] 休憩あり計測（開始 -> 一時停止 -> 再開 -> 終了）で保存された記録の表示時間が、休憩除外の値になる
+- [x] 休憩あり計測で、保存レコードの `startTime` が実開始時刻と一致する
+- [x] 休憩区間が `pauseIntervals` として保存される
+- [x] 記録一覧カードで `duration` が表示され、`start/end` 差分由来で増えることがない
+- [x] 月次合計/日次グループ合計が `record.duration` ベースで一致する
+- [x] 記録編集画面で終了時刻を変更して保存すると `duration` が変更される
+- [x] 編集後も `startTime/endTime/duration` の整合（不正な負値なし）が保たれる
 
 ## 実装対象
 
@@ -58,15 +58,15 @@ Status: ⬜ 未着手
 
 ## テスト
 
-- [ ] `normalizeDurationSeconds` の単体テスト追加
+- [x] `normalizeDurationSeconds` の単体テスト追加
   - `duration` あり + `start/end` ありのとき `duration` を採用
   - `duration` 欠損時のみ `start/end` 差分を採用
   - `pauseIntervals` がある場合に `start/end` 差分から休憩時間を除外できる
-- [ ] タイマー停止保存のテスト追加
+- [x] タイマー停止保存のテスト追加
   - 休憩ありで `duration` が休憩除外になる
   - 保存 payload の `startTime` が実開始時刻と一致する
   - 保存 payload に `pauseIntervals` が含まれる
-- [ ] 編集保存のテスト追加
+- [x] 編集保存のテスト追加
   - `endTime` 変更で `duration` が更新される
 
 ## 非ゴール
