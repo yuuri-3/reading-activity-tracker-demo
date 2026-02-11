@@ -13,6 +13,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  firestore_rules:
+    name: Firestore Rules Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+
+      - name: Setup Java (Firestore Emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Firestore Rules tests (emulator)
+        run: npx firebase-tools@15.3.1 emulators:exec --project yomzoy-rules-test --only firestore "npm run test:rules:unit"
+
   quality_gates:
     name: CI Quality Gates (typecheck + test-storybook)
     runs-on: ubuntu-latest

@@ -11,6 +11,7 @@ import {
 } from "../utils/format";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
+import { computeElapsedSecondsFromTimerState } from "../utils/recordDuration";
 
 export type TimerSectionProps = {
   memo?: string;
@@ -34,6 +35,10 @@ export function TimerSection({
   const stopInFlightRef = useRef(false);
   const startTimeoutRef = useRef<number | null>(null);
   const measurementStartMsRef = useRef<number | null>(null);
+  const pauseStartedMsRef = useRef<number | null>(null);
+  const pauseIntervalsMsRef = useRef<Array<{ startMs: number; endMs: number }>>(
+    []
+  );
 
   useEffect(() => {
     return () => {
@@ -53,6 +58,8 @@ export function TimerSection({
       timerState.pausedTime === 0
     ) {
       measurementStartMsRef.current = null;
+      pauseStartedMsRef.current = null;
+      pauseIntervalsMsRef.current = [];
     }
   }, [
     timerState.elapsedTime,
@@ -80,7 +87,14 @@ export function TimerSection({
 
   const handleStop = async () => {
     if (stopInFlightRef.current) return;
-    const duration = Math.floor(timerState.elapsedTime);
+    const now = new Date();
+    const duration = Math.floor(
+      computeElapsedSecondsFromTimerState(
+        timerState.pausedTime,
+        timerState.startTime,
+        now.getTime()
+      )
+    );
     if (duration <= 0) return;
 
     stopInFlightRef.current = true;
@@ -92,16 +106,22 @@ export function TimerSection({
     const selectedBookIdSnapshot = selectedBookId;
     const bookMemoSnapshot = bookMemo;
     const tagIdsSnapshot = tagIds;
-
-    const now = new Date();
-    const computedStartMs =
-      measurementStartMsRef.current ?? now.getTime() - duration * 1000;
-    const startTime = new Date(computedStartMs).toISOString();
+    const startMs = measurementStartMsRef.current ?? now.getTime() - duration * 1000;
+    const pauseIntervalsSnapshot = pauseIntervalsMsRef.current
+      .filter((i) => i.endMs > i.startMs)
+      .map((i) => ({
+        startTime: new Date(i.startMs).toISOString(),
+        endTime: new Date(i.endMs).toISOString(),
+      }));
+    const startTime = new Date(startMs).toISOString();
+    const endTime = now.toISOString();
 
     // Unlock UI immediately after stopping, so the user can start the next
     // measurement even if the network save is slow.
     resetTimer();
     measurementStartMsRef.current = null;
+    pauseStartedMsRef.current = null;
+    pauseIntervalsMsRef.current = [];
     onClearInputs?.();
     setIsStopping(false);
 
@@ -124,7 +144,10 @@ export function TimerSection({
         duration,
         memo: memoSnapshot,
         startTime,
-        endTime: now.toISOString(),
+        endTime,
+        ...(pauseIntervalsSnapshot.length
+          ? { pauseIntervals: pauseIntervalsSnapshot }
+          : {}),
         ...(selectedBookIdSnapshot ? { bookId: selectedBookIdSnapshot } : {}),
         ...(bookMemoId ? { bookMemoId } : {}),
         ...(recordBookMemo ? { bookMemo: recordBookMemo } : {}),
@@ -144,10 +167,35 @@ export function TimerSection({
     if (isStarting) return;
     setIsStarting(true);
     startTimeoutRef.current = window.setTimeout(() => {
+      const nowMs = Date.now();
+      const isNewRun = timerState.elapsedTime <= 0 && timerState.pausedTime <= 0;
+      if (isNewRun) {
+        measurementStartMsRef.current = nowMs;
+        pauseIntervalsMsRef.current = [];
+        pauseStartedMsRef.current = null;
+      } else if (measurementStartMsRef.current === null) {
+        // Fallback for restored timer state where in-memory ref is empty.
+        measurementStartMsRef.current = nowMs - timerState.elapsedTime * 1000;
+      }
+
+      if (pauseStartedMsRef.current != null && nowMs > pauseStartedMsRef.current) {
+        pauseIntervalsMsRef.current = [
+          ...pauseIntervalsMsRef.current,
+          { startMs: pauseStartedMsRef.current, endMs: nowMs },
+        ];
+        pauseStartedMsRef.current = null;
+      }
+
       startTimer();
       setIsStarting(false);
       startTimeoutRef.current = null;
     }, 120);
+  };
+
+  const handlePause = () => {
+    if (!timerState.isRunning) return;
+    pauseStartedMsRef.current = Date.now();
+    pauseTimer();
   };
 
   const isRunningUi = timerState.isRunning || isStopping;
@@ -244,7 +292,7 @@ export function TimerSection({
                 className="flex-1"
               >
                 <PrimaryButton
-                  onClick={pauseTimer}
+                  onClick={handlePause}
                   disabled={isStopping}
                   className="w-full"
                   icon={<IconPause size={4} />}

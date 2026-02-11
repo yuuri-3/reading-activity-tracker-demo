@@ -30,6 +30,8 @@ export interface ReadingRecord {
   memo: string;
   /** Tag references (preferred). */
   tagIds?: string[];
+  /** Actual pause segments during timer measurement. */
+  pauseIntervals?: { startTime: string; endTime: string }[];
   startTime: string;
   endTime: string;
   createdAt: string;

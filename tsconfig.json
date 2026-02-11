@@ -32,6 +32,7 @@
     "src/**/*.stories.ts",
     "src/**/*.stories.tsx",
     "src/**/__tests__/**",
-    ".storybook/**"
+    ".storybook/**",
+    "src/app/firebase/firestoreRules.test.ts"
   ]
 }
