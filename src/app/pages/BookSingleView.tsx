@@ -40,6 +40,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   }, [tags]);
 
   const [segment, setSegment] = useState<"all" | "reading" | "book">("all");
+  const [selectedBookMemoTagId, setSelectedBookMemoTagId] = useState("");
 
   const [isEditBookMemoOpen, setIsEditBookMemoOpen] = useState(false);
   const [editingBookMemoId, setEditingBookMemoId] = useState<string | null>(
@@ -54,6 +55,39 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
   const records = getRecordsByBook(book.id);
   const totalDuration = getTotalDurationByBook(book.id);
   const memos = book.memos ?? [];
+  const memoTagIdsByMemoId = useMemo(() => {
+    const byMemoId = new Map<string, string[]>();
+
+    for (const record of records) {
+      if (!record.bookMemoId) continue;
+      const ids = record.tagIds ?? [];
+      if (ids.length === 0) continue;
+
+      const existing = byMemoId.get(record.bookMemoId) ?? [];
+      const next = [...existing];
+      for (const id of ids) {
+        if (id && !next.includes(id)) {
+          next.push(id);
+        }
+      }
+      byMemoId.set(record.bookMemoId, next);
+    }
+
+    return byMemoId;
+  }, [records]);
+
+  const bookMemoTagOptions = useMemo(() => {
+    const ids = new Set<string>();
+    for (const memo of memos) {
+      for (const id of memoTagIdsByMemoId.get(memo.id) ?? []) {
+        ids.add(id);
+      }
+    }
+
+    return Array.from(ids).sort((a, b) =>
+      (tagsById.get(a) ?? a).localeCompare(tagsById.get(b) ?? b, "ja"),
+    );
+  }, [memos, memoTagIdsByMemoId, tagsById]);
 
   const lastRecordEnd = records.reduce<string | null>((latest, record) => {
     const t = record.endTime;
@@ -88,7 +122,16 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
       time: r.startTime || r.createdAt,
       record: r,
     }));
-    const memoItems = memos.map((m) => ({
+    const memoSource =
+      segment === "book" && selectedBookMemoTagId
+        ? memos.filter((m) =>
+            (memoTagIdsByMemoId.get(m.id) ?? []).includes(
+              selectedBookMemoTagId,
+            ),
+          )
+        : memos;
+
+    const memoItems = memoSource.map((m) => ({
       key: `memo:${m.id}`,
       kind: "memo" as const,
       time: m.createdAt,
@@ -246,6 +289,48 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                   { value: "book", text: "書籍メモ", amount: memos.length },
                 ]}
               />
+
+              {segment === "book" && bookMemoTagOptions.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    タグで絞り込み
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <TagChip asChild>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBookMemoTagId("")}
+                        className={
+                          selectedBookMemoTagId
+                            ? "opacity-70 hover:opacity-100 transition-opacity"
+                            : ""
+                        }
+                      >
+                        すべて
+                      </button>
+                    </TagChip>
+                    {bookMemoTagOptions.map((id) => {
+                      const label = tagsById.get(id) ?? id;
+                      const selected = selectedBookMemoTagId === id;
+                      return (
+                        <TagChip key={id} asChild>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBookMemoTagId(id)}
+                            className={
+                              selected
+                                ? ""
+                                : "opacity-70 hover:opacity-100 transition-opacity"
+                            }
+                          >
+                            {label}
+                          </button>
+                        </TagChip>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </header>
         </div>
@@ -290,6 +375,13 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                 }
 
                 const m = item.memo;
+                const memoTagsNode = (() => {
+                  const ids = memoTagIdsByMemoId.get(m.id) ?? [];
+                  if (ids.length === 0) return undefined;
+                  return ids.map((id) => (
+                    <TagChip key={id}>{tagsById.get(id) ?? id}</TagChip>
+                  ));
+                })();
                 return (
                   <ListCard
                     key={item.key}
@@ -297,6 +389,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                     createdAt={m.createdAt}
                     bookName={book.title}
                     bookNote={m.text}
+                    {...(memoTagsNode ? { tagsNode: memoTagsNode } : {})}
                     onDelete={() => handleDeleteBookMemo(m.id)}
                     onEdit={() => handleOpenEditBookMemo(m.id)}
                   />

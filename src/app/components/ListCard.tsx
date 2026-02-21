@@ -45,6 +45,8 @@ type BookNoteVariantProps = BaseProps & {
   createdAt: string;
   bookName?: string;
   bookNote: React.ReactNode;
+  tags?: string[];
+  tagsNode?: React.ReactNode;
   onEdit?: () => void;
   onDelete?: () => void;
 };
@@ -248,6 +250,8 @@ export function ListCard(props: ListCardProps) {
         createdAt,
         bookName,
         bookNote,
+        tags,
+        tagsNode,
         onDelete,
         onEdit,
       } = props;
@@ -274,6 +278,16 @@ export function ListCard(props: ListCardProps) {
             ) : null}
 
             <p className="text-sm whitespace-pre-wrap">{bookNoteNode}</p>
+
+            {tagsNode ? (
+              <div className="flex flex-wrap gap-2">{tagsNode}</div>
+            ) : tags && tags.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {tags.map((t, index) => (
+                  <Tag key={`tag-${index}`} text={t} />
+                ))}
+              </div>
+            ) : null}
           </div>
         </ListCardFrame>
       );
