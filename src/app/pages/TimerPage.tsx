@@ -14,6 +14,7 @@ import {
   toSelectValue,
 } from "../components/ui/select";
 import { TagMultiSelectInput } from "../components/TagMultiSelectInput";
+import { Button } from "../components/ui/button";
 import { useApp } from "../context/AppContext";
 import { useAuth } from "../auth/AuthContext";
 
@@ -161,6 +162,21 @@ export function TimerPage({ showOcrEntry, onOpenOcr }: TimerPageProps) {
             tagIds={values.tagIds}
             onClearInputs={handleClearInputs}
           />
+
+          {showOcrEntry ? (
+            <div className="flex w-full justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  onOpenOcr?.();
+                }}
+                disabled={!onOpenOcr}
+              >
+                手書きメモを読み取る（OCR）
+              </Button>
+            </div>
+          ) : null}
 
           <div className="flex w-full flex-col gap-6">
             <FieldItem
