@@ -30,6 +30,7 @@ type RecordVariantProps = BaseProps & {
   isDetected?: boolean;
   durationSeconds: number;
   dateTime: string;
+  sourceUrl?: string;
   recordNote?: React.ReactNode;
   bookNote?: React.ReactNode;
   bookName?: string;
@@ -185,6 +186,7 @@ export function ListCard(props: ListCardProps) {
         shadow = "md",
         durationSeconds,
         dateTime,
+        sourceUrl,
         recordNote,
         bookNote,
         bookName,
@@ -215,6 +217,19 @@ export function ListCard(props: ListCardProps) {
 
             {recordNoteNode ? (
               <p className="text-sm whitespace-pre-wrap">{recordNoteNode}</p>
+            ) : null}
+
+            {sourceUrl ? (
+              <p className="text-xs text-muted-foreground truncate">
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="cursor-pointer underline underline-offset-2 hover:no-underline"
+                >
+                  {sourceUrl}
+                </a>
+              </p>
             ) : null}
 
             {bookNoteNode ? (

@@ -15,6 +15,7 @@ import { IconBack } from "../components/icons/IconBack";
 import { IconClock } from "../components/icons/IconClock";
 import { IconBookRibbon } from "../components/icons/IconBookRibbon";
 import { IconNoteStack } from "../components/icons/IconNoteStack";
+import { parseRecordMemo, serializeRecordMemo } from "../utils/recordMemoMeta";
 
 export type BookSingleViewProps = {
   book: Book;
@@ -50,6 +51,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
 
   const [isEditRecordOpen, setIsEditRecordOpen] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editingRecordRawMemo, setEditingRecordRawMemo] = useState("");
   const [editingRecordMemo, setEditingRecordMemo] = useState("");
 
   const records = getRecordsByBook(book.id);
@@ -218,15 +220,24 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
     const record = records.find((r) => r.id === recordId);
     if (!record) return;
     setEditingRecordId(recordId);
-    setEditingRecordMemo(record.memo ?? "");
+    const rawMemo = record.memo ?? "";
+    const parsedMemo = parseRecordMemo(rawMemo);
+    setEditingRecordRawMemo(rawMemo);
+    setEditingRecordMemo(parsedMemo.body);
     setIsEditRecordOpen(true);
   };
 
   const handleConfirmEditRecord = () => {
     if (!editingRecordId) return;
-    void updateRecord(editingRecordId, { memo: editingRecordMemo });
+    const parsedCurrentMemo = parseRecordMemo(editingRecordRawMemo);
+    const nextMemo = serializeRecordMemo({
+      body: editingRecordMemo,
+      meta: parsedCurrentMemo.meta,
+    });
+    void updateRecord(editingRecordId, { memo: nextMemo });
     setIsEditRecordOpen(false);
     setEditingRecordId(null);
+    setEditingRecordRawMemo("");
     setEditingRecordMemo("");
   };
 
@@ -347,6 +358,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
               feedItems.map((item) => {
                 if (item.kind === "record") {
                   const r = item.record;
+                  const parsedRecordMemo = parseRecordMemo(r.memo ?? "");
 
                   const tagsNode = (() => {
                     const ids = r.tagIds ?? [];
@@ -365,7 +377,10 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
                       type="Record"
                       durationSeconds={r.duration}
                       dateTime={r.startTime}
-                      recordNote={r.memo}
+                      {...(parsedRecordMemo.meta.source_url
+                        ? { sourceUrl: parsedRecordMemo.meta.source_url }
+                        : {})}
+                      recordNote={parsedRecordMemo.body}
                       bookName={book.title}
                       tagsNode={tagsNode}
                       onDelete={() => handleDeleteRecord(r.id)}
@@ -448,6 +463,7 @@ export function BookSingleView({ book, onBack }: BookSingleViewProps) {
           setIsEditRecordOpen(open);
           if (!open) {
             setEditingRecordId(null);
+            setEditingRecordRawMemo("");
             setEditingRecordMemo("");
           }
         }}
