@@ -32,6 +32,7 @@ import { useElementScrollRestoration } from "../utils/useElementScrollRestoratio
 import { DialogFormPattern } from "../components/DialogFormPattern";
 import { IconClock } from "../components/icons/IconClock";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
+import { parseRecordMemo, serializeRecordMemo } from "../utils/recordMemoMeta";
 
 type RecordsSegment = "all" | "reading" | "book";
 
@@ -217,6 +218,7 @@ export function RecordSingleView({
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [selectedBookId, setSelectedBookId] = useState<string>("");
   const [memo, setMemo] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [bookMemo, setBookMemo] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -275,6 +277,7 @@ export function RecordSingleView({
     setEditingRecordId(null);
     setSelectedBookId("");
     setMemo("");
+    setSourceUrl("");
     setBookMemo("");
     setTagIds([]);
     setStartAt(defaults.startAt);
@@ -301,7 +304,9 @@ export function RecordSingleView({
     resetAddForm();
     setEditingRecordId(record.id);
     setSelectedBookId(record.bookId ?? "");
-    setMemo(record.memo ?? "");
+    const parsedMemo = parseRecordMemo(record.memo ?? "");
+    setMemo(parsedMemo.body);
+    setSourceUrl(parsedMemo.meta.source_url ?? "");
     if (record.bookId && record.bookMemoId) {
       const linkedMemo = getBookMemoById(record.bookId, record.bookMemoId);
       setBookMemo(linkedMemo?.text ?? "");
@@ -352,11 +357,28 @@ export function RecordSingleView({
         throw new Error("終了日時は開始日時より後にしてください");
       }
 
+      const normalizedSourceUrl = sourceUrl.trim();
+
       if (editingRecordId) {
         const record = records.find((r) => r.id === editingRecordId);
         if (!record) {
           throw new Error("編集対象の記録が見つかりませんでした");
         }
+        const parsedCurrentMemo = parseRecordMemo(record.memo ?? "");
+        const nextMemoMeta = { ...parsedCurrentMemo.meta };
+        if (normalizedSourceUrl) {
+          nextMemoMeta.source_url = normalizedSourceUrl;
+          nextMemoMeta.source_type = "web";
+        } else {
+          delete nextMemoMeta.source_url;
+          if (nextMemoMeta.source_type === "web") {
+            delete nextMemoMeta.source_type;
+          }
+        }
+        const nextMemo = serializeRecordMemo({
+          body: memo,
+          meta: nextMemoMeta,
+        });
 
         const trimmedBookMemo = bookMemo.trim();
         const prevBookId = record.bookId ?? "";
@@ -400,7 +422,7 @@ export function RecordSingleView({
 
         await updateRecord(editingRecordId, {
           duration,
-          memo,
+          memo: nextMemo,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           // 編集時は、解除(空文字)も反映させるため常に送る
@@ -415,6 +437,15 @@ export function RecordSingleView({
           tagIds,
         });
       } else {
+        const nextMemoMeta: Record<string, string> = {};
+        if (normalizedSourceUrl) {
+          nextMemoMeta.source_url = normalizedSourceUrl;
+          nextMemoMeta.source_type = "web";
+        }
+        const nextMemo = serializeRecordMemo({
+          body: memo,
+          meta: nextMemoMeta,
+        });
         const trimmedBookMemo = bookMemo.trim();
         const bookMemoId =
           trimmedBookMemo && selectedBookId
@@ -424,7 +455,7 @@ export function RecordSingleView({
           trimmedBookMemo && !selectedBookId ? trimmedBookMemo : undefined;
         await addRecord({
           duration,
-          memo,
+          memo: nextMemo,
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           ...(selectedBookId ? { bookId: selectedBookId } : {}),
@@ -529,7 +560,7 @@ export function RecordSingleView({
 
     return records
       .map((record) => {
-        const memoText = (record.memo ?? "").toLowerCase();
+        const memoText = parseRecordMemo(record.memo ?? "").body.toLowerCase();
         const tagTexts = getRecordTagItems(record).map((t) => t.text);
         const matchedMemo = memoText.includes(normalizedQuery);
         const matchedTags = tagTexts.some((t) =>
@@ -845,6 +876,20 @@ export function RecordSingleView({
               />
             }
           />
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "URL", showOptionalLabel: true }}
+            instance={
+              <NeumorphicInput
+                id="sourceUrl"
+                type="url"
+                placeholder="例）https://example.com/article"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+                disabled={isSaving}
+              />
+            }
+          />
 
           <FieldItem
             className="w-full"
@@ -1030,10 +1075,16 @@ export function RecordSingleView({
                                   : undefined;
                               const bookNoteText =
                                 linkedMemo?.text ?? record.bookMemo;
+                              const parsedRecordMemo = parseRecordMemo(
+                                record.memo ?? "",
+                              );
+                              const recordMemoText = parsedRecordMemo.body;
+                              const sourceUrl =
+                                parsedRecordMemo.meta.source_url ?? "";
 
                               const recordNoteNode = item.matchedMemo
-                                ? highlightText(record.memo ?? "", searchQuery)
-                                : record.memo;
+                                ? highlightText(recordMemoText, searchQuery)
+                                : recordMemoText;
 
                               const tagsNode = (() => {
                                 const items = getRecordTagItems(record);
@@ -1061,6 +1112,7 @@ export function RecordSingleView({
                                   type="Record"
                                   durationSeconds={record.duration}
                                   dateTime={record.startTime}
+                                  {...(sourceUrl ? { sourceUrl } : {})}
                                   recordNote={recordNoteNode}
                                   {...(bookNoteText
                                     ? { bookNote: bookNoteText }
@@ -1111,6 +1163,9 @@ export function RecordSingleView({
                                   : undefined;
                               const bookNoteText =
                                 linkedMemo?.text ?? record.bookMemo;
+                              const sourceUrl =
+                                parseRecordMemo(record.memo ?? "").meta
+                                  .source_url ?? "";
 
                               const tagsNode = (() => {
                                 const items = getRecordTagItems(record);
@@ -1126,7 +1181,10 @@ export function RecordSingleView({
                                   type="Record"
                                   durationSeconds={record.duration}
                                   dateTime={record.startTime}
-                                  recordNote={record.memo}
+                                  {...(sourceUrl ? { sourceUrl } : {})}
+                                  recordNote={
+                                    parseRecordMemo(record.memo ?? "").body
+                                  }
                                   {...(bookNoteText
                                     ? { bookNote: bookNoteText }
                                     : {})}
@@ -1249,6 +1307,20 @@ export function RecordSingleView({
                 className="text-base leading-5"
                 rows={2}
                 autoResize
+                disabled={isSaving}
+              />
+            }
+          />
+          <FieldItem
+            className="w-full"
+            labelProps={{ text: "URL", showOptionalLabel: true }}
+            instance={
+              <NeumorphicInput
+                id="sourceUrlDesktop"
+                type="url"
+                placeholder="例）https://example.com/article"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
                 disabled={isSaving}
               />
             }
