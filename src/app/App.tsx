@@ -20,6 +20,7 @@ import { TabBar, type Page } from "./components/TabBar";
 import { Dialog } from "./components/Dialog";
 import { Toast } from "./components/Toast";
 import { joinWithBase } from "./utils/navigation";
+import { useVisualViewportHeight } from "./utils/useVisualViewportHeight";
 import { isOcrHandwrittenMemoEnabled } from "./ocr/env";
 import { OcrHandwrittenMemoRootPage } from "./ocr/OcrHandwrittenMemoRootPage";
 import {
@@ -67,6 +68,57 @@ function AppContent() {
   );
 
   const [ocrActive, setOcrActive] = useState<boolean>(initialRoute.ocrActive);
+  const visualViewportHeight = useVisualViewportHeight();
+  const [focusedTextInput, setFocusedTextInput] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const isTextInput = (element: Element | null) => {
+      if (element instanceof HTMLTextAreaElement) return true;
+      if (element instanceof HTMLElement && element.isContentEditable) {
+        return true;
+      }
+      if (!(element instanceof HTMLInputElement)) return false;
+
+      return ![
+        "button",
+        "checkbox",
+        "color",
+        "file",
+        "hidden",
+        "image",
+        "radio",
+        "range",
+        "reset",
+        "submit",
+      ].includes(element.type);
+    };
+
+    const onFocusIn = (event: FocusEvent) => {
+      setFocusedTextInput(isTextInput(event.target as Element | null));
+    };
+    const onFocusOut = () => {
+      // focusin for the next field can follow focusout, so read the active
+      // element on the next frame instead of hiding the bar between fields.
+      window.requestAnimationFrame(() => {
+        setFocusedTextInput(isTextInput(document.activeElement));
+      });
+    };
+
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
+
+  const isKeyboardInputMode =
+    focusedTextInput &&
+    visualViewportHeight > 0 &&
+    typeof window !== "undefined" &&
+    visualViewportHeight < window.innerHeight - 100;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -216,7 +268,7 @@ function AppContent() {
 
       {/* Bottom Navigation - iOS Floating Style */}
       <nav className="fixed bottom-0 left-0 right-0 pointer-events-none">
-        {ocrActive || isMigrationBlocked ? null : (
+        {ocrActive || isMigrationBlocked || isKeyboardInputMode ? null : (
           <div className="max-w-2xl mx-auto px-4 pb-4">
             <div className="pointer-events-auto -translate-y-6 max-w-[345px] mx-auto">
               <TabBar currentPage={currentPage} onChange={handleChangePage} />
